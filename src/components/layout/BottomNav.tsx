@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
+  TrendingUp,
   Wallet,
   Briefcase,
   Receipt,
@@ -24,18 +25,20 @@ import {
 
 const bottomNavItems = [
   { href: '/', label: { en: 'Home', ar: 'الرئيسية' }, icon: LayoutDashboard },
-  { href: '/portfolio', label: { en: 'Portfolio', ar: 'المحفظة' }, icon: Briefcase },
-  { href: '/budget', label: { en: 'Budget', ar: 'الميزانية' }, icon: Receipt },
+  { href: '/income', label: { en: 'Income', ar: 'الدخل' }, icon: TrendingUp },
+  { href: '/expenses', label: { en: 'Expenses', ar: 'المصروفات' }, icon: Receipt },
   { href: '/advisor', label: { en: 'AI', ar: 'المستشار' }, icon: Bot },
 ];
 
 const allNavItems = [
   { href: '/', label: { en: 'Dashboard', ar: 'لوحة التحكم' }, icon: LayoutDashboard },
+  { href: '/income', label: { en: 'Income', ar: 'الدخل' }, icon: TrendingUp },
+  { href: '/expenses', label: { en: 'Expenses', ar: 'المصروفات' }, icon: Receipt },
   { href: '/net-worth', label: { en: 'Net Worth', ar: 'صافي الثروة' }, icon: Wallet },
   { href: '/portfolio', label: { en: 'Portfolio', ar: 'المحفظة' }, icon: Briefcase },
   { href: '/fire', label: { en: 'FIRE Tracker', ar: 'متعقب FIRE' }, icon: Flame },
   { href: '/retirement', label: { en: 'Retirement', ar: 'التقاعد' }, icon: PiggyBank },
-  { href: '/budget', label: { en: 'Budget', ar: 'الميزانية' }, icon: Receipt },
+  { href: '/budget', label: { en: 'Budget', ar: 'الميزانية' }, icon: Wallet },
   { href: '/advisor', label: { en: 'AI Advisor', ar: 'المستشار المالي' }, icon: Bot },
   { href: '/reports', label: { en: 'Reports', ar: 'التقارير' }, icon: FileText },
   { href: '/settings', label: { en: 'Settings', ar: 'الإعدادات' }, icon: Settings },

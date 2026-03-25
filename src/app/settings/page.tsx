@@ -100,6 +100,7 @@ export default function SettingsPage({
     updateNotificationPreferences,
     clearAllData,
     setUser,
+    setSubscriptionTier,
   } = useAppStore();
   const { theme, setTheme } = useTheme();
   const isArabic = locale === 'ar';
@@ -115,10 +116,20 @@ export default function SettingsPage({
   };
   const [name, setName] = useState(currentUser.name ?? '');
   const [email, setEmail] = useState(currentUser.email);
-  const [currentPlan, setCurrentPlan] = useState('free');
+  const currentPlan = user?.subscriptionTier ?? 'free';
   const validTabs = useMemo(() => ['profile', 'preferences', 'subscription', 'data'] as const, []);
   const activeTabParam = searchParams?.tab ?? null;
   const activeTab = validTabs.find((value) => value === activeTabParam) ?? 'profile';
+
+  const handleSubscriptionChange = (tier: 'free' | 'core' | 'pro') => {
+    setSubscriptionTier(tier);
+    toast({
+      title: isArabic ? 'تم تحديث الاشتراك' : 'Subscription updated',
+      description: isArabic
+        ? 'تم تطبيق الخطة الجديدة على حساب العرض التجريبي.'
+        : 'The new plan was applied to the demo account.',
+    });
+  };
 
   const handleExportData = () => {
     const data = {
@@ -212,7 +223,12 @@ export default function SettingsPage({
         </div>
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <Tabs
+          key={activeTab}
+          defaultValue={activeTab}
+          onValueChange={setActiveTab}
+          className="space-y-6"
+        >
           <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full">
             <TabsTrigger value="profile">
               <User className="w-4 h-4 mr-2" />
@@ -442,9 +458,12 @@ export default function SettingsPage({
                       </div>
                     </div>
                     {currentPlan !== 'pro' && (
-                      <Button className="bg-gold hover:bg-gold-dark text-navy-dark">
-                        {isArabic ? 'ترقية' : 'Upgrade'}
-                      </Button>
+                        <Button
+                          className="bg-gold hover:bg-gold-dark text-navy-dark"
+                          onClick={() => handleSubscriptionChange('pro')}
+                        >
+                          {isArabic ? 'ترقية' : 'Upgrade'}
+                        </Button>
                     )}
                   </div>
                 </CardContent>
@@ -489,7 +508,7 @@ export default function SettingsPage({
                         <Button
                           className="w-full mt-4"
                           variant={tier.id === 'pro' ? 'default' : 'outline'}
-                          onClick={() => setCurrentPlan(tier.id)}
+                          onClick={() => handleSubscriptionChange(tier.id as 'free' | 'core' | 'pro')}
                         >
                           {isArabic ? 'ابدأ التجربة' : 'Start Trial'}
                         </Button>

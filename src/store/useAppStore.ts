@@ -4,6 +4,19 @@ import { persist } from 'zustand/middleware';
 export type Locale = 'ar' | 'en';
 export type Theme = 'dark' | 'light' | 'system';
 export type SubscriptionTier = 'free' | 'core' | 'pro';
+export type IncomeSource = 'salary' | 'freelance' | 'business' | 'investment' | 'rental' | 'other';
+export type IncomeFrequency = 'one_time' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+export type ExpenseCategory =
+  | 'Food'
+  | 'Transport'
+  | 'Utilities'
+  | 'Entertainment'
+  | 'Healthcare'
+  | 'Education'
+  | 'Shopping'
+  | 'Housing'
+  | 'Other';
+export type PaymentMethod = 'Cash' | 'Card' | 'Transfer' | 'Wallet' | 'Other';
 
 interface User {
   id: string;
@@ -32,6 +45,43 @@ interface NotificationItem {
   descriptionAr: string;
   read: boolean;
   href: string;
+}
+
+export interface IncomeEntry {
+  id: string;
+  amount: number;
+  currency: string;
+  source: IncomeSource;
+  sourceName: string;
+  frequency: IncomeFrequency;
+  date: string;
+  isRecurring: boolean;
+  notes?: string | null;
+}
+
+export interface ExpenseEntry {
+  id: string;
+  amount: number;
+  currency: string;
+  category: ExpenseCategory;
+  description: string;
+  merchantName?: string | null;
+  date: string;
+  paymentMethod: PaymentMethod;
+  notes?: string | null;
+  receiptId?: string | null;
+}
+
+export interface ReceiptScanResult {
+  id: string;
+  merchantName: string;
+  amount: number;
+  date: string;
+  currency: string;
+  confidence: number;
+  suggestedCategory: ExpenseCategory;
+  rawText: string;
+  imageName: string;
 }
 
 const defaultUser: User = {
@@ -83,6 +133,58 @@ const defaultNotificationFeed: NotificationItem[] = [
   },
 ];
 
+const defaultIncomeEntries: IncomeEntry[] = [
+  {
+    id: 'income-salary',
+    amount: 18500,
+    currency: 'SAR',
+    source: 'salary',
+    sourceName: 'Monthly Salary',
+    frequency: 'monthly',
+    date: new Date().toISOString().slice(0, 10),
+    isRecurring: true,
+    notes: null,
+  },
+  {
+    id: 'income-freelance',
+    amount: 3200,
+    currency: 'SAR',
+    source: 'freelance',
+    sourceName: 'Product Design Client',
+    frequency: 'one_time',
+    date: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+    isRecurring: false,
+    notes: null,
+  },
+];
+
+const defaultExpenseEntries: ExpenseEntry[] = [
+  {
+    id: 'expense-grocery',
+    amount: 420,
+    currency: 'SAR',
+    category: 'Food',
+    description: 'Weekly groceries',
+    merchantName: 'Danube',
+    date: new Date().toISOString().slice(0, 10),
+    paymentMethod: 'Card',
+    notes: null,
+    receiptId: null,
+  },
+  {
+    id: 'expense-transport',
+    amount: 84,
+    currency: 'SAR',
+    category: 'Transport',
+    description: 'Ride sharing',
+    merchantName: 'Uber',
+    date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+    paymentMethod: 'Card',
+    notes: null,
+    receiptId: null,
+  },
+];
+
 interface AppState {
   // User
   user: User | null;
@@ -99,7 +201,16 @@ interface AppState {
   notificationFeed: NotificationItem[];
   markNotificationAsRead: (id: string) => void;
   markAllNotificationsRead: () => void;
+  incomeEntries: IncomeEntry[];
+  addIncomeEntry: (entry: IncomeEntry) => void;
+  deleteIncomeEntry: (id: string) => void;
+  expenseEntries: ExpenseEntry[];
+  addExpenseEntry: (entry: ExpenseEntry) => void;
+  deleteExpenseEntry: (id: string) => void;
+  receiptScans: ReceiptScanResult[];
+  addReceiptScan: (receipt: ReceiptScanResult) => void;
   clearAllData: () => void;
+  setSubscriptionTier: (tier: SubscriptionTier) => void;
   
   // Sidebar
   sidebarCollapsed: boolean;
@@ -167,6 +278,30 @@ export const useAppStore = create<AppState>()(
           read: true,
         })),
       })),
+      incomeEntries: defaultIncomeEntries,
+      addIncomeEntry: (entry) => set((state) => ({
+        incomeEntries: [entry, ...state.incomeEntries],
+      })),
+      deleteIncomeEntry: (id) => set((state) => ({
+        incomeEntries: state.incomeEntries.filter((entry) => entry.id !== id),
+      })),
+      expenseEntries: defaultExpenseEntries,
+      addExpenseEntry: (entry) => set((state) => ({
+        expenseEntries: [entry, ...state.expenseEntries],
+      })),
+      deleteExpenseEntry: (id) => set((state) => ({
+        expenseEntries: state.expenseEntries.filter((entry) => entry.id !== id),
+      })),
+      receiptScans: [],
+      addReceiptScan: (receipt) => set((state) => ({
+        receiptScans: [receipt, ...state.receiptScans].slice(0, 20),
+      })),
+      setSubscriptionTier: (tier) => set((state) => ({
+        user: {
+          ...(state.user ?? defaultUser),
+          subscriptionTier: tier,
+        },
+      })),
       clearAllData: () => {
         if (typeof window !== 'undefined') {
           window.localStorage.removeItem('wealthos-storage');
@@ -178,6 +313,9 @@ export const useAppStore = create<AppState>()(
           theme: 'dark',
           notificationPreferences: defaultNotificationPreferences,
           notificationFeed: defaultNotificationFeed,
+          incomeEntries: defaultIncomeEntries,
+          expenseEntries: defaultExpenseEntries,
+          receiptScans: [],
           sidebarCollapsed: false,
           activeDashboardTab: 'overview',
           selectedExchange: 'all',
@@ -243,6 +381,9 @@ export const useAppStore = create<AppState>()(
         theme: state.theme,
         notificationPreferences: state.notificationPreferences,
         notificationFeed: state.notificationFeed,
+        incomeEntries: state.incomeEntries,
+        expenseEntries: state.expenseEntries,
+        receiptScans: state.receiptScans,
         sidebarCollapsed: state.sidebarCollapsed,
         shariahFilterEnabled: state.shariahFilterEnabled,
       }),
