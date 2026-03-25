@@ -1,0 +1,243 @@
+// This is your Prisma schema file,
+// Personal Wealth Operating System - WealthOS
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  name              String?
+  avatarUrl         String?
+  locale            String    @default("ar")       // "ar" | "en"
+  currency          String    @default("SAR")
+  subscriptionTier  String    @default("free")     // "free" | "core" | "pro"
+  subscriptionEndsAt DateTime?
+  onboardingDone    Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  assets            Asset[]
+  liabilities       Liability[]
+  holdings          PortfolioHolding[]
+  transactions      Transaction[]
+  budgets           Budget[]
+  expenses          Expense[]
+  fireGoals         FireGoal[]
+  retirementPlans   RetirementPlan[]
+  chatSessions      ChatSession[]
+  alerts            Alert[]
+  netWorthSnapshots NetWorthSnapshot[]
+  incomes           Income[]
+}
+
+model Asset {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String                          // e.g. "Al Rajhi Savings", "Apartment - Riyadh"
+  category    String                          // "cash" | "investment" | "real_estate" | "vehicle" | "other"
+  value       Float                          // Value in user's base currency
+  currency    String   @default("SAR")
+  notes       String?
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+}
+
+model Liability {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String                          // e.g. "Car Loan", "Mortgage"
+  category    String                          // "loan" | "mortgage" | "credit_card" | "other"
+  balance     Float                          // Remaining balance
+  currency    String   @default("SAR")
+  notes       String?
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+}
+
+model PortfolioHolding {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ticker            String                    // e.g. "2222.SR", "COMI.CA", "AAPL"
+  exchange          String                    // "TASI" | "EGX" | "NASDAQ" | "NYSE" | etc.
+  name              String
+  shares            Float
+  avgCostPrice      Float
+  currency          String   @default("SAR")
+  isShariahCompliant Boolean @default(true)
+  sector            String?
+  country           String   @default("SA")
+  addedAt           DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  transactions      Transaction[]
+}
+
+model Transaction {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  holdingId   String?
+  holding     PortfolioHolding? @relation(fields: [holdingId], references: [id], onDelete: SetNull)
+  type        String                          // "buy" | "sell" | "dividend" | "split"
+  ticker      String
+  shares      Float
+  price       Float
+  fees        Float    @default(0)
+  currency    String   @default("SAR")
+  date        DateTime
+  notes       String?
+  createdAt   DateTime @default(now())
+}
+
+model Budget {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category    String                          // "housing" | "food" | "transport" | "investment" | etc.
+  monthlyLimit Float
+  currency    String   @default("SAR")
+  month       String                          // "2025-01" format
+  createdAt   DateTime @default(now())
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category    String
+  description String
+  amount      Float
+  currency    String   @default("SAR")
+  date        DateTime
+  isRecurring Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model Income {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  source      String                          // "salary" | "rental" | "dividends" | "other"
+  description String?
+  amount      Float
+  currency    String   @default("SAR")
+  month       String                          // "2025-01" format
+  isRecurring Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
+
+model FireGoal {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  targetAmount        Float
+  currentNetWorth     Float
+  annualExpenses      Float
+  withdrawalRate      Float    @default(4.0)  // 4% rule
+  expectedReturn      Float    @default(7.0)
+  inflationRate       Float    @default(3.0)
+  annualSavings       Float
+  targetDate          DateTime?
+  updatedAt           DateTime @updatedAt
+}
+
+model RetirementPlan {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currentAge          Int
+  retirementAge       Int      @default(60)
+  currentSavings      Float
+  monthlyContribution Float
+  expectedReturn      Float
+  inflationRate       Float    @default(3.0)
+  targetMonthlyIncome Float
+  updatedAt           DateTime @updatedAt
+}
+
+model ChatSession {
+  id          String        @id @default(cuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String        @default("New Conversation")
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  messages    ChatMessage[]
+}
+
+model ChatMessage {
+  id          String      @id @default(cuid())
+  sessionId   String
+  session     ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role        String                          // "user" | "assistant"
+  content     String
+  createdAt   DateTime    @default(now())
+}
+
+model Alert {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        String                          // "price_target" | "budget_limit" | "net_worth_milestone"
+  ticker      String?
+  condition   String                          // "above" | "below"
+  targetValue Float
+  isActive    Boolean  @default(true)
+  triggered   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model NetWorthSnapshot {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  totalAssets Float
+  totalLiabilities Float
+  netWorth    Float
+  currency    String   @default("SAR")
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+}
+
+model StockTicker {
+  id                  String   @id @default(cuid())
+  ticker              String   @unique              // e.g. "2222.SR"
+  exchange            String                        // "TASI" | "EGX" | "NASDAQ" | etc.
+  nameEn              String                        // English name
+  nameAr              String?                       // Arabic name
+  sector              String?
+  isShariahCompliant  Boolean  @default(true)
+  country             String   @default("SA")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model MarketData {
+  id          String   @id @default(cuid())
+  ticker      String   @unique
+  price       Float
+  change      Float
+  changePercent Float
+  currency    String   @default("SAR")
+  updatedAt   DateTime @updatedAt
+}
+
+model ExchangeRate {
+  id          String   @id @default(cuid())
+  fromCurrency String
+  toCurrency   String
+  rate        Float
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([fromCurrency, toCurrency])
+}
