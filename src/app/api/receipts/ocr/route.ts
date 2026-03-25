@@ -14,6 +14,21 @@ function parseJsonObject(content: string): Record<string, unknown> | null {
   }
 }
 
+function parseAmount(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  const normalized = String(value || '')
+    .replace(/[٠-٩]/g, (digit) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)))
+    .replace(/[^0-9.,-]/g, '')
+    .replace(/,(?=\d{3}\b)/g, '')
+    .replace(',', '.');
+
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 function normalizeCategory(value: unknown): string {
   const category = String(value || 'Other').toLowerCase();
 
@@ -60,7 +75,7 @@ export async function POST(request: NextRequest) {
     const imageUrl = `data:${file.type};base64,${base64}`;
 
     const zai = await ZAI.create();
-    const prompt = `Look at this receipt image and return JSON only with:
+    const prompt = `Look at this receipt image carefully and return JSON only with:
 {
   "merchantName": "string",
   "amount": number,
@@ -68,13 +83,16 @@ export async function POST(request: NextRequest) {
   "currency": "SAR",
   "confidence": number,
   "suggestedCategory": "Food|Transport|Utilities|Entertainment|Healthcare|Education|Shopping|Housing|Other",
-  "rawText": "short raw OCR summary"
+  "rawText": "important visible text from the receipt"
 }
 
 Important:
 - Support Arabic and English receipts.
-- Use the final total amount.
-- If a field is uncertain, make a best effort.
+- Use the FINAL total amount due, not subtotal.
+- Look for words like Total, GRAND TOTAL, Amount Due, المجموع, الإجمالي, الإجمالي شامل الضريبة.
+- Detect merchant name from the top/header of the receipt.
+- If the receipt is clear, confidence should usually be above 70.
+- If a field is uncertain, make your best effort instead of leaving everything blank.
 - Confidence should be from 0 to 100.`;
 
     const completion = await zai.chat.completions.createVision({
@@ -88,7 +106,7 @@ Important:
           ],
         },
       ],
-      thinking: { type: 'disabled' },
+      thinking: { type: 'enabled' },
     });
 
     const content = completion.choices[0]?.message?.content || '';
@@ -97,7 +115,7 @@ Important:
 
     const result = {
       merchantName: String(parsed?.merchantName || fallback.merchantName),
-      amount: Number(parsed?.amount || fallback.amount),
+      amount: parseAmount(parsed?.amount || fallback.amount),
       date: String(parsed?.date || fallback.date),
       currency: String(parsed?.currency || fallback.currency).toUpperCase(),
       confidence: Math.max(0, Math.min(100, Number(parsed?.confidence || fallback.confidence))),

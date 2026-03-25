@@ -1,0 +1,4 @@
+ticker,name,exchange,shares,avgCost,currentPrice,sector,isShariah
+2222.SR,Saudi Aramco,TASI,100,32.5,35.2,Energy,true
+AAPL,Apple Inc.,NASDAQ,20,175,182.5,Technology,false
+7010.SR,STC,TASI,40,41.2,43.1,Telecom,true

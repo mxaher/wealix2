@@ -1,36 +1,40 @@
 'use client';
 
-import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { useMemo, useState } from 'react';
 import {
+  ArrowDownRight,
+  ArrowUpRight,
   Briefcase,
-  TrendingUp,
-  TrendingDown,
+  Crown,
+  FileSpreadsheet,
+  Filter,
   Plus,
   Search,
-  Filter,
-  ArrowUpRight,
-  ArrowDownRight,
   Sparkles,
-  Crown,
   Trash2,
-  ExternalLink,
+  TrendingDown,
+  TrendingUp,
+  Upload,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import { DashboardShell } from '@/components/layout';
+import { StatCard, FeatureGate, formatCurrency } from '@/components/shared';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
@@ -38,6 +42,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import {
   Table,
   TableBody,
@@ -47,33 +52,14 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Switch } from '@/components/ui/switch';
-import { DashboardShell } from '@/components/layout';
-import { StatCard, FeatureGate, formatCurrency } from '@/components/shared';
-import { useAppStore } from '@/store/useAppStore';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast } from '@/hooks/use-toast';
 import {
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  Legend,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-} from 'recharts';
-
-// Mock holdings data
-const mockHoldings = [
-  { id: '1', ticker: '2222.SR', name: 'Saudi Aramco', exchange: 'TASI', shares: 100, avgCost: 32.5, currentPrice: 35.20, sector: 'Energy', isShariah: true },
-  { id: '2', ticker: '1120.SR', name: 'Al Rajhi Bank', exchange: 'TASI', shares: 50, avgCost: 98.0, currentPrice: 105.50, sector: 'Banking', isShariah: true },
-  { id: '3', ticker: '1180.SR', name: 'Maaden', exchange: 'TASI', shares: 75, avgCost: 45.0, currentPrice: 48.20, sector: 'Mining', isShariah: true },
-  { id: '4', ticker: 'COMI.CA', name: 'CIB Egypt', exchange: 'EGX', shares: 200, avgCost: 45.0, currentPrice: 52.30, sector: 'Banking', isShariah: false },
-  { id: '5', ticker: 'AAPL', name: 'Apple Inc.', exchange: 'NASDAQ', shares: 25, avgCost: 175.0, currentPrice: 182.50, sector: 'Technology', isShariah: false },
-  { id: '6', ticker: '1050.SR', name: 'SABIC', exchange: 'TASI', shares: 30, avgCost: 85.0, currentPrice: 92.40, sector: 'Materials', isShariah: true },
-];
+  useAppStore,
+  type PortfolioExchange,
+  type PortfolioHolding,
+} from '@/store/useAppStore';
 
 const exchangeColors: Record<string, string> = {
   TASI: '#D4A843',
@@ -82,13 +68,134 @@ const exchangeColors: Record<string, string> = {
   NYSE: '#8B5CF6',
 };
 
+const ideaPool = [
+  {
+    ticker: '7010.SR',
+    name: 'STC',
+    reasonEn: 'Adds telecom exposure and defensive dividend quality.',
+    reasonAr: 'يضيف قطاع الاتصالات وجودة دفاعية في التوزيعات.',
+  },
+  {
+    ticker: 'MSFT',
+    name: 'Microsoft',
+    reasonEn: 'Improves global tech diversification with strong cash flow.',
+    reasonAr: 'يحسن التنويع التقني العالمي مع تدفقات نقدية قوية.',
+  },
+  {
+    ticker: '1150.SR',
+    name: 'Alinma Bank',
+    reasonEn: 'Adds another Saudi financial name for local diversification.',
+    reasonAr: 'يضيف اسماً مالياً سعودياً آخر لتعزيز التنويع المحلي.',
+  },
+];
+
+function buildAnalysis(holdings: PortfolioHolding[], isArabic: boolean) {
+  if (holdings.length === 0) {
+    return {
+      summary: isArabic
+        ? 'المحفظة فارغة حالياً. ارفع ملف إكسل أو أضف أسهماً أولاً.'
+        : 'The portfolio is empty right now. Import an Excel file or add holdings first.',
+      actions: [] as Array<{ type: 'buy' | 'hold' | 'sell' | 'idea'; title: string; description: string }>,
+    };
+  }
+
+  const totalValue = holdings.reduce((sum, holding) => sum + holding.shares * holding.currentPrice, 0);
+  const ranked = holdings
+    .map((holding) => ({
+      ...holding,
+      value: holding.shares * holding.currentPrice,
+      returnPct: ((holding.currentPrice - holding.avgCost) / holding.avgCost) * 100,
+      weight: totalValue > 0 ? ((holding.shares * holding.currentPrice) / totalValue) * 100 : 0,
+    }))
+    .sort((a, b) => b.weight - a.weight);
+
+  const actions: Array<{ type: 'buy' | 'hold' | 'sell' | 'idea'; title: string; description: string }> = [];
+  const largest = ranked[0];
+
+  if (largest && largest.weight > 35) {
+    actions.push({
+      type: 'sell',
+      title: isArabic ? `تقليل الوزن في ${largest.ticker}` : `Trim ${largest.ticker}`,
+      description: isArabic
+        ? `${largest.ticker} يمثل ${largest.weight.toFixed(1)}% من المحفظة. هذا تركز مرتفع ويستحق تخفيفاً تدريجياً.`
+        : `${largest.ticker} is ${largest.weight.toFixed(1)}% of the portfolio. That concentration is high and may justify gradual trimming.`,
+    });
+  }
+
+  ranked.filter((holding) => holding.returnPct > 10).slice(0, 2).forEach((holding) => {
+    actions.push({
+      type: 'hold',
+      title: isArabic ? `الاحتفاظ بـ ${holding.ticker}` : `Hold ${holding.ticker}`,
+      description: isArabic
+        ? `${holding.ticker} يحقق عائداً قدره ${holding.returnPct.toFixed(1)}%. احتفظ به مع مراقبة الحجم النسبي في المحفظة.`
+        : `${holding.ticker} is up ${holding.returnPct.toFixed(1)}%. Holding makes sense while monitoring position size.`,
+    });
+  });
+
+  ranked.filter((holding) => holding.returnPct < -8).slice(0, 2).forEach((holding) => {
+    actions.push({
+      type: 'sell',
+      title: isArabic ? `مراجعة ${holding.ticker}` : `Review ${holding.ticker}`,
+      description: isArabic
+        ? `${holding.ticker} منخفض ${Math.abs(holding.returnPct).toFixed(1)}%. راجع سبب الهبوط قبل زيادة المركز أو الإبقاء عليه.`
+        : `${holding.ticker} is down ${Math.abs(holding.returnPct).toFixed(1)}%. Re-check the thesis before averaging down or continuing to hold.`,
+    });
+  });
+
+  const sectors = new Set(ranked.map((holding) => holding.sector.toLowerCase()));
+  if (sectors.size < 3) {
+    const idea = ideaPool[0];
+    actions.push({
+      type: 'idea',
+      title: isArabic ? `فكرة جديدة: ${idea.ticker}` : `New idea: ${idea.ticker}`,
+      description: isArabic ? idea.reasonAr : idea.reasonEn,
+    });
+  }
+
+  if (!ranked.some((holding) => holding.exchange === 'NASDAQ' || holding.exchange === 'NYSE')) {
+    const idea = ideaPool[1];
+    actions.push({
+      type: 'buy',
+      title: isArabic ? `شراء محتمل: ${idea.ticker}` : `Potential buy: ${idea.ticker}`,
+      description: isArabic ? idea.reasonAr : idea.reasonEn,
+    });
+  }
+
+  if (ranked.some((holding) => holding.exchange === 'TASI') && !ranked.some((holding) => holding.exchange === 'EGX')) {
+    const idea = ideaPool[2];
+    actions.push({
+      type: 'buy',
+      title: isArabic ? `تنويع إقليمي: ${idea.ticker}` : `Regional diversification: ${idea.ticker}`,
+      description: isArabic ? idea.reasonAr : idea.reasonEn,
+    });
+  }
+
+  return {
+    summary: isArabic
+      ? `تم تحليل ${holdings.length} مراكز اعتماداً على الأوزان والعوائد الحالية للمحفظة.`
+      : `Analyzed ${holdings.length} holdings based on current weights and unrealized returns.`,
+    actions: actions.slice(0, 5),
+  };
+}
+
 export default function PortfolioPage() {
-  const { locale, appMode, shariahFilterEnabled, toggleShariahFilter, selectedExchange, setSelectedExchange } = useAppStore();
+  const {
+    locale,
+    shariahFilterEnabled,
+    toggleShariahFilter,
+    selectedExchange,
+    setSelectedExchange,
+    portfolioHoldings,
+    addPortfolioHolding,
+    deletePortfolioHolding,
+    replacePortfolioHoldings,
+  } = useAppStore();
   const isArabic = locale === 'ar';
-  
-  const [holdings, setHoldings] = useState(() => appMode === 'demo' ? mockHoldings : []);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddHolding, setShowAddHolding] = useState(false);
+  const [showAnalysis, setShowAnalysis] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
   const [newHolding, setNewHolding] = useState({
     ticker: '',
     name: '',
@@ -98,86 +205,188 @@ export default function PortfolioPage() {
     isShariah: true,
   });
 
-  // Filter holdings
-  const filteredHoldings = holdings.filter((h) => {
-    const matchesSearch = h.ticker.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      h.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesExchange = selectedExchange === 'all' || h.exchange === selectedExchange;
-    const matchesShariah = !shariahFilterEnabled || h.isShariah;
+  const holdings = portfolioHoldings;
+
+  const filteredHoldings = holdings.filter((holding) => {
+    const matchesSearch =
+      holding.ticker.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      holding.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesExchange = selectedExchange === 'all' || holding.exchange === selectedExchange;
+    const matchesShariah = !shariahFilterEnabled || holding.isShariah;
     return matchesSearch && matchesExchange && matchesShariah;
   });
 
-  // Calculate totals
-  const totalValue = filteredHoldings.reduce((sum, h) => sum + h.shares * h.currentPrice, 0);
-  const totalCost = filteredHoldings.reduce((sum, h) => sum + h.shares * h.avgCost, 0);
+  const totalValue = filteredHoldings.reduce((sum, holding) => sum + holding.shares * holding.currentPrice, 0);
+  const totalCost = filteredHoldings.reduce((sum, holding) => sum + holding.shares * holding.avgCost, 0);
   const totalGainLoss = totalValue - totalCost;
-  const totalGainLossPercent = ((totalGainLoss / totalCost) * 100);
+  const totalGainLossPercent = totalCost > 0 ? (totalGainLoss / totalCost) * 100 : 0;
 
-  // Exchange allocation for chart
-  const exchangeAllocation = holdings.reduce((acc, h) => {
-    const value = h.shares * h.currentPrice;
-    acc[h.exchange] = (acc[h.exchange] || 0) + value;
-    return acc;
-  }, {} as Record<string, number>);
-
-  const exchangeChartData = Object.entries(exchangeAllocation).map(([exchange, value]) => ({
+  const exchangeChartData = Object.entries(
+    holdings.reduce((acc, holding) => {
+      acc[holding.exchange] = (acc[holding.exchange] || 0) + holding.shares * holding.currentPrice;
+      return acc;
+    }, {} as Record<string, number>)
+  ).map(([exchange, value]) => ({
     name: exchange,
     value,
     color: exchangeColors[exchange] || '#6B7280',
   }));
 
-  // Sector allocation
-  const sectorAllocation = holdings.reduce((acc, h) => {
-    const value = h.shares * h.currentPrice;
-    acc[h.sector] = (acc[h.sector] || 0) + value;
-    return acc;
-  }, {} as Record<string, number>);
-
-  const sectorChartData = Object.entries(sectorAllocation).map(([sector, value]) => ({
+  const sectorChartData = Object.entries(
+    holdings.reduce((acc, holding) => {
+      acc[holding.sector] = (acc[holding.sector] || 0) + holding.shares * holding.currentPrice;
+      return acc;
+    }, {} as Record<string, number>)
+  ).map(([sector, value]) => ({
     name: sector,
     value,
   }));
 
+  const analysis = useMemo(() => buildAnalysis(holdings, isArabic), [holdings, isArabic]);
+
   const handleAddHolding = () => {
-    if (newHolding.ticker && newHolding.shares && newHolding.avgCost) {
-      setHoldings([...holdings, {
-        id: Date.now().toString(),
-        ticker: newHolding.ticker,
-        name: newHolding.name || newHolding.ticker,
-        exchange: newHolding.exchange,
-        shares: parseFloat(newHolding.shares),
-        avgCost: parseFloat(newHolding.avgCost),
-        currentPrice: parseFloat(newHolding.avgCost) * 1.05, // Mock current price
-        sector: 'Other',
-        isShariah: newHolding.isShariah,
-      }]);
-      setNewHolding({ ticker: '', name: '', exchange: 'TASI', shares: '', avgCost: '', isShariah: true });
-      setShowAddHolding(false);
+    if (!newHolding.ticker || !newHolding.shares || !newHolding.avgCost) {
+      return;
     }
+
+    addPortfolioHolding({
+      id: Date.now().toString(),
+      ticker: newHolding.ticker.toUpperCase(),
+      name: newHolding.name || newHolding.ticker.toUpperCase(),
+      exchange: newHolding.exchange as PortfolioExchange,
+      shares: parseFloat(newHolding.shares),
+      avgCost: parseFloat(newHolding.avgCost),
+      currentPrice: parseFloat(newHolding.avgCost) * 1.05,
+      sector: 'Other',
+      isShariah: newHolding.isShariah,
+    });
+
+    setNewHolding({ ticker: '', name: '', exchange: 'TASI', shares: '', avgCost: '', isShariah: true });
+    setShowAddHolding(false);
   };
 
-  const handleDeleteHolding = (id: string) => {
-    setHoldings(holdings.filter(h => h.id !== id));
+  const handleImportPortfolio = async (file: File | null) => {
+    if (!file) {
+      return;
+    }
+
+    setIsImporting(true);
+    try {
+      const XLSX = await import('xlsx');
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: 'array' });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' });
+
+      const imported = rows
+        .map((row, index) => {
+          const ticker = String(row.ticker || row.Ticker || '').trim().toUpperCase();
+          const name = String(row.name || row.Name || ticker).trim();
+          const exchange = String(row.exchange || row.Exchange || 'TASI').trim().toUpperCase() as PortfolioExchange;
+          const shares = Number(row.shares || row.Shares || 0);
+          const avgCost = Number(row.avgCost || row['Avg Cost'] || row.avg_cost || 0);
+          const currentPrice = Number(row.currentPrice || row['Current Price'] || row.current_price || avgCost);
+          const sector = String(row.sector || row.Sector || 'Other').trim();
+          const shariah = String(row.isShariah || row.Shariah || row.shariah || 'true').trim().toLowerCase();
+
+          if (!ticker || !shares || !avgCost) {
+            return null;
+          }
+
+          return {
+            id: `import-${Date.now()}-${index}`,
+            ticker,
+            name,
+            exchange: ['TASI', 'EGX', 'NASDAQ', 'NYSE'].includes(exchange) ? exchange : 'TASI',
+            shares,
+            avgCost,
+            currentPrice: currentPrice || avgCost,
+            sector: sector || 'Other',
+            isShariah: ['true', 'yes', '1'].includes(shariah),
+          } satisfies PortfolioHolding;
+        })
+        .filter((holding): holding is PortfolioHolding => Boolean(holding));
+
+      if (imported.length === 0) {
+        throw new Error(isArabic ? 'لم يتم العثور على بيانات صالحة في الملف.' : 'No valid holdings were found in the file.');
+      }
+
+      replacePortfolioHoldings(imported);
+      toast({
+        title: isArabic ? 'تم استيراد المحفظة' : 'Portfolio imported',
+        description: isArabic
+          ? `تم استيراد ${imported.length} مركزاً من ملف الإكسل.`
+          : `Imported ${imported.length} holdings from the Excel file.`,
+      });
+    } catch (error) {
+      toast({
+        title: isArabic ? 'فشل استيراد الملف' : 'Import failed',
+        description: error instanceof Error ? error.message : 'Could not import the file.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   return (
     <DashboardShell>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold">{isArabic ? 'المحفظة الاستثمارية' : 'Investment Portfolio'}</h1>
             <p className="text-muted-foreground">
-              {isArabic ? 'إدارة وتتبع استثماراتك' : 'Manage and track your investments'}
+              {isArabic
+                ? 'استيراد ملف إكسل وتحليل المراكز الحالية وتوصيات الشراء أو البيع أو الاحتفاظ.'
+                : 'Import an Excel file, analyze current holdings, and get buy, sell, or hold suggestions.'}
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <FeatureGate feature="portfolio.ai_analysis">
-              <Button variant="outline" className="gap-2">
-                <Sparkles className="w-4 h-4" />
-                {isArabic ? 'تحليل المحفظة' : 'Analyze Portfolio'}
-              </Button>
+              <Dialog open={showAnalysis} onOpenChange={setShowAnalysis}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <Sparkles className="w-4 h-4" />
+                    {isArabic ? 'تحليل المحفظة' : 'Analyze Portfolio'}
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>{isArabic ? 'تحليل المحفظة' : 'Portfolio Analysis'}</DialogTitle>
+                    <DialogDescription>{analysis.summary}</DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-3">
+                    {analysis.actions.map((action, index) => (
+                      <div key={`${action.title}-${index}`} className="rounded-xl border p-4">
+                        <div className="font-medium">{action.title}</div>
+                        <div className="mt-1 text-sm text-muted-foreground">{action.description}</div>
+                      </div>
+                    ))}
+                  </div>
+                </DialogContent>
+              </Dialog>
             </FeatureGate>
+
+            <Button asChild variant="outline" className="gap-2">
+              <a href="/samples/wealix-portfolio-import-sample.xlsx" download>
+                <FileSpreadsheet className="w-4 h-4" />
+                {isArabic ? 'ملف نموذجي' : 'Sample File'}
+              </a>
+            </Button>
+
+            <Button asChild variant="outline" className="gap-2">
+              <label className="cursor-pointer">
+                <Upload className="w-4 h-4" />
+                {isImporting ? (isArabic ? 'جارٍ الاستيراد...' : 'Importing...') : (isArabic ? 'استيراد إكسل' : 'Import Excel')}
+                <input
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  className="hidden"
+                  onChange={(e) => handleImportPortfolio(e.target.files?.[0] ?? null)}
+                />
+              </label>
+            </Button>
+
             <Dialog open={showAddHolding} onOpenChange={setShowAddHolding}>
               <DialogTrigger asChild>
                 <Button className="gap-2">
@@ -204,15 +413,15 @@ export default function PortfolioPage() {
                     </div>
                     <div className="space-y-2">
                       <Label>{isArabic ? 'البورصة' : 'Exchange'}</Label>
-                      <Select value={newHolding.exchange} onValueChange={(v) => setNewHolding({ ...newHolding, exchange: v })}>
+                      <Select value={newHolding.exchange} onValueChange={(value) => setNewHolding({ ...newHolding, exchange: value })}>
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="TASI">TASI (Saudi)</SelectItem>
-                          <SelectItem value="EGX">EGX (Egypt)</SelectItem>
-                          <SelectItem value="NASDAQ">NASDAQ (US)</SelectItem>
-                          <SelectItem value="NYSE">NYSE (US)</SelectItem>
+                          <SelectItem value="TASI">TASI</SelectItem>
+                          <SelectItem value="EGX">EGX</SelectItem>
+                          <SelectItem value="NASDAQ">NASDAQ</SelectItem>
+                          <SelectItem value="NYSE">NYSE</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -222,7 +431,6 @@ export default function PortfolioPage() {
                     <Input
                       value={newHolding.name}
                       onChange={(e) => setNewHolding({ ...newHolding, name: e.target.value })}
-                      placeholder={isArabic ? 'أرامكو السعودية' : 'Saudi Aramco'}
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
@@ -232,7 +440,6 @@ export default function PortfolioPage() {
                         type="number"
                         value={newHolding.shares}
                         onChange={(e) => setNewHolding({ ...newHolding, shares: e.target.value })}
-                        placeholder="100"
                       />
                     </div>
                     <div className="space-y-2">
@@ -241,7 +448,6 @@ export default function PortfolioPage() {
                         type="number"
                         value={newHolding.avgCost}
                         onChange={(e) => setNewHolding({ ...newHolding, avgCost: e.target.value })}
-                        placeholder="32.50"
                       />
                     </div>
                   </div>
@@ -268,8 +474,7 @@ export default function PortfolioPage() {
           </div>
         </div>
 
-        {/* Summary Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             title={isArabic ? 'القيمة الإجمالية' : 'Total Value'}
             value={formatCurrency(totalValue, 'SAR', locale)}
@@ -295,15 +500,15 @@ export default function PortfolioPage() {
                 <div>
                   <p className="text-sm text-muted-foreground">{isArabic ? 'متوافق مع الشريعة' : 'Shariah Compliant'}</p>
                   <p className="text-2xl font-bold">
-                    {((holdings.filter(h => h.isShariah).length / holdings.length) * 100).toFixed(0)}%
+                    {holdings.length > 0 ? ((holdings.filter((holding) => holding.isShariah).length / holdings.length) * 100).toFixed(0) : '0'}%
                   </p>
                 </div>
                 <div className="w-16 h-16">
                   <PieChart>
                     <Pie
                       data={[
-                        { value: holdings.filter(h => h.isShariah).length, color: '#10B981' },
-                        { value: holdings.filter(h => !h.isShariah).length, color: '#6B7280' },
+                        { value: holdings.filter((holding) => holding.isShariah).length, color: '#10B981' },
+                        { value: holdings.filter((holding) => !holding.isShariah).length, color: '#6B7280' },
                       ]}
                       cx="50%"
                       cy="50%"
@@ -321,8 +526,7 @@ export default function PortfolioPage() {
           </Card>
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex flex-col gap-4 sm:flex-row">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
@@ -334,7 +538,7 @@ export default function PortfolioPage() {
           </div>
           <Select value={selectedExchange} onValueChange={setSelectedExchange}>
             <SelectTrigger className="w-40">
-              <Filter className="w-4 h-4 mr-2" />
+              <Filter className="mr-2 w-4 h-4" />
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -345,25 +549,23 @@ export default function PortfolioPage() {
               <SelectItem value="NYSE">NYSE</SelectItem>
             </SelectContent>
           </Select>
-          <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-muted">
+          <div className="flex items-center gap-2 rounded-lg bg-muted px-4 py-2">
             <Switch checked={shariahFilterEnabled} onCheckedChange={toggleShariahFilter} />
             <span className="text-sm">{isArabic ? 'الشريعة فقط' : 'Shariah Only'}</span>
           </div>
         </div>
 
-        {/* Tabs */}
         <Tabs defaultValue="holdings" className="space-y-6">
           <TabsList>
             <TabsTrigger value="holdings">{isArabic ? 'الممتلكات' : 'Holdings'}</TabsTrigger>
             <TabsTrigger value="allocation">{isArabic ? 'التوزيع' : 'Allocation'}</TabsTrigger>
-            <TabsTrigger value="transactions">{isArabic ? 'المعاملات' : 'Transactions'}</TabsTrigger>
+            <TabsTrigger value="analysis">{isArabic ? 'التحليل' : 'Analysis'}</TabsTrigger>
           </TabsList>
 
-          {/* Holdings Tab */}
           <TabsContent value="holdings">
             <Card>
               <CardContent className="p-0">
-                <ScrollArea className="h-[500px]">
+                <ScrollArea className="h-[520px]">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -375,24 +577,18 @@ export default function PortfolioPage() {
                         <TableHead className="text-right">{isArabic ? 'السعر الحالي' : 'Current'}</TableHead>
                         <TableHead className="text-right">{isArabic ? 'القيمة السوقية' : 'Market Value'}</TableHead>
                         <TableHead className="text-right">{isArabic ? 'الربح/الخسارة' : 'P&L'}</TableHead>
-                        <TableHead></TableHead>
+                        <TableHead />
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredHoldings.map((holding, index) => {
+                      {filteredHoldings.map((holding) => {
                         const marketValue = holding.shares * holding.currentPrice;
                         const costBasis = holding.shares * holding.avgCost;
                         const gainLoss = marketValue - costBasis;
-                        const gainLossPercent = ((gainLoss / costBasis) * 100);
+                        const gainLossPercent = costBasis > 0 ? (gainLoss / costBasis) * 100 : 0;
 
                         return (
-                          <motion.tr
-                            key={holding.id}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.03 }}
-                            className="hover:bg-muted/50"
-                          >
+                          <TableRow key={holding.id}>
                             <TableCell>
                               <div className="flex items-center gap-2">
                                 <span className="font-medium">{holding.ticker}</span>
@@ -405,7 +601,7 @@ export default function PortfolioPage() {
                             </TableCell>
                             <TableCell>{holding.name}</TableCell>
                             <TableCell>
-                              <Badge style={{ backgroundColor: exchangeColors[holding.exchange] + '20', color: exchangeColors[holding.exchange] }}>
+                              <Badge style={{ backgroundColor: `${exchangeColors[holding.exchange]}20`, color: exchangeColors[holding.exchange] }}>
                                 {holding.exchange}
                               </Badge>
                             </TableCell>
@@ -425,16 +621,11 @@ export default function PortfolioPage() {
                               </div>
                             </TableCell>
                             <TableCell>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-rose-500 hover:text-rose-600"
-                                onClick={() => handleDeleteHolding(holding.id)}
-                              >
+                              <Button variant="ghost" size="icon" className="text-rose-500 hover:text-rose-600" onClick={() => deletePortfolioHolding(holding.id)}>
                                 <Trash2 className="w-4 h-4" />
                               </Button>
                             </TableCell>
-                          </motion.tr>
+                          </TableRow>
                         );
                       })}
                     </TableBody>
@@ -444,10 +635,8 @@ export default function PortfolioPage() {
             </Card>
           </TabsContent>
 
-          {/* Allocation Tab */}
           <TabsContent value="allocation" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Exchange Allocation */}
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <Card>
                 <CardHeader>
                   <CardTitle>{isArabic ? 'التوزيع حسب البورصة' : 'By Exchange'}</CardTitle>
@@ -456,38 +645,18 @@ export default function PortfolioPage() {
                   <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
-                        <Pie
-                          data={exchangeChartData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={60}
-                          outerRadius={80}
-                          dataKey="value"
-                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                        >
+                        <Pie data={exchangeChartData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
                           {exchangeChartData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
+                            <Cell key={`exchange-${index}`} fill={entry.color} />
                           ))}
                         </Pie>
                         <Tooltip formatter={(value: number) => formatCurrency(value, 'SAR', locale)} />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
-                  <div className="space-y-2 mt-4">
-                    {exchangeChartData.map((item) => (
-                      <div key={item.name} className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                          <span>{item.name}</span>
-                        </div>
-                        <span className="font-medium">{formatCurrency(item.value, 'SAR', locale)}</span>
-                      </div>
-                    ))}
-                  </div>
                 </CardContent>
               </Card>
 
-              {/* Sector Allocation */}
               <Card>
                 <CardHeader>
                   <CardTitle>{isArabic ? 'التوزيع حسب القطاع' : 'By Sector'}</CardTitle>
@@ -507,63 +676,25 @@ export default function PortfolioPage() {
                 </CardContent>
               </Card>
             </div>
-
-            {/* Top Holdings */}
-            <Card>
-              <CardHeader>
-                <CardTitle>{isArabic ? 'أكبر الممتلكات' : 'Top Holdings'}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {holdings
-                    .map(h => ({ ...h, value: h.shares * h.currentPrice }))
-                    .sort((a, b) => b.value - a.value)
-                    .slice(0, 5)
-                    .map((holding, index) => {
-                      const percentage = (holding.value / totalValue) * 100;
-                      return (
-                        <div key={holding.id} className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">{holding.ticker}</span>
-                              <span className="text-sm text-muted-foreground">{holding.name}</span>
-                            </div>
-                            <span className="font-medium">{percentage.toFixed(1)}%</span>
-                          </div>
-                          <div className="h-2 rounded-full bg-muted overflow-hidden">
-                            <motion.div
-                              initial={{ width: 0 }}
-                              animate={{ width: `${percentage}%` }}
-                              transition={{ delay: index * 0.1, duration: 0.5 }}
-                              className="h-full bg-gold rounded-full"
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
-                </div>
-              </CardContent>
-            </Card>
           </TabsContent>
 
-          {/* Transactions Tab */}
-          <TabsContent value="transactions">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>{isArabic ? 'سجل المعاملات' : 'Transaction History'}</CardTitle>
-                  <Button size="sm" className="gap-2">
-                    <Plus className="w-4 h-4" />
-                    {isArabic ? 'إضافة معاملة' : 'Add Transaction'}
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8 text-muted-foreground">
-                  {isArabic ? 'لا توجد معاملات بعد' : 'No transactions yet'}
-                </div>
-              </CardContent>
-            </Card>
+          <TabsContent value="analysis">
+            <div className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>{isArabic ? 'ملخص التحليل' : 'Analysis Summary'}</CardTitle>
+                  <CardDescription>{analysis.summary}</CardDescription>
+                </CardHeader>
+              </Card>
+              {analysis.actions.map((action, index) => (
+                <Card key={`${action.title}-${index}`}>
+                  <CardContent className="p-4">
+                    <div className="font-medium">{action.title}</div>
+                    <div className="mt-1 text-sm text-muted-foreground">{action.description}</div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </TabsContent>
         </Tabs>
       </div>
