@@ -1,11 +1,10 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import {
   ArrowDownRight,
   ArrowUpRight,
   Briefcase,
-  Crown,
   FileSpreadsheet,
   Filter,
   Plus,
@@ -61,122 +60,18 @@ import {
   type PortfolioHolding,
 } from '@/store/useAppStore';
 
+type AnalysisAction = {
+  type: string;
+  title: string;
+  description: string;
+};
+
 const exchangeColors: Record<string, string> = {
   TASI: '#D4A843',
   EGX: '#10B981',
   NASDAQ: '#3B82F6',
   NYSE: '#8B5CF6',
 };
-
-const ideaPool = [
-  {
-    ticker: '7010.SR',
-    name: 'STC',
-    reasonEn: 'Adds telecom exposure and defensive dividend quality.',
-    reasonAr: 'يضيف قطاع الاتصالات وجودة دفاعية في التوزيعات.',
-  },
-  {
-    ticker: 'MSFT',
-    name: 'Microsoft',
-    reasonEn: 'Improves global tech diversification with strong cash flow.',
-    reasonAr: 'يحسن التنويع التقني العالمي مع تدفقات نقدية قوية.',
-  },
-  {
-    ticker: '1150.SR',
-    name: 'Alinma Bank',
-    reasonEn: 'Adds another Saudi financial name for local diversification.',
-    reasonAr: 'يضيف اسماً مالياً سعودياً آخر لتعزيز التنويع المحلي.',
-  },
-];
-
-function buildAnalysis(holdings: PortfolioHolding[], isArabic: boolean) {
-  if (holdings.length === 0) {
-    return {
-      summary: isArabic
-        ? 'المحفظة فارغة حالياً. ارفع ملف إكسل أو أضف أسهماً أولاً.'
-        : 'The portfolio is empty right now. Import an Excel file or add holdings first.',
-      actions: [] as Array<{ type: 'buy' | 'hold' | 'sell' | 'idea'; title: string; description: string }>,
-    };
-  }
-
-  const totalValue = holdings.reduce((sum, holding) => sum + holding.shares * holding.currentPrice, 0);
-  const ranked = holdings
-    .map((holding) => ({
-      ...holding,
-      value: holding.shares * holding.currentPrice,
-      returnPct: ((holding.currentPrice - holding.avgCost) / holding.avgCost) * 100,
-      weight: totalValue > 0 ? ((holding.shares * holding.currentPrice) / totalValue) * 100 : 0,
-    }))
-    .sort((a, b) => b.weight - a.weight);
-
-  const actions: Array<{ type: 'buy' | 'hold' | 'sell' | 'idea'; title: string; description: string }> = [];
-  const largest = ranked[0];
-
-  if (largest && largest.weight > 35) {
-    actions.push({
-      type: 'sell',
-      title: isArabic ? `تقليل الوزن في ${largest.ticker}` : `Trim ${largest.ticker}`,
-      description: isArabic
-        ? `${largest.ticker} يمثل ${largest.weight.toFixed(1)}% من المحفظة. هذا تركز مرتفع ويستحق تخفيفاً تدريجياً.`
-        : `${largest.ticker} is ${largest.weight.toFixed(1)}% of the portfolio. That concentration is high and may justify gradual trimming.`,
-    });
-  }
-
-  ranked.filter((holding) => holding.returnPct > 10).slice(0, 2).forEach((holding) => {
-    actions.push({
-      type: 'hold',
-      title: isArabic ? `الاحتفاظ بـ ${holding.ticker}` : `Hold ${holding.ticker}`,
-      description: isArabic
-        ? `${holding.ticker} يحقق عائداً قدره ${holding.returnPct.toFixed(1)}%. احتفظ به مع مراقبة الحجم النسبي في المحفظة.`
-        : `${holding.ticker} is up ${holding.returnPct.toFixed(1)}%. Holding makes sense while monitoring position size.`,
-    });
-  });
-
-  ranked.filter((holding) => holding.returnPct < -8).slice(0, 2).forEach((holding) => {
-    actions.push({
-      type: 'sell',
-      title: isArabic ? `مراجعة ${holding.ticker}` : `Review ${holding.ticker}`,
-      description: isArabic
-        ? `${holding.ticker} منخفض ${Math.abs(holding.returnPct).toFixed(1)}%. راجع سبب الهبوط قبل زيادة المركز أو الإبقاء عليه.`
-        : `${holding.ticker} is down ${Math.abs(holding.returnPct).toFixed(1)}%. Re-check the thesis before averaging down or continuing to hold.`,
-    });
-  });
-
-  const sectors = new Set(ranked.map((holding) => holding.sector.toLowerCase()));
-  if (sectors.size < 3) {
-    const idea = ideaPool[0];
-    actions.push({
-      type: 'idea',
-      title: isArabic ? `فكرة جديدة: ${idea.ticker}` : `New idea: ${idea.ticker}`,
-      description: isArabic ? idea.reasonAr : idea.reasonEn,
-    });
-  }
-
-  if (!ranked.some((holding) => holding.exchange === 'NASDAQ' || holding.exchange === 'NYSE')) {
-    const idea = ideaPool[1];
-    actions.push({
-      type: 'buy',
-      title: isArabic ? `شراء محتمل: ${idea.ticker}` : `Potential buy: ${idea.ticker}`,
-      description: isArabic ? idea.reasonAr : idea.reasonEn,
-    });
-  }
-
-  if (ranked.some((holding) => holding.exchange === 'TASI') && !ranked.some((holding) => holding.exchange === 'EGX')) {
-    const idea = ideaPool[2];
-    actions.push({
-      type: 'buy',
-      title: isArabic ? `تنويع إقليمي: ${idea.ticker}` : `Regional diversification: ${idea.ticker}`,
-      description: isArabic ? idea.reasonAr : idea.reasonEn,
-    });
-  }
-
-  return {
-    summary: isArabic
-      ? `تم تحليل ${holdings.length} مراكز اعتماداً على الأوزان والعوائد الحالية للمحفظة.`
-      : `Analyzed ${holdings.length} holdings based on current weights and unrealized returns.`,
-    actions: actions.slice(0, 5),
-  };
-}
 
 export default function PortfolioPage() {
   const {
@@ -196,6 +91,13 @@ export default function PortfolioPage() {
   const [showAddHolding, setShowAddHolding] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysis, setAnalysis] = useState<{ summary: string; actions: AnalysisAction[] }>({
+    summary: isArabic
+      ? 'شغّل التحليل لمراجعة المحفظة الحالية.'
+      : 'Run the analysis to review the current portfolio.',
+    actions: [],
+  });
   const [newHolding, setNewHolding] = useState({
     ticker: '',
     name: '',
@@ -241,8 +143,6 @@ export default function PortfolioPage() {
     name: sector,
     value,
   }));
-
-  const analysis = useMemo(() => buildAnalysis(holdings, isArabic), [holdings, isArabic]);
 
   const handleAddHolding = () => {
     if (!newHolding.ticker || !newHolding.shares || !newHolding.avgCost) {
@@ -329,6 +229,51 @@ export default function PortfolioPage() {
     }
   };
 
+  const handleAnalyzePortfolio = async () => {
+    if (holdings.length === 0) {
+      setAnalysis({
+        summary: isArabic
+          ? 'المحفظة فارغة حالياً. أضف أو استورد مراكز أولاً.'
+          : 'The portfolio is currently empty. Add or import holdings first.',
+        actions: [],
+      });
+      setShowAnalysis(true);
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setShowAnalysis(true);
+    try {
+      const response = await fetch('/api/portfolio/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ holdings, locale }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to analyze portfolio.');
+      }
+      setAnalysis({
+        summary: data.summary || '',
+        actions: Array.isArray(data.actions) ? data.actions : [],
+      });
+    } catch (error) {
+      setAnalysis({
+        summary: isArabic
+          ? 'تعذر إكمال التحليل حالياً.'
+          : 'The portfolio analysis could not be completed right now.',
+        actions: [],
+      });
+      toast({
+        title: isArabic ? 'فشل التحليل' : 'Analysis failed',
+        description: error instanceof Error ? error.message : 'Could not analyze the portfolio.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   return (
     <DashboardShell>
       <div className="space-y-6">
@@ -337,15 +282,15 @@ export default function PortfolioPage() {
             <h1 className="text-2xl font-bold">{isArabic ? 'المحفظة الاستثمارية' : 'Investment Portfolio'}</h1>
             <p className="text-muted-foreground">
               {isArabic
-                ? 'استيراد ملف إكسل وتحليل المراكز الحالية وتوصيات الشراء أو البيع أو الاحتفاظ.'
-                : 'Import an Excel file, analyze current holdings, and get buy, sell, or hold suggestions.'}
+                ? 'استيراد ملف إكسل وتحليل المحفظة الحالية وتوصيات شراء أو تقليل أو احتفاظ.'
+                : 'Import an Excel file, analyze the current portfolio, and get buy, trim, or hold guidance.'}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <FeatureGate feature="portfolio.ai_analysis">
               <Dialog open={showAnalysis} onOpenChange={setShowAnalysis}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" className="gap-2">
+                  <Button variant="outline" className="gap-2" onClick={handleAnalyzePortfolio}>
                     <Sparkles className="w-4 h-4" />
                     {isArabic ? 'تحليل المحفظة' : 'Analyze Portfolio'}
                   </Button>
@@ -356,6 +301,11 @@ export default function PortfolioPage() {
                     <DialogDescription>{analysis.summary}</DialogDescription>
                   </DialogHeader>
                   <div className="space-y-3">
+                    {isAnalyzing && (
+                      <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+                        {isArabic ? 'جارٍ تحليل المحفظة...' : 'Analyzing the portfolio...'}
+                      </div>
+                    )}
                     {analysis.actions.map((action, index) => (
                       <div key={`${action.title}-${index}`} className="rounded-xl border p-4">
                         <div className="font-medium">{action.title}</div>
@@ -474,7 +424,7 @@ export default function PortfolioPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 auto-rows-fr">
           <StatCard
             title={isArabic ? 'القيمة الإجمالية' : 'Total Value'}
             value={formatCurrency(totalValue, 'SAR', locale)}
@@ -494,8 +444,8 @@ export default function PortfolioPage() {
             icon={totalGainLoss >= 0 ? TrendingUp : TrendingDown}
             iconColor={totalGainLoss >= 0 ? 'text-emerald-500 bg-emerald-500/10' : 'text-rose-500 bg-rose-500/10'}
           />
-          <Card>
-            <CardContent className="p-4">
+          <Card className="h-full">
+            <CardContent className="p-4 h-full">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">{isArabic ? 'متوافق مع الشريعة' : 'Shariah Compliant'}</p>
@@ -636,12 +586,12 @@ export default function PortfolioPage() {
           </TabsContent>
 
           <TabsContent value="allocation" className="space-y-6">
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              <Card>
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 auto-rows-fr">
+              <Card className="h-full">
                 <CardHeader>
                   <CardTitle>{isArabic ? 'التوزيع حسب البورصة' : 'By Exchange'}</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="h-full">
                   <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
@@ -657,11 +607,11 @@ export default function PortfolioPage() {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="h-full">
                 <CardHeader>
                   <CardTitle>{isArabic ? 'التوزيع حسب القطاع' : 'By Sector'}</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="h-full">
                   <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={sectorChartData} layout="vertical">
@@ -680,14 +630,14 @@ export default function PortfolioPage() {
 
           <TabsContent value="analysis">
             <div className="space-y-4">
-              <Card>
+              <Card className="h-full">
                 <CardHeader>
                   <CardTitle>{isArabic ? 'ملخص التحليل' : 'Analysis Summary'}</CardTitle>
                   <CardDescription>{analysis.summary}</CardDescription>
                 </CardHeader>
               </Card>
               {analysis.actions.map((action, index) => (
-                <Card key={`${action.title}-${index}`}>
+                <Card key={`${action.title}-${index}`} className="h-full">
                   <CardContent className="p-4">
                     <div className="font-medium">{action.title}</div>
                     <div className="mt-1 text-sm text-muted-foreground">{action.description}</div>

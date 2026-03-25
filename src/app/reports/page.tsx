@@ -364,7 +364,7 @@ export default function ReportsPage() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between border-b pb-4">
                     <div>
-                      <h3 className="text-lg font-bold">WealthOS{isArabic ? ' - ثروتي' : ''}</h3>
+                      <h3 className="text-lg font-bold">Wealix App</h3>
                       <p className="text-sm text-muted-foreground">{isArabic ? 'الملخص المالي الشهري' : 'Monthly Financial Summary'}</p>
                     </div>
                     <div className="text-right text-sm text-muted-foreground">

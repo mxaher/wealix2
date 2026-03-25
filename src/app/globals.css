@@ -3,7 +3,7 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* WealthOS Theme - Navy & Gold */
+/* Wealix Theme - Navy & Gold */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -46,7 +46,7 @@
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
   
-  /* Custom WealthOS Colors */
+  /* Custom Wealix Colors */
   --color-navy: var(--navy);
   --color-navy-light: var(--navy-light);
   --color-navy-dark: var(--navy-dark);

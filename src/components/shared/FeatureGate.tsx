@@ -1,6 +1,6 @@
 'use client';
 
-import { useSubscription } from '@/store/useAppStore';
+import { useAppStore, useSubscription, type SubscriptionTier } from '@/store/useAppStore';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { useState } from 'react';
 import { Crown } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
 interface FeatureGateProps {
   feature: string;
@@ -21,7 +22,21 @@ interface FeatureGateProps {
 
 export function FeatureGate({ feature, children, fallback }: FeatureGateProps) {
   const { canAccess } = useSubscription();
+  const locale = useAppStore((state) => state.locale);
+  const setSubscriptionTier = useAppStore((state) => state.setSubscriptionTier);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const isArabic = locale === 'ar';
+
+  const handleStartTrial = (tier: SubscriptionTier) => {
+    setSubscriptionTier(tier);
+    setShowUpgrade(false);
+    toast({
+      title: isArabic ? 'تم تفعيل الخطة' : 'Plan activated',
+      description: isArabic
+        ? `تم تفعيل خطة ${tier === 'core' ? 'Core' : 'Pro'} لحساب العرض التجريبي.`
+        : `${tier === 'core' ? 'Core' : 'Pro'} has been activated for the demo account.`,
+    });
+  };
 
   if (canAccess(feature)) {
     return <>{children}</>;
@@ -65,7 +80,7 @@ export function FeatureGate({ feature, children, fallback }: FeatureGateProps) {
                 <p className="text-2xl font-bold mt-2">
                   25 SAR<span className="text-sm font-normal">/mo</span>
                 </p>
-                <Button className="w-full mt-4" variant="outline">
+                <Button className="w-full mt-4" variant="outline" onClick={() => handleStartTrial('core')}>
                   Start Trial
                 </Button>
               </div>
@@ -79,7 +94,7 @@ export function FeatureGate({ feature, children, fallback }: FeatureGateProps) {
                 <p className="text-2xl font-bold mt-2">
                   49 SAR<span className="text-sm font-normal">/mo</span>
                 </p>
-                <Button className="w-full mt-4">Start Trial</Button>
+                <Button className="w-full mt-4" onClick={() => handleStartTrial('pro')}>Start Trial</Button>
               </div>
             </div>
           </div>

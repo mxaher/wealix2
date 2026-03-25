@@ -152,7 +152,7 @@ export default function SettingsPage({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'wealthos-data-export.json';
+    a.download = 'wealix-data-export.json';
     a.click();
     URL.revokeObjectURL(url);
 
@@ -313,7 +313,7 @@ export default function SettingsPage({
                 {/* Avatar */}
                 <div className="flex items-center gap-4">
                   <Avatar className="w-20 h-20">
-                    <AvatarImage src="" />
+                    <AvatarImage src={currentUser.avatarUrl || ''} />
                     <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
                       {name.charAt(0).toUpperCase()}
                     </AvatarFallback>

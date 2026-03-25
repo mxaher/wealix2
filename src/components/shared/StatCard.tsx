@@ -50,8 +50,9 @@ export function StatCard({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
+      className="h-full"
     >
-      <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-200">
+      <Card className="h-full overflow-hidden hover:shadow-lg transition-shadow duration-200">
         <CardContent
           className={cn(
             variant === 'large' ? 'p-6' : variant === 'compact' ? 'p-3' : 'p-4',
