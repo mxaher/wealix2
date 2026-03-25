@@ -16,6 +16,73 @@ interface User {
   onboardingDone: boolean;
 }
 
+interface NotificationPreferences {
+  email: boolean;
+  push: boolean;
+  priceAlerts: boolean;
+  budgetAlerts: boolean;
+  weeklyDigest: boolean;
+}
+
+interface NotificationItem {
+  id: string;
+  title: string;
+  titleAr: string;
+  description: string;
+  descriptionAr: string;
+  read: boolean;
+  href: string;
+}
+
+const defaultUser: User = {
+  id: 'demo-user',
+  email: 'demo@wealthos.com',
+  name: 'Demo User',
+  avatarUrl: null,
+  locale: 'ar',
+  currency: 'SAR',
+  subscriptionTier: 'free',
+  onboardingDone: true,
+};
+
+const defaultNotificationPreferences: NotificationPreferences = {
+  email: true,
+  push: true,
+  priceAlerts: true,
+  budgetAlerts: true,
+  weeklyDigest: false,
+};
+
+const defaultNotificationFeed: NotificationItem[] = [
+  {
+    id: 'rebalance',
+    title: 'Portfolio review available',
+    titleAr: 'مراجعة المحفظة جاهزة',
+    description: 'Your portfolio allocation changed this week.',
+    descriptionAr: 'توزيع محفظتك تغيّر هذا الأسبوع.',
+    read: false,
+    href: '/portfolio',
+  },
+  {
+    id: 'budget',
+    title: 'Budget alert triggered',
+    titleAr: 'تم تفعيل تنبيه الميزانية',
+    description: 'Your food budget is close to its monthly cap.',
+    descriptionAr: 'ميزانية الطعام اقتربت من حدها الشهري.',
+    read: false,
+    href: '/settings?tab=preferences',
+  },
+  {
+    id: 'report',
+    title: 'Weekly digest is ready',
+    titleAr: 'الملخص الأسبوعي جاهز',
+    description: 'Open your latest wealth summary.',
+    descriptionAr: 'افتح أحدث ملخص لثروتك.',
+    read: true,
+    href: '/reports',
+  },
+];
+
 interface AppState {
   // User
   user: User | null;
@@ -27,6 +94,12 @@ interface AppState {
   setLocale: (locale: Locale) => void;
   theme: Theme;
   setTheme: (theme: Theme) => void;
+  notificationPreferences: NotificationPreferences;
+  updateNotificationPreferences: (updates: Partial<NotificationPreferences>) => void;
+  notificationFeed: NotificationItem[];
+  markNotificationAsRead: (id: string) => void;
+  markAllNotificationsRead: () => void;
+  clearAllData: () => void;
   
   // Sidebar
   sidebarCollapsed: boolean;
@@ -64,10 +137,10 @@ export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
       // User
-      user: null,
+      user: defaultUser,
       setUser: (user) => set({ user }),
       updateUser: (updates) => set((state) => ({
-        user: state.user ? { ...state.user, ...updates } : null
+        user: { ...(state.user ?? defaultUser), ...updates }
       })),
       
       // Locale & Theme
@@ -75,6 +148,47 @@ export const useAppStore = create<AppState>()(
       setLocale: (locale) => set({ locale }),
       theme: 'dark',
       setTheme: (theme) => set({ theme }),
+      notificationPreferences: defaultNotificationPreferences,
+      updateNotificationPreferences: (updates) => set((state) => ({
+        notificationPreferences: {
+          ...state.notificationPreferences,
+          ...updates,
+        },
+      })),
+      notificationFeed: defaultNotificationFeed,
+      markNotificationAsRead: (id) => set((state) => ({
+        notificationFeed: state.notificationFeed.map((item) =>
+          item.id === id ? { ...item, read: true } : item
+        ),
+      })),
+      markAllNotificationsRead: () => set((state) => ({
+        notificationFeed: state.notificationFeed.map((item) => ({
+          ...item,
+          read: true,
+        })),
+      })),
+      clearAllData: () => {
+        if (typeof window !== 'undefined') {
+          window.localStorage.removeItem('wealthos-storage');
+        }
+
+        set({
+          user: null,
+          locale: 'ar',
+          theme: 'dark',
+          notificationPreferences: defaultNotificationPreferences,
+          notificationFeed: defaultNotificationFeed,
+          sidebarCollapsed: false,
+          activeDashboardTab: 'overview',
+          selectedExchange: 'all',
+          shariahFilterEnabled: false,
+          selectedMonth: new Date().toISOString().slice(0, 7),
+          activeChatSession: null,
+          attachPortfolioContext: false,
+          isLoading: false,
+          isMobile: false,
+        });
+      },
       
       // Sidebar
       sidebarCollapsed: false,
@@ -124,8 +238,11 @@ export const useAppStore = create<AppState>()(
     {
       name: 'wealthos-storage',
       partialize: (state) => ({
+        user: state.user,
         locale: state.locale,
         theme: state.theme,
+        notificationPreferences: state.notificationPreferences,
+        notificationFeed: state.notificationFeed,
         sidebarCollapsed: state.sidebarCollapsed,
         shariahFilterEnabled: state.shariahFilterEnabled,
       }),

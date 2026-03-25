@@ -23,14 +23,14 @@ import {
 } from 'lucide-react';
 
 const bottomNavItems = [
-  { href: '/dashboard', label: { en: 'Home', ar: 'الرئيسية' }, icon: LayoutDashboard },
+  { href: '/', label: { en: 'Home', ar: 'الرئيسية' }, icon: LayoutDashboard },
   { href: '/portfolio', label: { en: 'Portfolio', ar: 'المحفظة' }, icon: Briefcase },
   { href: '/budget', label: { en: 'Budget', ar: 'الميزانية' }, icon: Receipt },
   { href: '/advisor', label: { en: 'AI', ar: 'المستشار' }, icon: Bot },
 ];
 
 const allNavItems = [
-  { href: '/dashboard', label: { en: 'Dashboard', ar: 'لوحة التحكم' }, icon: LayoutDashboard },
+  { href: '/', label: { en: 'Dashboard', ar: 'لوحة التحكم' }, icon: LayoutDashboard },
   { href: '/net-worth', label: { en: 'Net Worth', ar: 'صافي الثروة' }, icon: Wallet },
   { href: '/portfolio', label: { en: 'Portfolio', ar: 'المحفظة' }, icon: Briefcase },
   { href: '/fire', label: { en: 'FIRE Tracker', ar: 'متعقب FIRE' }, icon: Flame },

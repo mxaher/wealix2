@@ -1,13 +1,11 @@
 'use client';
 
-import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Settings as SettingsIcon,
   User,
   Globe,
-  Moon,
-  Sun,
   Bell,
   CreditCard,
   Download,
@@ -44,8 +42,9 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { DashboardShell } from '@/components/layout';
-import { useAppStore, formatCurrency } from '@/store/useAppStore';
+import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from 'next-themes';
+import { toast } from '@/hooks/use-toast';
 
 // Subscription tiers
 const subscriptionTiers = [
@@ -86,30 +85,50 @@ const subscriptionTiers = [
   },
 ];
 
-export default function SettingsPage() {
-  const { locale, setLocale, user } = useAppStore();
+export default function SettingsPage({
+  searchParams,
+}: {
+  searchParams?: { tab?: string };
+}) {
+  const router = useRouter();
+  const {
+    locale,
+    setLocale,
+    user,
+    updateUser,
+    notificationPreferences,
+    updateNotificationPreferences,
+    clearAllData,
+    setUser,
+  } = useAppStore();
   const { theme, setTheme } = useTheme();
   const isArabic = locale === 'ar';
-
-  const [name, setName] = useState('Demo User');
-  const [email, setEmail] = useState('demo@wealthos.com');
-  const [notifications, setNotifications] = useState({
-    email: true,
-    push: true,
-    priceAlerts: true,
-    budgetAlerts: true,
-    weeklyDigest: false,
-  });
+  const currentUser = user ?? {
+    id: 'guest',
+    name: '',
+    email: '',
+    avatarUrl: null,
+    locale,
+    currency: 'SAR',
+    subscriptionTier: 'free' as const,
+    onboardingDone: false,
+  };
+  const [name, setName] = useState(currentUser.name ?? '');
+  const [email, setEmail] = useState(currentUser.email);
   const [currentPlan, setCurrentPlan] = useState('free');
+  const validTabs = useMemo(() => ['profile', 'preferences', 'subscription', 'data'] as const, []);
+  const activeTabParam = searchParams?.tab ?? null;
+  const activeTab = validTabs.find((value) => value === activeTabParam) ?? 'profile';
 
   const handleExportData = () => {
     const data = {
-      user: { name, email },
+      user: currentUser,
       assets: [],
       liabilities: [],
       portfolio: [],
       budget: [],
       expenses: [],
+      notificationPreferences,
       exportedAt: new Date().toISOString(),
     };
 
@@ -120,6 +139,62 @@ export default function SettingsPage() {
     a.download = 'wealthos-data-export.json';
     a.click();
     URL.revokeObjectURL(url);
+
+    toast({
+      title: isArabic ? 'تم التصدير' : 'Export complete',
+      description: isArabic
+        ? 'تم تنزيل نسخة من بياناتك.'
+        : 'A copy of your data has been downloaded.',
+    });
+  };
+
+  const setActiveTab = (tab: string) => {
+    const nextTab = validTabs.find((value) => value === tab) ?? 'profile';
+    router.replace(`/settings?tab=${nextTab}`, { scroll: false });
+  };
+
+  const handleSaveProfile = () => {
+    updateUser({
+      name: name.trim() || null,
+      email: email.trim(),
+      locale,
+    });
+
+    toast({
+      title: isArabic ? 'تم حفظ الملف الشخصي' : 'Profile saved',
+      description: isArabic
+        ? 'تم تحديث بيانات حسابك بنجاح.'
+        : 'Your account details were updated successfully.',
+    });
+  };
+
+  const handleCancelProfile = () => {
+    setName(currentUser.name ?? '');
+    setEmail(currentUser.email);
+  };
+
+  const handleNotificationChange = (
+    key: 'email' | 'push' | 'priceAlerts' | 'budgetAlerts' | 'weeklyDigest',
+    value: boolean
+  ) => {
+    updateNotificationPreferences({ [key]: value });
+  };
+
+  const handleDeleteAllData = () => {
+    clearAllData();
+    setUser(null);
+    setTheme('dark');
+    router.replace('/settings?tab=profile');
+    setName('');
+    setEmail('');
+
+    toast({
+      title: isArabic ? 'تم حذف البيانات' : 'All data deleted',
+      description: isArabic
+        ? 'تمت إعادة تعيين بيانات التطبيق المحلية.'
+        : 'The app has been reset and local data was cleared.',
+      variant: 'destructive',
+    });
   };
 
   return (
@@ -137,7 +212,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="profile" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full">
             <TabsTrigger value="profile">
               <User className="w-4 h-4 mr-2" />
@@ -176,7 +251,18 @@ export default function SettingsPage() {
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <Button variant="outline" size="sm">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        toast({
+                          title: isArabic ? 'قريباً' : 'Coming soon',
+                          description: isArabic
+                            ? 'رفع الصورة سيتوفر في تحديث لاحق.'
+                            : 'Avatar upload will be added in a future update.',
+                        })
+                      }
+                    >
                       {isArabic ? 'تغيير الصورة' : 'Change Avatar'}
                     </Button>
                     <p className="text-xs text-muted-foreground mt-1">
@@ -217,8 +303,10 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="flex justify-end gap-2">
-                  <Button variant="outline">{isArabic ? 'إلغاء' : 'Cancel'}</Button>
-                  <Button>{isArabic ? 'حفظ التغييرات' : 'Save Changes'}</Button>
+                  <Button variant="outline" onClick={handleCancelProfile}>
+                    {isArabic ? 'إلغاء' : 'Cancel'}
+                  </Button>
+                  <Button onClick={handleSaveProfile}>{isArabic ? 'حفظ التغييرات' : 'Save Changes'}</Button>
                 </div>
               </CardContent>
             </Card>
@@ -289,7 +377,17 @@ export default function SettingsPage() {
                       {isArabic ? 'تلقي التحديثات عبر البريد' : 'Receive updates via email'}
                     </p>
                   </div>
-                  <Switch checked={notifications.email} onCheckedChange={(c) => setNotifications({ ...notifications, email: c })} />
+                  <Switch checked={notificationPreferences.email} onCheckedChange={(c) => handleNotificationChange('email', c)} />
+                </div>
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>{isArabic ? 'الإشعارات الفورية' : 'Push Notifications'}</Label>
+                    <p className="text-sm text-muted-foreground">
+                      {isArabic ? 'تنبيهات داخل التطبيق للأحداث المهمة' : 'In-app alerts for important events'}
+                    </p>
+                  </div>
+                  <Switch checked={notificationPreferences.push} onCheckedChange={(c) => handleNotificationChange('push', c)} />
                 </div>
                 <Separator />
                 <div className="flex items-center justify-between">
@@ -299,7 +397,7 @@ export default function SettingsPage() {
                       {isArabic ? 'إشعارات عند وصول السعر للهدف' : 'Notifications when price targets are hit'}
                     </p>
                   </div>
-                  <Switch checked={notifications.priceAlerts} onCheckedChange={(c) => setNotifications({ ...notifications, priceAlerts: c })} />
+                  <Switch checked={notificationPreferences.priceAlerts} onCheckedChange={(c) => handleNotificationChange('priceAlerts', c)} />
                 </div>
                 <Separator />
                 <div className="flex items-center justify-between">
@@ -309,7 +407,7 @@ export default function SettingsPage() {
                       {isArabic ? 'إشعارات عند اقتراب الميزانية من الحد' : 'Notifications when budget limits are approaching'}
                     </p>
                   </div>
-                  <Switch checked={notifications.budgetAlerts} onCheckedChange={(c) => setNotifications({ ...notifications, budgetAlerts: c })} />
+                  <Switch checked={notificationPreferences.budgetAlerts} onCheckedChange={(c) => handleNotificationChange('budgetAlerts', c)} />
                 </div>
                 <Separator />
                 <div className="flex items-center justify-between">
@@ -319,7 +417,7 @@ export default function SettingsPage() {
                       {isArabic ? 'ملخص أسبوعي لأدائك المالي' : 'Weekly summary of your financial performance'}
                     </p>
                   </div>
-                  <Switch checked={notifications.weeklyDigest} onCheckedChange={(c) => setNotifications({ ...notifications, weeklyDigest: c })} />
+                  <Switch checked={notificationPreferences.weeklyDigest} onCheckedChange={(c) => handleNotificationChange('weeklyDigest', c)} />
                 </div>
               </CardContent>
             </Card>
@@ -457,7 +555,10 @@ export default function SettingsPage() {
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>{isArabic ? 'إلغاء' : 'Cancel'}</AlertDialogCancel>
-                        <AlertDialogAction className="bg-rose-500 hover:bg-rose-600">
+                        <AlertDialogAction
+                          className="bg-rose-500 hover:bg-rose-600"
+                          onClick={handleDeleteAllData}
+                        >
                           {isArabic ? 'حذف' : 'Delete'}
                         </AlertDialogAction>
                       </AlertDialogFooter>
@@ -470,7 +571,18 @@ export default function SettingsPage() {
             {/* Logout */}
             <Card>
               <CardContent className="p-6">
-                <Button variant="outline" className="w-full gap-2">
+                <Button
+                  variant="outline"
+                  className="w-full gap-2"
+                  onClick={() =>
+                    toast({
+                      title: isArabic ? 'تم تسجيل الخروج' : 'Signed out',
+                      description: isArabic
+                        ? 'تمت إزالة بيانات الجلسة المحلية.'
+                        : 'Local session data has been cleared.',
+                    })
+                  }
+                >
                   <LogOut className="w-4 h-4" />
                   {isArabic ? 'تسجيل الخروج' : 'Log Out'}
                 </Button>

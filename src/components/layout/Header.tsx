@@ -1,6 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import { Bell, Search, Moon, Sun, Globe, User, LogOut, Settings } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { useAppStore } from '@/store/useAppStore';
 import { Button } from '@/components/ui/button';
@@ -14,12 +16,17 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { toast } from '@/hooks/use-toast';
 
 export function Header() {
+  const router = useRouter();
   const { theme, setTheme } = useTheme();
   const locale = useAppStore((state) => state.locale);
   const setLocale = useAppStore((state) => state.setLocale);
   const user = useAppStore((state) => state.user);
+  const notificationFeed = useAppStore((state) => state.notificationFeed);
+  const markAllNotificationsRead = useAppStore((state) => state.markAllNotificationsRead);
+  const unreadCount = notificationFeed.filter((item) => !item.read).length;
 
   const isArabic = locale === 'ar';
 
@@ -70,12 +77,51 @@ export function Header() {
         </Button>
 
         {/* Notifications */}
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="w-4 h-4" />
-          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] rounded-full flex items-center justify-center">
-            3
-          </span>
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="relative">
+              <Bell className="w-4 h-4" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 bg-destructive text-destructive-foreground text-[10px] rounded-full flex items-center justify-center">
+                  {unreadCount}
+                </span>
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-80" align={isArabic ? 'start' : 'end'}>
+            <DropdownMenuLabel className="flex items-center justify-between gap-2">
+              <span>{isArabic ? 'الإشعارات' : 'Notifications'}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-auto px-2 py-1 text-xs"
+                onClick={() => {
+                  markAllNotificationsRead();
+                  router.push('/settings?tab=preferences');
+                }}
+              >
+                {isArabic ? 'عرض الكل' : 'View all'}
+              </Button>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {notificationFeed.map((item) => (
+              <DropdownMenuItem key={item.id} asChild>
+                <Link
+                  href={item.href}
+                  className="flex flex-col items-start gap-1"
+                  onClick={() => markAllNotificationsRead()}
+                >
+                  <span className="font-medium">
+                    {isArabic ? item.titleAr : item.title}
+                  </span>
+                  <span className="text-xs text-muted-foreground whitespace-normal">
+                    {isArabic ? item.descriptionAr : item.description}
+                  </span>
+                </Link>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         {/* User Menu */}
         <DropdownMenu>
@@ -99,16 +145,30 @@ export function Header() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <User className="mr-2 h-4 w-4" />
-              <span>{isArabic ? 'الملف الشخصي' : 'Profile'}</span>
+            <DropdownMenuItem asChild>
+              <Link href="/settings?tab=profile">
+                <User className="mr-2 h-4 w-4" />
+                <span>{isArabic ? 'الملف الشخصي' : 'Profile'}</span>
+              </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Settings className="mr-2 h-4 w-4" />
-              <span>{isArabic ? 'الإعدادات' : 'Settings'}</span>
+            <DropdownMenuItem asChild>
+              <Link href="/settings?tab=preferences">
+                <Settings className="mr-2 h-4 w-4" />
+                <span>{isArabic ? 'الإعدادات' : 'Settings'}</span>
+              </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive">
+            <DropdownMenuItem
+              className="text-destructive"
+              onClick={() =>
+                toast({
+                  title: isArabic ? 'تم تسجيل الخروج' : 'Signed out',
+                  description: isArabic
+                    ? 'واجهة العرض التجريبية لا تستخدم مصادقة حقيقية بعد.'
+                    : 'The demo UI does not use a real auth backend yet.',
+                })
+              }
+            >
               <LogOut className="mr-2 h-4 w-4" />
               <span>{isArabic ? 'تسجيل الخروج' : 'Log out'}</span>
             </DropdownMenuItem>
