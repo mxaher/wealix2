@@ -246,7 +246,9 @@ async function runDatalabOcr(file: File) {
   }
 
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append('file.0', file, file.name);
+  formData.append('langs', 'ar,en');
+  formData.append('skip_cache', 'false');
 
   const submitResponse = await fetch(`${apiBase}/api/v1/ocr`, {
     method: 'POST',
@@ -298,7 +300,7 @@ async function runDatalabMarker(file: File) {
   }
 
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append('file', file, file.name);
   formData.append('output_format', 'markdown');
   formData.append('force_ocr', 'true');
   formData.append('use_llm', 'true');
@@ -416,17 +418,23 @@ export async function POST(request: NextRequest) {
       return Response.json({ error: 'Only image uploads are supported.' }, { status: 400 });
     }
 
+    const shouldUseMarkerFirst = file.type === 'application/pdf';
+
     try {
-      const rawText = await runDatalabMarker(file);
+      const rawText = shouldUseMarkerFirst
+        ? await runDatalabMarker(file)
+        : await runDatalabOcr(file);
       return Response.json(buildStructuredReceipt(rawText, file.name));
-    } catch (markerError) {
-      console.error('Datalab Marker Error:', markerError);
+    } catch (primaryError) {
+      console.error(shouldUseMarkerFirst ? 'Datalab Marker Error:' : 'Datalab OCR Error:', primaryError);
 
       try {
-        const rawText = await runDatalabOcr(file);
+        const rawText = shouldUseMarkerFirst
+          ? await runDatalabOcr(file)
+          : await runDatalabMarker(file);
         return Response.json(buildStructuredReceipt(rawText, file.name));
-      } catch (ocrError) {
-        console.error('Datalab OCR Error:', ocrError);
+      } catch (secondaryError) {
+        console.error(shouldUseMarkerFirst ? 'Datalab OCR Error:' : 'Datalab Marker Error:', secondaryError);
 
         try {
           const fallbackResult = await runVisionFallback(file);
@@ -434,8 +442,8 @@ export async function POST(request: NextRequest) {
         } catch (visionError) {
           console.error('Vision OCR Error:', visionError);
           const message = [
-            markerError instanceof Error ? markerError.message : 'Marker OCR failed.',
-            ocrError instanceof Error ? ocrError.message : 'OCR endpoint failed.',
+            primaryError instanceof Error ? primaryError.message : 'Primary OCR failed.',
+            secondaryError instanceof Error ? secondaryError.message : 'Secondary OCR failed.',
             visionError instanceof Error ? visionError.message : 'Vision fallback failed.',
           ].join(' ');
 
