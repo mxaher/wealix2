@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import ZAI from 'z-ai-web-dev-sdk';
 import { buildRateLimitHeaders, enforceRateLimit } from '@/lib/rate-limit';
-import { requireProUser } from '@/lib/server-auth';
+import { requireTier } from '@/lib/server-auth';
 
 type Holding = {
   ticker: string;
@@ -56,7 +56,7 @@ function fallbackAnalysis(holdings: Holding[], locale: 'ar' | 'en') {
 
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireProUser();
+    const authResult = await requireTier('pro');
     if (authResult.error) {
       return authResult.error;
     }

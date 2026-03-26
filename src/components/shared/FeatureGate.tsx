@@ -1,6 +1,7 @@
 'use client';
 
 import { useAppStore, useSubscription, type SubscriptionTier } from '@/store/useAppStore';
+import { useUser } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -13,6 +14,7 @@ import {
 import { useState } from 'react';
 import { Crown } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { setPreferredTrialPlan } from '@/lib/trial-selection';
 
 interface FeatureGateProps {
   feature: string;
@@ -23,17 +25,55 @@ interface FeatureGateProps {
 export function FeatureGate({ feature, children, fallback }: FeatureGateProps) {
   const { canAccess } = useSubscription();
   const locale = useAppStore((state) => state.locale);
+  const updateUser = useAppStore((state) => state.updateUser);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const isArabic = locale === 'ar';
+  const { isSignedIn } = useUser();
 
-  const handleStartTrial = (tier: SubscriptionTier) => {
+  const handleStartTrial = async (tier: SubscriptionTier) => {
     setShowUpgrade(false);
-    toast({
-      title: isArabic ? 'الترقية تتطلب تفعيل الفوترة' : 'Upgrade requires billing setup',
-      description: isArabic
-        ? `خطة ${tier === 'core' ? 'Core' : 'Pro'} تُدار الآن من خلال إعدادات الاشتراك على الخادم أو لوحة Clerk.`
-        : `${tier === 'core' ? 'Core' : 'Pro'} access is now controlled from server-side subscription metadata or the Clerk dashboard.`,
-    });
+    if (tier !== 'core' && tier !== 'pro') {
+      return;
+    }
+
+    setPreferredTrialPlan(tier);
+
+    if (!isSignedIn) {
+      toast({
+        title: isArabic ? 'التجربة محفوظة للتسجيل' : 'Trial saved for signup',
+        description: isArabic
+          ? `أكمل إنشاء الحساب وسنفعّل تجربة ${tier === 'core' ? 'Core' : 'Pro'} لمدة 14 يوماً تلقائياً.`
+          : `Finish signing up and we’ll activate a 14-day ${tier === 'core' ? 'Core' : 'Pro'} trial automatically.`,
+      });
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/billing/trial/ensure', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestedTier: tier }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to activate trial.');
+      }
+
+      updateUser({ subscriptionTier: data.effectiveTier });
+      toast({
+        title: isArabic ? 'تم تفعيل التجربة' : 'Trial activated',
+        description: isArabic
+          ? `تم تفعيل تجربة ${tier === 'core' ? 'Core' : 'Pro'} لمدة 14 يوماً دون بطاقة ائتمان.`
+          : `Your 14-day ${tier === 'core' ? 'Core' : 'Pro'} trial is now active with no credit card required.`,
+      });
+    } catch (error) {
+      toast({
+        title: isArabic ? 'تعذّر تفعيل التجربة' : 'Trial activation failed',
+        description: error instanceof Error ? error.message : 'Could not activate the trial.',
+        variant: 'destructive',
+      });
+    }
   };
 
   if (canAccess(feature)) {
@@ -67,8 +107,7 @@ export function FeatureGate({ feature, children, fallback }: FeatureGateProps) {
               Upgrade Required
             </DialogTitle>
             <DialogDescription>
-              This feature requires a higher subscription tier. Upgrade to unlock
-              advanced features and capabilities.
+              Start with a 14-day free trial with no credit card required, then continue on Core or Pro.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
@@ -78,6 +117,7 @@ export function FeatureGate({ feature, children, fallback }: FeatureGateProps) {
                 <p className="text-2xl font-bold mt-2">
                   25 SAR<span className="text-sm font-normal">/mo</span>
                 </p>
+                <p className="mt-2 text-xs text-muted-foreground">14-day free trial, no card required</p>
                 <Button className="w-full mt-4" variant="outline" onClick={() => handleStartTrial('core')}>
                   Start Trial
                 </Button>
@@ -92,6 +132,7 @@ export function FeatureGate({ feature, children, fallback }: FeatureGateProps) {
                 <p className="text-2xl font-bold mt-2">
                   49 SAR<span className="text-sm font-normal">/mo</span>
                 </p>
+                <p className="mt-2 text-xs text-muted-foreground">14-day free trial, no card required</p>
                 <Button className="w-full mt-4" onClick={() => handleStartTrial('pro')}>Start Trial</Button>
               </div>
             </div>

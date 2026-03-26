@@ -190,6 +190,26 @@ If you later move user data from local storage to Supabase, then new Supabase ru
 
 Wealix currently uses Clerk as the main user management system.
 
+### Trials
+
+Wealix now supports app-managed 14-day trials without a credit card.
+
+The app stores and evaluates these Clerk metadata fields:
+
+```ts
+subscriptionTier: 'free' | 'core' | 'pro'
+trialStatus: 'active' | 'expired' | 'inactive'
+trialPlan: 'core' | 'pro'
+trialEndsAt: string // ISO timestamp
+```
+
+Runtime behavior:
+
+- signed-out users choose a preferred trial plan before signup
+- on first real sign-in, [src/app/api/billing/trial/ensure/route.ts](/Users/mohammedzaher/projects/Wealixapp%20v2/src/app/api/billing/trial/ensure/route.ts) initializes a 14-day trial if one has not already been used
+- server-side feature checks use the effective tier from either a paid subscription or an active trial
+- once the trial expires, access falls back to `free` unless the user converts to a paid plan
+
 ### API protection
 
 All non-public API routes now enforce authentication at the route-handler level. Sensitive AI routes also require a Clerk subscription tier of `pro` from metadata.

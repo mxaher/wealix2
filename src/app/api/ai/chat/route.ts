@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import ZAI from 'z-ai-web-dev-sdk';
 import { sanitizeUserMessage, logAiAuditEvent } from '@/lib/ai-safety';
 import { buildRateLimitHeaders, enforceRateLimit } from '@/lib/rate-limit';
-import { requireProUser } from '@/lib/server-auth';
+import { requireTier } from '@/lib/server-auth';
 
 // Financial advisor system prompt
 const FINANCIAL_ADVISOR_SYSTEM_PROMPT = `You are a professional financial advisor specializing in the Saudi and MENA market. You have deep expertise in:
@@ -43,7 +43,7 @@ function formatProfilePercent(value: unknown): string | null {
 
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireProUser();
+    const authResult = await requireTier('pro');
     if (authResult.error) {
       return authResult.error;
     }

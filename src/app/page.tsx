@@ -1,12 +1,14 @@
 'use client';
 
 import Link from 'next/link';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, Bot, Briefcase, Flame, Globe, LineChart, Moon, Receipt, ShieldCheck, Sun, Wallet } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Show, SignInButton, SignUpButton } from '@clerk/nextjs';
 import { useAppStore } from '@/store/useAppStore';
 import { Button } from '@/components/ui/button';
+import { setPreferredTrialPlan } from '@/lib/trial-selection';
 
 const sections = [
   { id: 'features', label: 'Features' },
@@ -54,11 +56,51 @@ const stats = [
   { value: 'AI', label: 'Advisor' },
 ];
 
+const pricingByCycle = {
+  monthly: [
+    {
+      id: 'core',
+      name: 'Core',
+      price: 25,
+      suffix: '/mo',
+      description: 'Unlimited holdings, full history, PDF reports, and the full planning workspace for active users.',
+      features: ['Unlimited portfolio holdings', 'Full net worth & budget history', 'Basic PDF reports', '14-day free trial'],
+    },
+    {
+      id: 'pro',
+      name: 'Pro',
+      price: 49,
+      suffix: '/mo',
+      description: 'AI advisor, portfolio intelligence, advanced reports, and the deepest Wealix experience.',
+      features: ['Everything in Core', 'AI advisor & portfolio analysis', 'Advanced reports', '14-day free trial'],
+    },
+  ],
+  annual: [
+    {
+      id: 'core',
+      name: 'Core',
+      price: 250,
+      suffix: '/year',
+      description: 'Annual Core access for active planners who want the full tracking stack at a lower yearly rate.',
+      features: ['Unlimited portfolio holdings', 'Full net worth & budget history', 'Basic PDF reports', '14-day free trial'],
+    },
+    {
+      id: 'pro',
+      name: 'Pro',
+      price: 490,
+      suffix: '/year',
+      description: 'Annual Pro access for the full Wealix intelligence layer, with AI and advanced portfolio workflows.',
+      features: ['Everything in Core', 'AI advisor & portfolio analysis', 'Advanced reports', '14-day free trial'],
+    },
+  ],
+} as const;
+
 export default function LandingPage() {
   const { theme, setTheme } = useTheme();
   const locale = useAppStore((state) => state.locale);
   const setLocale = useAppStore((state) => state.setLocale);
   const isArabic = locale === 'ar';
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
 
   return (
     <div className="min-h-screen bg-background text-foreground" dir={isArabic ? 'rtl' : 'ltr'}>
@@ -107,7 +149,7 @@ export default function LandingPage() {
                 </Button>
               </SignInButton>
               <SignUpButton mode="modal">
-                <Button className="btn-primary rounded-full">
+                <Button className="btn-primary rounded-full" onClick={() => setPreferredTrialPlan('pro')}>
                   {isArabic ? 'ابدأ الآن' : 'Get Started'}
                 </Button>
               </SignUpButton>
@@ -145,8 +187,8 @@ export default function LandingPage() {
               <div className="mt-8 flex flex-wrap gap-3">
                 <Show when="signed-out">
                   <SignUpButton mode="modal">
-                    <Button className="btn-primary rounded-xl px-5 py-6 text-sm">
-                      Start Free Trial - 14 Days
+                    <Button className="btn-primary rounded-xl px-5 py-6 text-sm" onClick={() => setPreferredTrialPlan('pro')}>
+                      Start 14-Day Trial
                       <ArrowRight className="h-4 w-4" />
                     </Button>
                   </SignUpButton>
@@ -163,6 +205,9 @@ export default function LandingPage() {
                   <a href="#features">Explore Features</a>
                 </Button>
               </div>
+              <p className="mt-3 text-sm text-muted-foreground">
+                No credit card required. Start with a 14-day trial, then continue on Core or Pro.
+              </p>
             </motion.div>
 
             <motion.div
@@ -258,19 +303,64 @@ export default function LandingPage() {
               <span className="inline-flex items-center rounded-full bg-card px-3 py-1 text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase">
                 Pricing
               </span>
-              <h2 className="mt-5 text-3xl font-semibold tracking-tight sm:text-4xl">Start simple, scale when you need deeper analysis</h2>
+              <h2 className="mt-5 text-3xl font-semibold tracking-tight sm:text-4xl">Simple paid plans with a 14-day trial first</h2>
+              <p className="mt-4 text-sm leading-7 text-muted-foreground">
+                Start with a 14-day free trial without a credit card. Then choose Core or Pro monthly or annually.
+              </p>
+              <div className="mt-8 inline-flex rounded-full border border-border bg-background p-1">
+                <button
+                  type="button"
+                  onClick={() => setBillingCycle('monthly')}
+                  className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                    billingCycle === 'monthly' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
+                  }`}
+                >
+                  Monthly
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBillingCycle('annual')}
+                  className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                    billingCycle === 'annual' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
+                  }`}
+                >
+                  Annually
+                </button>
+              </div>
             </div>
             <div className="mt-12 grid gap-5 md:grid-cols-2">
-              <div className="card-hover rounded-[24px] border border-border bg-card p-8">
-                <p className="text-sm font-medium text-muted-foreground">Core</p>
-                <h3 className="mt-3 text-4xl font-semibold">$0</h3>
-                <p className="mt-3 text-sm leading-7 text-muted-foreground">Budgeting, receipts, net worth, portfolio tracking, and demo access for guided exploration.</p>
-              </div>
-              <div className="card-hover rounded-[24px] border border-primary/20 bg-card p-8 ring-1 ring-primary/10">
-                <p className="text-sm font-medium text-primary">Pro</p>
-                <h3 className="mt-3 text-4xl font-semibold">$12</h3>
-                <p className="mt-3 text-sm leading-7 text-muted-foreground">AI advisor workflows, advanced portfolio analysis, richer reports, and future cloud sync capabilities.</p>
-              </div>
+              {pricingByCycle[billingCycle].map((plan) => (
+                <div
+                  key={plan.id}
+                  className={`card-hover rounded-[24px] bg-card p-8 ${
+                    plan.id === 'pro' ? 'border border-primary/20 ring-1 ring-primary/10' : 'border border-border'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className={`text-sm font-medium ${plan.id === 'pro' ? 'text-primary' : 'text-muted-foreground'}`}>{plan.name}</p>
+                      <h3 className="mt-3 text-4xl font-semibold">
+                        {plan.price} SAR
+                        <span className="ml-1 text-base font-normal text-muted-foreground">{plan.suffix}</span>
+                      </h3>
+                    </div>
+                    {plan.id === 'pro' && (
+                      <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                        Most Advanced
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-3 text-sm leading-7 text-muted-foreground">{plan.description}</p>
+                  <ul className="mt-6 space-y-3 text-sm text-muted-foreground">
+                    {plan.features.map((feature) => (
+                      <li key={feature} className="flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full bg-accent" />
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
             </div>
           </div>
         </section>
@@ -305,7 +395,7 @@ export default function LandingPage() {
               <div className="flex flex-wrap gap-3">
                 <Show when="signed-out">
                   <SignUpButton mode="modal">
-                    <Button className="btn-primary rounded-xl">Create your workspace</Button>
+                    <Button className="btn-primary rounded-xl" onClick={() => setPreferredTrialPlan('pro')}>Create your workspace</Button>
                   </SignUpButton>
                 </Show>
                 <Show when="signed-in">

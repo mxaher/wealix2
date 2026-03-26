@@ -33,23 +33,15 @@ import { DashboardShell } from '@/components/layout';
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from 'next-themes';
 import { toast } from '@/hooks/use-toast';
+import { setPreferredTrialPlan } from '@/lib/trial-selection';
 
 // Subscription tiers
 const subscriptionTiers = [
   {
-    id: 'free',
-    name: { en: 'Free', ar: 'مجاني' },
-    price: 0,
-    features: [
-      { en: '5 portfolio holdings', ar: '5 ممتلكات في المحفظة' },
-      { en: 'Basic net worth tracking', ar: 'تتبع صافي الثروة الأساسي' },
-      { en: 'Current month budget', ar: 'ميزانية الشهر الحالي' },
-    ],
-  },
-  {
     id: 'core',
     name: { en: 'Core', ar: 'الأساسية' },
-    price: 25,
+    monthlyPrice: 25,
+    annualPrice: 250,
     features: [
       { en: 'Unlimited portfolio holdings', ar: 'ممتلكات غير محدودة' },
       { en: 'Full net worth history', ar: 'تاريخ كامل لصافي الثروة' },
@@ -61,7 +53,8 @@ const subscriptionTiers = [
   {
     id: 'pro',
     name: { en: 'Pro', ar: 'المحترفة' },
-    price: 49,
+    monthlyPrice: 49,
+    annualPrice: 490,
     features: [
       { en: 'Everything in Core', ar: 'كل ميزات الأساسية' },
       { en: 'AI Financial Advisor', ar: 'مستشار مالي بالذكاء الاصطناعي' },
@@ -85,24 +78,62 @@ function SettingsPageContent() {
     clearAllData,
     appMode,
     setAppMode,
+    updateUser,
   } = useAppStore();
   const { user: clerkUser } = useUser();
   const isSignedIn = Boolean(clerkUser);
   const { theme, setTheme } = useTheme();
   const isArabic = locale === 'ar';
   const currentPlan = user?.subscriptionTier ?? 'free';
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
   const validTabs = useMemo(() => ['profile', 'preferences', 'subscription', 'data'] as const, []);
   const activeTabParam = searchParams.get('tab');
   const initialTab = validTabs.find((value) => value === activeTabParam) ?? 'profile';
   const [activeTab, setActiveTabState] = useState<(typeof validTabs)[number]>(initialTab);
 
-  const handleSubscriptionChange = (tier: 'free' | 'core' | 'pro') => {
-    toast({
-      title: isArabic ? 'الاشتراك يُدار من الخادم' : 'Subscription is server-managed',
-      description: isArabic
-        ? `لا يمكن تغيير خطة ${tier} محلياً بعد الآن. حدّث اشتراك المستخدم من نظام الفوترة أو من Clerk metadata.`
-        : `The ${tier} plan can no longer be changed locally. Update the user subscription from billing or Clerk metadata instead.`,
-    });
+  const handleSubscriptionChange = async (tier: 'free' | 'core' | 'pro') => {
+    if (tier === 'free') {
+      return;
+    }
+
+    setPreferredTrialPlan(tier);
+
+    if (!isSignedIn) {
+      toast({
+        title: isArabic ? 'التجربة محفوظة للتسجيل' : 'Trial saved for signup',
+        description: isArabic
+          ? `أنشئ حساباً وسنفعّل تجربة ${tier === 'core' ? 'Core' : 'Pro'} لمدة 14 يوماً تلقائياً.`
+          : `Create an account and we’ll activate a 14-day ${tier === 'core' ? 'Core' : 'Pro'} trial automatically.`,
+      });
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/billing/trial/ensure', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestedTier: tier }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to start trial.');
+      }
+
+      updateUser({ subscriptionTier: data.effectiveTier });
+      toast({
+        title: isArabic ? 'تم تفعيل التجربة' : 'Trial activated',
+        description: isArabic
+          ? `تم تفعيل تجربة ${tier === 'core' ? 'Core' : 'Pro'} لمدة 14 يوماً دون بطاقة ائتمان.`
+          : `Your 14-day ${tier === 'core' ? 'Core' : 'Pro'} trial is now active with no credit card required.`,
+      });
+    } catch (error) {
+      toast({
+        title: isArabic ? 'تعذّر تفعيل التجربة' : 'Trial activation failed',
+        description: error instanceof Error ? error.message : 'Could not activate the trial.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleExportData = () => {
@@ -471,7 +502,9 @@ function SettingsPageContent() {
                       <div>
                         <p className="text-sm text-muted-foreground">{isArabic ? 'خطتك الحالية' : 'Current Plan'}</p>
                         <p className="text-2xl font-bold">
-                          {subscriptionTiers.find(t => t.id === currentPlan)?.name[isArabic ? 'ar' : 'en']}
+                          {currentPlan === 'free'
+                            ? (isArabic ? 'مجاني' : 'Free')
+                            : subscriptionTiers.find(t => t.id === currentPlan)?.name[isArabic ? 'ar' : 'en']}
                         </p>
                       </div>
                     </div>
@@ -489,7 +522,36 @@ function SettingsPageContent() {
               </Card>
 
               {/* Plans Comparison */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="flex items-center justify-center">
+                <div className="inline-flex rounded-full border border-border bg-background p-1">
+                  <button
+                    type="button"
+                    onClick={() => setBillingCycle('monthly')}
+                    className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                      billingCycle === 'monthly' ? 'bg-gold text-navy-dark' : 'text-muted-foreground'
+                    }`}
+                  >
+                    {isArabic ? 'شهري' : 'Monthly'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBillingCycle('annual')}
+                    className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                      billingCycle === 'annual' ? 'bg-gold text-navy-dark' : 'text-muted-foreground'
+                    }`}
+                  >
+                    {isArabic ? 'سنوي' : 'Annually'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
+                {isArabic
+                  ? 'ابدأ بتجربة مجانية لمدة 14 يوماً بدون بطاقة ائتمان، ثم اختر Core أو Pro.'
+                  : 'Start with a 14-day free trial with no credit card required, then continue on Core or Pro.'}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {subscriptionTiers.map((tier) => (
                   <Card
                     key={tier.id}
@@ -507,12 +569,15 @@ function SettingsPageContent() {
                       </div>
                       <div className="mt-2">
                         <span className="text-3xl font-bold">
-                          {tier.price === 0 ? (isArabic ? 'مجاني' : 'Free') : tier.price}
+                          {billingCycle === 'monthly' ? tier.monthlyPrice : tier.annualPrice}
                         </span>
-                        {tier.price > 0 && (
-                          <span className="text-muted-foreground"> SAR{isArabic ? '/شهر' : '/mo'}</span>
-                        )}
+                        <span className="text-muted-foreground">
+                          {' '}SAR{billingCycle === 'monthly' ? (isArabic ? '/شهر' : '/mo') : (isArabic ? '/سنة' : '/year')}
+                        </span>
                       </div>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {isArabic ? 'تجربة 14 يوماً بدون بطاقة' : '14-day trial, no credit card required'}
+                      </p>
                     </CardHeader>
                     <CardContent>
                       <ul className="space-y-2">
@@ -523,7 +588,7 @@ function SettingsPageContent() {
                           </li>
                         ))}
                       </ul>
-                      {currentPlan !== tier.id && tier.id !== 'free' && (
+                      {currentPlan !== tier.id && (
                         <Button
                           className="w-full mt-4"
                           variant={tier.id === 'pro' ? 'default' : 'outline'}
