@@ -87,7 +87,15 @@ const categoryIcons: Record<string, React.ReactNode> = {
 };
 
 export default function AppDashboardPage() {
-  const { locale, appMode, incomeEntries, expenseEntries, portfolioHoldings } = useAppStore();
+  const {
+    locale,
+    appMode,
+    incomeEntries,
+    expenseEntries,
+    portfolioHoldings,
+    assets,
+    liabilities,
+  } = useAppStore();
   const isArabic = locale === 'ar';
   const [isLoading, setIsLoading] = useState(true);
 
@@ -107,8 +115,14 @@ export default function AppDashboardPage() {
   const isDemoMode = appMode === 'demo';
   const totalIncome = incomeEntries.reduce((sum, entry) => sum + entry.amount, 0);
   const totalExpenses = expenseEntries.reduce((sum, entry) => sum + entry.amount, 0);
-  const livePortfolioValue = portfolioHoldings.reduce((sum, item) => sum + item.shares * item.currentPrice, 0);
-  const totalNetWorth = isDemoMode ? 587500 : Math.max(totalIncome + livePortfolioValue - totalExpenses, 0);
+  const livePortfolioValue = portfolioHoldings.reduce(
+    (sum, item) => sum + item.shares * item.currentPrice,
+    0,
+  );
+  const liveAssetsValue = assets.reduce((sum, item) => sum + item.value, 0);
+  const liveLiabilitiesValue = liabilities.reduce((sum, item) => sum + item.balance, 0);
+  const liveTotalAssets = liveAssetsValue + livePortfolioValue;
+  const totalNetWorth = isDemoMode ? 587500 : Math.max(liveTotalAssets - liveLiabilitiesValue, 0);
   const portfolioValue = isDemoMode ? 452000 : livePortfolioValue;
   const todayGainPercent = isDemoMode ? 0.67 : 0;
   const fireProgress = isDemoMode ? 40.8 : 0;
@@ -116,11 +130,47 @@ export default function AppDashboardPage() {
     ...holding,
     change: holding.avgCost > 0 ? ((holding.currentPrice - holding.avgCost) / holding.avgCost) * 100 : 0,
   }));
-  const transactions = isDemoMode ? mockTransactions : [];
+  const transactions = isDemoMode
+    ? mockTransactions
+    : expenseEntries
+        .map((entry) => ({
+          id: entry.id,
+          category: entry.category.toLowerCase(),
+          description: entry.description,
+          amount: -entry.amount,
+          date: entry.date,
+        }))
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .slice(0, 5);
   const marketData = isDemoMode ? mockMarketData : [];
-  const netWorthChartData = isDemoMode ? mockNetWorthData : [];
-  const spendingChartData = isDemoMode ? budgetData : [];
-  const hasLiveData = totalIncome > 0 || totalExpenses > 0 || portfolioValue > 0 || holdings.length > 0;
+  const netWorthChartData = isDemoMode
+    ? mockNetWorthData
+    : liveTotalAssets > 0 || liveLiabilitiesValue > 0
+      ? [
+          {
+            month: isArabic ? 'الآن' : 'Now',
+            value: totalNetWorth,
+          },
+        ]
+      : [];
+  const liveSpendingByCategory = expenseEntries.reduce<Record<string, number>>((acc, entry) => {
+    acc[entry.category] = (acc[entry.category] ?? 0) + entry.amount;
+    return acc;
+  }, {});
+  const spendingChartData = isDemoMode
+    ? budgetData
+    : Object.entries(liveSpendingByCategory).map(([name, value], index) => ({
+        name,
+        value,
+        color: ['#006aff', '#00bb7f', '#00b7d7', '#00bfff', '#99a1af', '#6366f1'][index % 6],
+      }));
+  const hasLiveData =
+    totalIncome > 0 ||
+    totalExpenses > 0 ||
+    portfolioValue > 0 ||
+    liveAssetsValue > 0 ||
+    liveLiabilitiesValue > 0 ||
+    holdings.length > 0;
   const budgetUsage = isDemoMode
     ? 67
     : totalIncome > 0
