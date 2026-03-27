@@ -495,6 +495,15 @@ export default function LandingPage() {
                 </Show>
               </div>
             </div>
+            <div className="mt-8 flex flex-wrap items-center gap-3 border-t border-border/70 pt-6 text-sm text-muted-foreground">
+              <Link href="/terms" className="transition-colors hover:text-foreground">
+                {isArabic ? 'شروط الخدمة' : 'Terms of Service'}
+              </Link>
+              <span className="text-border">•</span>
+              <Link href="/privacy" className="transition-colors hover:text-foreground">
+                {isArabic ? 'سياسة الخصوصية' : 'Privacy Policy'}
+              </Link>
+            </div>
           </div>
         </section>
       </main>
