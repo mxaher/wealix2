@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180">
+  <defs>
+    <linearGradient id="appleBg" x1="20" y1="16" x2="154" y2="164" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#006aff" />
+      <stop offset="1" stop-color="#00cc99" />
+    </linearGradient>
+    <linearGradient id="appleMark" x1="46" y1="34" x2="126" y2="144" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" />
+      <stop offset="1" stop-color="#dff7ff" />
+    </linearGradient>
+  </defs>
+
+  <rect width="180" height="180" rx="44" fill="url(#appleBg)" />
+  <path
+    d="M43 46h29.5L88 87.4 104.3 46H128L95.8 134H80L43 46Zm61.6 88L135 46h-29.4L90.2 84.7 104.6 134Z"
+    fill="url(#appleMark)"
+  />
+</svg>
