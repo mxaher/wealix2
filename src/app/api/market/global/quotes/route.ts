@@ -37,12 +37,7 @@ function normalizeHoldingSymbol(ticker: string, exchange: SupportedExchange) {
   const trimmed = ticker.trim().toUpperCase();
 
   if (exchange === 'EGX') {
-    if (trimmed.includes(':')) {
-      return trimmed;
-    }
-
-    const withoutSuffix = trimmed.replace(/\.CA$/i, '');
-    return `${withoutSuffix}:EGX`;
+    return trimmed;
   }
 
   return trimmed;
@@ -52,6 +47,66 @@ async function fetchJson<T>(url: string) {
   const response = await fetch(url, { cache: 'no-store' });
   const json = (await response.json()) as T;
   return json;
+}
+
+async function fetchQuoteForHolding(holding: HoldingInput, apiBase: string, apiKey: string) {
+  const symbol = normalizeHoldingSymbol(holding.ticker, holding.exchange);
+  const endpoints =
+    holding.exchange === 'EGX'
+      ? [
+          `${apiBase}/eod?symbol=${encodeURIComponent(symbol)}&apikey=${encodeURIComponent(apiKey)}`,
+          `${apiBase}/price?symbol=${encodeURIComponent(symbol)}&apikey=${encodeURIComponent(apiKey)}`,
+        ]
+      : [
+          `${apiBase}/price?symbol=${encodeURIComponent(symbol)}&apikey=${encodeURIComponent(apiKey)}`,
+          `${apiBase}/quote?symbol=${encodeURIComponent(symbol)}&apikey=${encodeURIComponent(apiKey)}`,
+        ];
+
+  let lastMessage = 'Unknown Twelve Data error.';
+
+  for (const url of endpoints) {
+    const data = await fetchJson<TwelveDataQuote>(url);
+    if (!data.message && Number(data.price ?? data.close ?? 0) > 0) {
+      return {
+        symbol,
+        name: data.name || holding.ticker.toUpperCase(),
+        exchange: holding.exchange,
+        currency: data.currency || (holding.exchange === 'EGX' ? 'EGP' : 'USD'),
+        price: Number(data.price ?? data.close ?? 0),
+        change: Number(data.change ?? 0),
+        changePercent: Number(data.percent_change ?? 0),
+        datetime: data.datetime || null,
+        status: holding.exchange === 'EGX' ? 'EOD' : 'REALTIME',
+        error: null,
+      };
+    }
+
+    lastMessage = data.message || `No valid price returned from ${url}`;
+    console.warn('[market/global] quote endpoint fallback', {
+      ticker: holding.ticker,
+      exchange: holding.exchange,
+      url,
+      message: lastMessage,
+    });
+  }
+
+  throw new Error(lastMessage);
+}
+
+async function fetchFxRate(symbol: string, apiBase: string, apiKey: string) {
+  const url = `${apiBase}/currency_conversion?symbol=${encodeURIComponent(symbol)}&amount=1&apikey=${encodeURIComponent(apiKey)}`;
+  const data = await fetchJson<TwelveDataFx>(url);
+
+  if (data.message || Number(data.rate ?? 0) <= 0) {
+    throw new Error(data.message || `Failed to load FX rate for ${symbol}`);
+  }
+
+  return {
+    symbol,
+    rate: Number(data.rate ?? 0),
+    datetime: data.datetime || null,
+    source: 'Twelve Data',
+  };
 }
 
 export async function POST(request: Request) {
@@ -86,50 +141,70 @@ export async function POST(request: Request) {
       holding?.ticker && ['EGX', 'NASDAQ', 'NYSE'].includes(String(holding.exchange))
     );
 
-    const quoteEntries = await Promise.all(uniqueHoldings.map(async (holding) => {
-      const symbol = normalizeHoldingSymbol(holding.ticker, holding.exchange);
-      const endpoint = holding.exchange === 'EGX' ? 'eod' : 'quote';
-      const url = `${apiBase}/${endpoint}?symbol=${encodeURIComponent(symbol)}&apikey=${encodeURIComponent(apiKey)}`;
-      const data = await fetchJson<TwelveDataQuote>(url);
+    const quoteResults = await Promise.allSettled(
+      uniqueHoldings.map(async (holding) => [holding.ticker.toUpperCase(), await fetchQuoteForHolding(holding, apiBase, apiKey)] as const)
+    );
 
-      return [holding.ticker.toUpperCase(), {
-        symbol,
-        name: data.name || holding.ticker.toUpperCase(),
-        exchange: holding.exchange,
-        currency: data.currency || (holding.exchange === 'EGX' ? 'EGP' : 'USD'),
-        price: Number(data.price ?? data.close ?? 0),
-        change: Number(data.change ?? 0),
-        changePercent: Number(data.percent_change ?? 0),
-        datetime: data.datetime || null,
-        status: holding.exchange === 'EGX' ? 'EOD' : 'REALTIME',
-        error: data.message || null,
-      }] as const;
-    }));
+    const quoteEntries = quoteResults
+      .filter((result): result is PromiseFulfilledResult<readonly [string, Awaited<ReturnType<typeof fetchQuoteForHolding>>]> => result.status === 'fulfilled')
+      .map((result) => result.value);
+
+    const quoteFailures = quoteResults
+      .map((result, index) => (result.status === 'rejected'
+        ? `${uniqueHoldings[index].ticker}: ${result.reason instanceof Error ? result.reason.message : String(result.reason)}`
+        : null))
+      .filter(Boolean);
+
+    if (quoteFailures.length > 0) {
+      console.error('[market/global] quote failures', { quoteFailures });
+    }
 
     const fxPairs = [
       { key: 'USD_SAR', symbol: 'USD/SAR' },
       { key: 'EGP_SAR', symbol: 'EGP/SAR' },
     ];
 
-    const fxEntries = await Promise.all(fxPairs.map(async (pair) => {
-      const url = `${apiBase}/exchange_rate?symbol=${encodeURIComponent(pair.symbol)}&apikey=${encodeURIComponent(apiKey)}`;
-      const data = await fetchJson<TwelveDataFx>(url);
-      return [pair.key, {
-        symbol: pair.symbol,
-        rate: Number(data.rate ?? 0),
-        datetime: data.datetime || null,
-        source: 'Twelve Data',
-      }] as const;
-    }));
+    const fxResults = await Promise.allSettled(
+      fxPairs.map(async (pair) => [pair.key, await fetchFxRate(pair.symbol, apiBase, apiKey)] as const)
+    );
+
+    const fxEntries = fxResults
+      .filter((result): result is PromiseFulfilledResult<readonly [string, Awaited<ReturnType<typeof fetchFxRate>>]> => result.status === 'fulfilled')
+      .map((result) => result.value);
+
+    const fxFailures = fxResults
+      .map((result, index) => (result.status === 'rejected'
+        ? `${fxPairs[index].symbol}: ${result.reason instanceof Error ? result.reason.message : String(result.reason)}`
+        : null))
+      .filter(Boolean);
+
+    if (fxFailures.length > 0) {
+      console.error('[market/global] fx failures', { fxFailures });
+    }
+
+    if (quoteEntries.length === 0) {
+      return NextResponse.json(
+        {
+          error: 'Price provider unavailable.',
+          details: quoteFailures.join(' | ') || 'Twelve Data did not return any prices.',
+        },
+        { status: 503, headers: buildRateLimitHeaders(rateLimit) }
+      );
+    }
 
     return NextResponse.json({
       quotes: Object.fromEntries(quoteEntries),
       fxRates: Object.fromEntries(fxEntries),
+      warnings: [...quoteFailures, ...fxFailures],
     }, { headers: buildRateLimitHeaders(rateLimit) });
   } catch (error) {
+    console.error('[market/global] request failed', {
+      message: error instanceof Error ? error.message : String(error),
+    });
     return NextResponse.json(
       {
         error: 'Service unavailable.',
+        details: error instanceof Error ? error.message : 'Unknown Twelve Data error.',
       },
       { status: 503, headers: buildRateLimitHeaders(rateLimit) }
     );

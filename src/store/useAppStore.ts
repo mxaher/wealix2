@@ -148,6 +148,46 @@ export interface BudgetLimit {
   color: string;
 }
 
+function normalizeHoldingKey(holding: Pick<PortfolioHolding, 'ticker' | 'exchange'>) {
+  const baseTicker = holding.exchange === 'TASI'
+    ? holding.ticker.trim().toUpperCase().replace(/\.SR$/i, '')
+    : holding.ticker.trim().toUpperCase();
+
+  return `${holding.exchange}:${baseTicker}`;
+}
+
+function mergePortfolioHoldingEntries(holdings: PortfolioHolding[]) {
+  const merged = new Map<string, PortfolioHolding>();
+
+  for (const holding of holdings) {
+    const key = normalizeHoldingKey(holding);
+    const existing = merged.get(key);
+
+    if (!existing) {
+      merged.set(key, {
+        ...holding,
+        ticker: holding.ticker.trim().toUpperCase(),
+      });
+      continue;
+    }
+
+    const totalShares = existing.shares + holding.shares;
+    const totalCostBasis = (existing.shares * existing.avgCost) + (holding.shares * holding.avgCost);
+
+    merged.set(key, {
+      ...existing,
+      name: holding.name || existing.name,
+      sector: holding.sector || existing.sector,
+      isShariah: existing.isShariah && holding.isShariah,
+      shares: totalShares,
+      avgCost: totalShares > 0 ? totalCostBasis / totalShares : existing.avgCost,
+      currentPrice: holding.currentPrice > 0 ? holding.currentPrice : existing.currentPrice,
+    });
+  }
+
+  return Array.from(merged.values());
+}
+
 const defaultUser: User = {
   id: 'demo-user',
   email: 'demo@wealix.app',
@@ -695,7 +735,7 @@ export const useAppStore = create<AppState>()(
       portfolioHoldings: initialGuestProfile.portfolioHoldings,
       addPortfolioHolding: (holding) => set((state) =>
         syncActiveProfileState(state, {
-          portfolioHoldings: [holding, ...state.portfolioHoldings],
+          portfolioHoldings: mergePortfolioHoldingEntries([holding, ...state.portfolioHoldings]),
         })
       ),
       deletePortfolioHolding: (id) => set((state) =>
@@ -705,7 +745,7 @@ export const useAppStore = create<AppState>()(
       ),
       replacePortfolioHoldings: (holdings) => set((state) =>
         syncActiveProfileState(state, {
-          portfolioHoldings: holdings,
+          portfolioHoldings: mergePortfolioHoldingEntries(holdings),
         })
       ),
       assets: initialGuestProfile.assets,

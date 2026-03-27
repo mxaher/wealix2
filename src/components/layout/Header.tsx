@@ -1,14 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { Bell, Search, Moon, Sun, Globe, Settings, PanelLeft } from 'lucide-react';
-import { usePathname, useRouter } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { Bell, Moon, Sun, Globe, Settings, PanelLeft } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/nextjs';
 import { useAppStore } from '@/store/useAppStore';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,21 +16,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-const searchItems = [
-  { href: '/app', en: 'Dashboard', ar: 'لوحة التحكم', keywords: ['home', 'dashboard', 'overview', 'summary'] },
-  { href: '/income', en: 'Income', ar: 'الدخل', keywords: ['salary', 'earning', 'revenue', 'income'] },
-  { href: '/expenses', en: 'Expenses', ar: 'المصروفات', keywords: ['expense', 'receipt', 'spending', 'cost'] },
-  { href: '/portfolio', en: 'Portfolio', ar: 'المحفظة', keywords: ['portfolio', 'stocks', 'holdings', 'investments'] },
-  { href: '/net-worth', en: 'Net Worth', ar: 'صافي الثروة', keywords: ['net worth', 'assets', 'liabilities', 'wealth'] },
-  { href: '/budget', en: 'Budget', ar: 'الميزانية', keywords: ['budget', 'plan', 'limits', 'cash flow'] },
-  { href: '/reports', en: 'Reports', ar: 'التقارير', keywords: ['reports', 'summary', 'export', 'review'] },
-  { href: '/advisor', en: 'AI Advisor', ar: 'المستشار المالي', keywords: ['advisor', 'ai', 'analysis', 'recommendation'] },
-  { href: '/settings', en: 'Settings', ar: 'الإعدادات', keywords: ['settings', 'profile', 'preferences', 'subscription'] },
-];
-
 export function Header() {
   const router = useRouter();
-  const pathname = usePathname();
   const { theme, setTheme } = useTheme();
   const locale = useAppStore((state) => state.locale);
   const setLocale = useAppStore((state) => state.setLocale);
@@ -40,24 +25,8 @@ export function Header() {
   const markAllNotificationsRead = useAppStore((state) => state.markAllNotificationsRead);
   const toggleSidebar = useAppStore((state) => state.toggleSidebar);
   const unreadCount = notificationFeed.filter((item) => !item.read).length;
-  const [query, setQuery] = useState('');
-  const [searchOpen, setSearchOpen] = useState(false);
 
   const isArabic = locale === 'ar';
-
-  const filteredItems = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    if (!normalized) {
-      return searchItems.filter((item) => item.href !== pathname).slice(0, 5);
-    }
-
-    return searchItems
-      .filter((item) => {
-        const haystack = [item.en, item.ar, ...item.keywords].join(' ').toLowerCase();
-        return haystack.includes(normalized);
-      })
-      .slice(0, 6);
-  }, [pathname, query]);
 
   const handleThemeToggle = () => {
     setTheme(theme === 'dark' ? 'light' : 'dark');
@@ -65,12 +34,6 @@ export function Header() {
 
   const handleLanguageToggle = () => {
     setLocale(isArabic ? 'en' : 'ar');
-  };
-
-  const navigateFromSearch = (href: string) => {
-    setQuery('');
-    setSearchOpen(false);
-    router.push(href);
   };
 
   return (
@@ -89,53 +52,7 @@ export function Header() {
         </div>
       </div>
 
-      <div className="mx-4 hidden max-w-md flex-1 lg:block">
-        <div className="relative w-full">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder={isArabic ? 'بحث...' : 'Search...'}
-            className="h-10 rounded-xl border-border bg-secondary/60 pl-9 shadow-none"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setSearchOpen(true);
-            }}
-            onFocus={() => setSearchOpen(true)}
-            onBlur={() => {
-              window.setTimeout(() => setSearchOpen(false), 120);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && filteredItems[0]) {
-                navigateFromSearch(filteredItems[0].href);
-              }
-            }}
-          />
-          {searchOpen && (
-            <div className="absolute top-12 z-50 w-full overflow-hidden rounded-2xl border border-border bg-card shadow-card-hover">
-              <div className="border-b border-border px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                {isArabic ? 'نتائج البحث' : 'Search Results'}
-              </div>
-              <div className="max-h-80 overflow-auto p-2">
-                {filteredItems.length > 0 ? filteredItems.map((item) => (
-                  <button
-                    key={item.href}
-                    type="button"
-                    className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left transition-colors hover:bg-secondary"
-                    onMouseDown={() => navigateFromSearch(item.href)}
-                  >
-                    <span className="font-medium text-foreground">{isArabic ? item.ar : item.en}</span>
-                    <span className="text-xs text-muted-foreground">{item.href}</span>
-                  </button>
-                )) : (
-                  <div className="px-3 py-4 text-sm text-muted-foreground">
-                    {isArabic ? 'لا توجد نتائج مطابقة.' : 'No matching pages found.'}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+      <div className="flex-1" />
 
       <div className="flex items-center gap-2">
         <Button
@@ -223,8 +140,16 @@ export function Header() {
             </SignUpButton>
           </Show>
           <Show when="signed-in">
-            <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full [&_.cl-userButtonBox]:h-9 [&_.cl-userButtonBox]:w-9 [&_.cl-avatarBox]:h-9 [&_.cl-avatarBox]:w-9">
-              <UserButton />
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full">
+              <UserButton
+                appearance={{
+                  elements: {
+                    userButtonTrigger: 'flex h-9 w-9 items-center justify-center rounded-full',
+                    userButtonBox: 'flex h-9 w-9 items-center justify-center',
+                    avatarBox: 'h-9 w-9',
+                  },
+                }}
+              />
             </div>
           </Show>
         </div>

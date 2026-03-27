@@ -17,6 +17,14 @@ type SahmkQuote = {
   change_percent?: string | number;
 };
 
+async function parseJsonSafely<T>(response: Response) {
+  try {
+    return await response.json() as T;
+  } catch {
+    return null;
+  }
+}
+
 async function fetchBatchQuotes(symbols: string[], apiKey: string, apiBase: string) {
   const response = await fetch(`${apiBase}/quote/batch/?symbols=${encodeURIComponent(symbols.join(','))}`, {
     headers: {
@@ -27,10 +35,26 @@ async function fetchBatchQuotes(symbols: string[], apiKey: string, apiBase: stri
 
   if (!response.ok) {
     const message = await response.text();
-    throw new Error(message || 'Failed to fetch SAHMK batch quotes.');
+    throw new Error(message || `Failed to fetch SAHMK batch quotes (${response.status}).`);
   }
 
   return response.json() as Promise<SahmkQuote[]>;
+}
+
+async function fetchSingleQuote(symbol: string, apiKey: string, apiBase: string) {
+  const response = await fetch(`${apiBase}/quote/${encodeURIComponent(symbol)}/`, {
+    headers: {
+      'X-API-Key': apiKey,
+    },
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(message || `Failed to fetch SAHMK quote for ${symbol} (${response.status}).`);
+  }
+
+  return response.json() as Promise<SahmkQuote>;
 }
 
 export async function POST(request: Request) {
@@ -71,13 +95,37 @@ export async function POST(request: Request) {
       return NextResponse.json({ quotes: {} }, { headers: buildRateLimitHeaders(rateLimit) });
     }
 
-    const chunks: string[][] = [];
-    for (let index = 0; index < symbols.length; index += 20) {
-      chunks.push(symbols.slice(index, index + 20));
+    let quotePayloads: SahmkQuote[] = [];
+
+    try {
+      const chunks: string[][] = [];
+      for (let index = 0; index < symbols.length; index += 20) {
+        chunks.push(symbols.slice(index, index + 20));
+      }
+
+      const allQuotes = await Promise.all(chunks.map((chunk) => fetchBatchQuotes(chunk, apiKey, apiBase)));
+      quotePayloads = allQuotes.flat();
+    } catch (batchError) {
+      console.error('[market/saudi] batch quote request failed, falling back to individual quotes', {
+        symbols,
+        message: batchError instanceof Error ? batchError.message : String(batchError),
+      });
+
+      const settled = await Promise.allSettled(symbols.map((symbol) => fetchSingleQuote(symbol, apiKey, apiBase)));
+      quotePayloads = settled
+        .filter((result): result is PromiseFulfilledResult<SahmkQuote> => result.status === 'fulfilled')
+        .map((result) => result.value);
+
+      const failedSymbols = settled
+        .map((result, index) => (result.status === 'rejected' ? `${symbols[index]}: ${result.reason instanceof Error ? result.reason.message : String(result.reason)}` : null))
+        .filter(Boolean);
+
+      if (failedSymbols.length > 0) {
+        console.error('[market/saudi] individual quote fallback had failures', { failedSymbols });
+      }
     }
 
-    const allQuotes = await Promise.all(chunks.map((chunk) => fetchBatchQuotes(chunk, apiKey, apiBase)));
-    const quotes = allQuotes.flat().reduce<Record<string, {
+    const quotes = quotePayloads.reduce<Record<string, {
       symbol: string;
       nameEn: string;
       nameAr: string;
@@ -102,11 +150,26 @@ export async function POST(request: Request) {
       return accumulator;
     }, {});
 
+    if (Object.keys(quotes).length === 0) {
+      console.error('[market/saudi] no quotes returned for request', { symbols });
+      return NextResponse.json(
+        {
+          error: 'Price provider unavailable.',
+          details: 'SAHMK did not return any quotes for the requested Saudi symbols.',
+        },
+        { status: 503, headers: buildRateLimitHeaders(rateLimit) }
+      );
+    }
+
     return NextResponse.json({ quotes }, { headers: buildRateLimitHeaders(rateLimit) });
   } catch (error) {
+    console.error('[market/saudi] request failed', {
+      message: error instanceof Error ? error.message : String(error),
+    });
     return NextResponse.json(
       {
         error: 'Service unavailable.',
+        details: error instanceof Error ? error.message : 'Unknown SAHMK error.',
       },
       { status: 503, headers: buildRateLimitHeaders(rateLimit) }
     );

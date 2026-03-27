@@ -10,7 +10,6 @@ import {
   Filter,
   Plus,
   RefreshCw,
-  Search,
   Sparkles,
   Trash2,
   TrendingDown,
@@ -134,7 +133,6 @@ export default function PortfolioPage() {
   const isArabic = locale === 'ar';
   const { isSignedIn } = useUser();
 
-  const [searchQuery, setSearchQuery] = useState('');
   const [showAddHolding, setShowAddHolding] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
@@ -200,12 +198,9 @@ export default function PortfolioPage() {
   };
 
   const filteredHoldings = holdings.filter((holding) => {
-    const matchesSearch =
-      holding.ticker.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      holding.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesExchange = selectedExchange === 'all' || holding.exchange === selectedExchange;
     const matchesShariah = !shariahFilterEnabled || holding.isShariah;
-    return matchesSearch && matchesExchange && matchesShariah;
+    return matchesExchange && matchesShariah;
   });
 
   const totalValue = filteredHoldings.reduce((sum, holding) => {
@@ -271,6 +266,12 @@ export default function PortfolioPage() {
 
     setNewHolding({ ticker: '', name: '', exchange: 'TASI', shares: '', avgCost: '', isShariah: true });
     setShowAddHolding(false);
+    toast({
+      title: isArabic ? 'تم تحديث المركز' : 'Holding updated',
+      description: isArabic
+        ? 'إذا كان الرمز موجوداً مسبقاً، تم دمج الكمية وتحديث متوسط التكلفة.'
+        : 'If the holding already existed, shares were merged and the average cost was updated.',
+    });
   };
 
   const handleImportPortfolio = async (file: File | null) => {
@@ -453,159 +454,6 @@ export default function PortfolioPage() {
     }
   };
 
-  const handleRefreshSaudiPrices = async () => {
-    if (!isSignedIn) {
-      toast({
-        title: isArabic ? 'يتطلب حساباً' : 'Account required',
-        description: isArabic ? 'تسجيل الدخول مطلوب لتحديث الأسعار الحية.' : 'Sign in is required to refresh live prices.',
-      });
-      return;
-    }
-
-    const saudiHoldings = holdings.filter((holding) => holding.exchange === 'TASI');
-    if (saudiHoldings.length === 0) {
-      toast({
-        title: isArabic ? 'لا توجد أسهم سعودية' : 'No Saudi holdings',
-        description: isArabic
-          ? 'أضف مراكز من السوق السعودي أولاً لاستخدام تحديث الأسعار.'
-          : 'Add Saudi market holdings first to use live price refresh.',
-      });
-      return;
-    }
-
-    setIsRefreshingPrices(true);
-    try {
-      const response = await fetch('/api/market/saudi/quotes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          symbols: saudiHoldings.map((holding) => normalizeSaudiTicker(holding.ticker)),
-        }),
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to refresh Saudi prices.');
-      }
-
-      const quotes = data.quotes ?? {};
-      const nextHoldings = holdings.map((holding) => {
-        if (holding.exchange !== 'TASI') {
-          return holding;
-        }
-
-        const match = quotes[normalizeSaudiTicker(holding.ticker)];
-        if (!match || !match.price) {
-          return holding;
-        }
-
-        return {
-          ...holding,
-          ticker: holding.ticker.toUpperCase(),
-          name: isArabic ? (match.nameAr || holding.name) : (match.nameEn || holding.name),
-          currentPrice: Number(match.price),
-        };
-      });
-
-      replacePortfolioHoldings(nextHoldings);
-      setMarketRefreshMeta((current) => ({
-        ...current,
-        updatedAt: new Date().toISOString(),
-        sources: [...new Set([...current.sources, 'SAHMK'])],
-      }));
-      toast({
-        title: isArabic ? 'تم تحديث الأسعار' : 'Prices refreshed',
-        description: isArabic
-          ? `تم تحديث ${formatNumber(saudiHoldings.length, locale)} مركزاً من سوق تداول عبر Sahm.`
-          : `Updated ${formatNumber(saudiHoldings.length, locale)} Saudi holdings from Sahm.`,
-      });
-    } catch (error) {
-      toast({
-        title: isArabic ? 'فشل تحديث الأسعار' : 'Price refresh failed',
-        description: error instanceof Error ? error.message : 'Could not refresh Saudi prices.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsRefreshingPrices(false);
-    }
-  };
-
-  const handleRefreshGlobalPrices = async () => {
-    if (!isSignedIn) {
-      toast({
-        title: isArabic ? 'يتطلب حساباً' : 'Account required',
-        description: isArabic ? 'تسجيل الدخول مطلوب لتحديث الأسعار العالمية.' : 'Sign in is required to refresh global prices.',
-      });
-      return;
-    }
-
-    const globalHoldings = holdings.filter((holding) => ['EGX', 'NASDAQ', 'NYSE'].includes(holding.exchange));
-    if (globalHoldings.length === 0) {
-      toast({
-        title: isArabic ? 'لا توجد مراكز عالمية' : 'No global holdings',
-        description: isArabic
-          ? 'أضف مراكز من EGX أو NASDAQ أو NYSE أولاً.'
-          : 'Add EGX, NASDAQ, or NYSE holdings first.',
-      });
-      return;
-    }
-
-    setIsRefreshingPrices(true);
-    try {
-      const response = await fetch('/api/market/global/quotes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          holdings: globalHoldings.map((holding) => ({
-            ticker: holding.ticker,
-            exchange: holding.exchange,
-          })),
-        }),
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to refresh global prices.');
-      }
-
-      const quotes = data.quotes ?? {};
-      const fxRates = data.fxRates ?? {};
-      const nextHoldings = holdings.map((holding) => {
-        const quote = quotes[holding.ticker.toUpperCase()];
-        if (!quote || !quote.price) {
-          return holding;
-        }
-
-        return {
-          ...holding,
-          name: quote.name || holding.name,
-          currentPrice: Number(quote.price),
-        };
-      });
-
-      replacePortfolioHoldings(nextHoldings);
-      setMarketRefreshMeta((current) => ({
-        updatedAt: new Date().toISOString(),
-        sources: [...new Set(['Twelve Data', ...current.sources])],
-        fxRates,
-      }));
-      toast({
-        title: isArabic ? 'تم تحديث الأسعار العالمية' : 'Global prices refreshed',
-        description: isArabic
-          ? `تم تحديث مراكز EGX وNASDAQ وNYSE باستخدام Twelve Data.`
-          : 'Updated EGX, NASDAQ, and NYSE holdings using Twelve Data.',
-      });
-    } catch (error) {
-      toast({
-        title: isArabic ? 'فشل تحديث الأسعار العالمية' : 'Global price refresh failed',
-        description: error instanceof Error ? error.message : 'Could not refresh global prices.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsRefreshingPrices(false);
-    }
-  };
-
   const handleRefreshAllPrices = async () => {
     if (!isSignedIn) {
       toast({
@@ -647,7 +495,7 @@ export default function PortfolioPage() {
           });
           const data = await response.json();
           if (!response.ok) {
-            throw new Error(data.error || 'Failed to refresh Saudi prices.');
+            throw new Error(data.details || data.error || 'Failed to refresh Saudi prices.');
           }
 
           const quotes = data.quotes ?? {};
@@ -693,7 +541,7 @@ export default function PortfolioPage() {
           });
           const data = await response.json();
           if (!response.ok) {
-            throw new Error(data.error || 'Failed to refresh global prices.');
+            throw new Error(data.details || data.error || 'Failed to refresh global prices.');
           }
 
           const quotes = data.quotes ?? {};
@@ -973,15 +821,6 @@ export default function PortfolioPage() {
         </div>
 
         <div className="flex flex-col gap-4 sm:flex-row">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={isArabic ? 'بحث بالرمز أو الاسم...' : 'Search by ticker or name...'}
-              className="pl-9"
-            />
-          </div>
           <Select value={selectedExchange} onValueChange={setSelectedExchange}>
             <SelectTrigger className="w-40">
               <Filter className="mr-2 w-4 h-4" />
