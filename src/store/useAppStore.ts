@@ -64,6 +64,7 @@ export interface LocalProfile {
   expenseEntries: ExpenseEntry[];
   receiptScans: ReceiptScanResult[];
   portfolioHoldings: PortfolioHolding[];
+  portfolioAnalysisHistory: PortfolioAnalysisRecord[];
   assets: AssetEntry[];
   liabilities: LiabilityEntry[];
   budgetLimits: BudgetLimit[];
@@ -124,6 +125,19 @@ export interface PortfolioHolding {
   currentPrice: number;
   sector: string;
   isShariah: boolean;
+}
+
+export interface PortfolioAnalysisAction {
+  type: string;
+  title: string;
+  description: string;
+}
+
+export interface PortfolioAnalysisRecord {
+  id: string;
+  createdAt: string;
+  summary: string;
+  actions: PortfolioAnalysisAction[];
 }
 
 export interface AssetEntry {
@@ -382,6 +396,7 @@ function buildDemoState() {
     expenseEntries: defaultExpenseEntries,
     receiptScans: defaultReceiptScans,
     portfolioHoldings: defaultPortfolioHoldings,
+    portfolioAnalysisHistory: [] as PortfolioAnalysisRecord[],
     assets: defaultAssets,
     liabilities: defaultLiabilities,
     budgetLimits: defaultBudgetLimits,
@@ -397,6 +412,7 @@ function buildLiveState() {
     expenseEntries: [] as ExpenseEntry[],
     receiptScans: [] as ReceiptScanResult[],
     portfolioHoldings: [] as PortfolioHolding[],
+    portfolioAnalysisHistory: [] as PortfolioAnalysisRecord[],
     assets: [] as AssetEntry[],
     liabilities: [] as LiabilityEntry[],
     budgetLimits: [] as BudgetLimit[],
@@ -426,6 +442,7 @@ function createProfileSnapshot(
     expenseEntries: state.expenseEntries,
     receiptScans: state.receiptScans,
     portfolioHoldings: state.portfolioHoldings,
+    portfolioAnalysisHistory: state.portfolioAnalysisHistory,
     assets: state.assets,
     liabilities: state.liabilities,
     budgetLimits: state.budgetLimits,
@@ -447,6 +464,7 @@ function snapshotActiveProfile(state: AppState): LocalProfile {
     expenseEntries: state.expenseEntries,
     receiptScans: state.receiptScans,
     portfolioHoldings: state.portfolioHoldings,
+    portfolioAnalysisHistory: state.portfolioAnalysisHistory,
     assets: state.assets,
     liabilities: state.liabilities,
     budgetLimits: state.budgetLimits,
@@ -481,6 +499,7 @@ function profileToState(profile: LocalProfile) {
     expenseEntries: profile.expenseEntries,
     receiptScans: profile.receiptScans,
     portfolioHoldings: profile.portfolioHoldings,
+    portfolioAnalysisHistory: profile.portfolioAnalysisHistory,
     assets: profile.assets,
     liabilities: profile.liabilities,
     budgetLimits: profile.budgetLimits,
@@ -526,6 +545,9 @@ interface AppState {
   addPortfolioHolding: (holding: PortfolioHolding) => void;
   deletePortfolioHolding: (id: string) => void;
   replacePortfolioHoldings: (holdings: PortfolioHolding[]) => void;
+  portfolioAnalysisHistory: PortfolioAnalysisRecord[];
+  addPortfolioAnalysisRecord: (record: PortfolioAnalysisRecord) => void;
+  deletePortfolioAnalysisRecord: (id: string) => void;
   assets: AssetEntry[];
   addAsset: (asset: AssetEntry) => void;
   deleteAsset: (id: string) => void;
@@ -746,6 +768,17 @@ export const useAppStore = create<AppState>()(
       replacePortfolioHoldings: (holdings) => set((state) =>
         syncActiveProfileState(state, {
           portfolioHoldings: mergePortfolioHoldingEntries(holdings),
+        })
+      ),
+      portfolioAnalysisHistory: initialGuestProfile.portfolioAnalysisHistory,
+      addPortfolioAnalysisRecord: (record) => set((state) =>
+        syncActiveProfileState(state, {
+          portfolioAnalysisHistory: [record, ...state.portfolioAnalysisHistory].slice(0, 20),
+        })
+      ),
+      deletePortfolioAnalysisRecord: (id) => set((state) =>
+        syncActiveProfileState(state, {
+          portfolioAnalysisHistory: state.portfolioAnalysisHistory.filter((record) => record.id !== id),
         })
       ),
       assets: initialGuestProfile.assets,
