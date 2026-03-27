@@ -2,6 +2,7 @@
 
 import { Suspense, useMemo, useState } from 'react';
 import { UserButton, useUser } from '@clerk/nextjs';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Settings as SettingsIcon,
@@ -230,6 +231,15 @@ function SettingsPageContent() {
                     <p className="mt-1 text-xs text-muted-foreground">
                       {isArabic ? 'إدارة الحساب والصورة وكلمة المرور تتم عبر Clerk.' : 'Account identity, avatar, and password are managed by Clerk.'}
                     </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                      <Link href="/terms" className="transition-colors hover:text-foreground">
+                        {isArabic ? 'شروط الخدمة' : 'Terms'}
+                      </Link>
+                      <span className="text-border">•</span>
+                      <Link href="/privacy" className="transition-colors hover:text-foreground">
+                        {isArabic ? 'سياسة الخصوصية' : 'Privacy'}
+                      </Link>
+                    </div>
                   </div>
                 </div>
 
