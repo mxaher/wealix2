@@ -4,10 +4,19 @@
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-03-26",
   "compatibility_flags": ["nodejs_compat"],
+  "preview_urls": true,
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
+  "d1_databases": [
+    {
+      "binding": "WEALIX_DB",
+      "database_name": "wealix-db",
+      "database_id": "REPLACE_WITH_YOUR_REAL_D1_DATABASE_ID",
+      "preview_database_id": "REPLACE_WITH_YOUR_REAL_D1_PREVIEW_DATABASE_ID"
+    }
+  ],
   "observability": {
     "enabled": true
   }

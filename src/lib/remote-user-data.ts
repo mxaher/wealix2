@@ -1,3 +1,4 @@
+import { getCloudflareContext } from '@opennextjs/cloudflare';
 import type {
   AppMode,
   AssetEntry,
@@ -26,90 +27,86 @@ export type RemoteUserWorkspace = {
   budgetLimits: BudgetLimit[];
 };
 
-type SupabaseRow = {
-  workspace_json?: RemoteUserWorkspace | null;
+type D1LikeDatabase = {
+  prepare: (query: string) => {
+    bind: (...values: unknown[]) => {
+      first: <T = unknown>() => Promise<T | null>;
+      run: () => Promise<unknown>;
+    };
+    run: () => Promise<unknown>;
+  };
 };
 
-function getSupabaseUrl() {
-  return (
-    process.env.SUPABASE_URL ||
-    process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    process.env.SUPABASE_PROJECT_URL ||
-    ''
-  ).replace(/\/$/, '');
-}
+type WorkspaceRow = {
+  workspace_json: string | null;
+};
 
-function getSupabaseServiceKey() {
-  return process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-}
-
-function getSupabaseHeaders() {
-  const key = getSupabaseServiceKey();
-
-  return {
-    apikey: key,
-    Authorization: `Bearer ${key}`,
-    'Content-Type': 'application/json',
-  };
-}
-
-export function isSupabasePersistenceConfigured() {
-  return Boolean(getSupabaseUrl() && getSupabaseServiceKey());
-}
-
-async function supabaseRequest<T>(path: string, init?: RequestInit): Promise<T> {
-  const baseUrl = getSupabaseUrl();
-  const serviceKey = getSupabaseServiceKey();
-
-  if (!baseUrl || !serviceKey) {
-    throw new Error('Supabase persistence is not configured.');
+function getD1Database(): D1LikeDatabase | null {
+  try {
+    const context = getCloudflareContext();
+    return (context?.env as Record<string, unknown> | undefined)?.WEALIX_DB as D1LikeDatabase | null;
+  } catch {
+    return null;
   }
+}
 
-  const response = await fetch(`${baseUrl}${path}`, {
-    ...init,
-    headers: {
-      ...getSupabaseHeaders(),
-      ...(init?.headers || {}),
-    },
-    cache: 'no-store',
-  });
+export function isRemotePersistenceConfigured() {
+  return Boolean(getD1Database());
+}
 
-  const text = await response.text();
-  const json = text ? JSON.parse(text) : null;
-
-  if (!response.ok) {
-    const details = json?.message || json?.error_description || json?.error || response.statusText;
-    throw new Error(`Supabase persistence request failed: ${details}`);
-  }
-
-  return json as T;
+async function ensureWorkspaceTable(db: D1LikeDatabase) {
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS user_app_profiles (
+      clerk_user_id TEXT PRIMARY KEY,
+      workspace_json TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run();
 }
 
 export async function loadRemoteWorkspace(clerkUserId: string) {
-  const encodedUserId = encodeURIComponent(clerkUserId);
-  const rows = await supabaseRequest<SupabaseRow[]>(
-    `/rest/v1/user_app_profiles?clerk_user_id=eq.${encodedUserId}&select=workspace_json&limit=1`
-  );
+  const db = getD1Database();
 
-  return rows[0]?.workspace_json ?? null;
+  if (!db) {
+    throw new Error('Cloudflare D1 binding WEALIX_DB is not configured.');
+  }
+
+  await ensureWorkspaceTable(db);
+
+  const row = await db
+    .prepare('SELECT workspace_json FROM user_app_profiles WHERE clerk_user_id = ? LIMIT 1')
+    .bind(clerkUserId)
+    .first<WorkspaceRow>();
+
+  if (!row?.workspace_json) {
+    return null;
+  }
+
+  return JSON.parse(row.workspace_json) as RemoteUserWorkspace;
 }
 
 export async function saveRemoteWorkspace(clerkUserId: string, workspace: RemoteUserWorkspace) {
-  const rows = await supabaseRequest<Array<{ workspace_json?: RemoteUserWorkspace | null }>>(
-    '/rest/v1/user_app_profiles?on_conflict=clerk_user_id',
-    {
-      method: 'POST',
-      headers: {
-        Prefer: 'resolution=merge-duplicates,return=representation',
-      },
-      body: JSON.stringify([
-        {
-          clerk_user_id: clerkUserId,
-          workspace_json: workspace,
-        },
-      ]),
-    }
-  );
+  const db = getD1Database();
 
-  return rows[0]?.workspace_json ?? workspace;
+  if (!db) {
+    throw new Error('Cloudflare D1 binding WEALIX_DB is not configured.');
+  }
+
+  await ensureWorkspaceTable(db);
+
+  const payload = JSON.stringify(workspace);
+
+  await db
+    .prepare(`
+      INSERT INTO user_app_profiles (clerk_user_id, workspace_json, created_at, updated_at)
+      VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      ON CONFLICT(clerk_user_id) DO UPDATE SET
+        workspace_json = excluded.workspace_json,
+        updated_at = CURRENT_TIMESTAMP
+    `)
+    .bind(clerkUserId, payload)
+    .run();
+
+  return workspace;
 }

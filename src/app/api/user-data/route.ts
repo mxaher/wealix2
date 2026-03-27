@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuthenticatedUser } from '@/lib/server-auth';
 import {
-  isSupabasePersistenceConfigured,
+  isRemotePersistenceConfigured,
   loadRemoteWorkspace,
   saveRemoteWorkspace,
   type RemoteUserWorkspace,
@@ -10,7 +10,7 @@ import {
 function unavailableResponse() {
   return NextResponse.json(
     {
-      error: 'Persistent user data storage is not configured.',
+      error: 'Persistent user data storage is not configured. Bind Cloudflare D1 as WEALIX_DB.',
       code: 'PERSISTENCE_NOT_CONFIGURED',
     },
     { status: 503 }
@@ -27,7 +27,7 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
   }
 
-  if (!isSupabasePersistenceConfigured()) {
+  if (!isRemotePersistenceConfigured()) {
     return unavailableResponse();
   }
 
@@ -56,7 +56,7 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
   }
 
-  if (!isSupabasePersistenceConfigured()) {
+  if (!isRemotePersistenceConfigured()) {
     return unavailableResponse();
   }
 

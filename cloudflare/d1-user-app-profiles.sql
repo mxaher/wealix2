@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS user_app_profiles (
+  clerk_user_id TEXT PRIMARY KEY,
+  workspace_json TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

@@ -433,6 +433,27 @@ function buildLiveState() {
   };
 }
 
+function sanitizeRemoteWorkspace(workspace: Partial<RemoteWorkspaceSnapshot> | undefined): RemoteWorkspaceSnapshot {
+  const live = buildLiveState();
+
+  return {
+    appMode: workspace?.appMode === 'demo' ? 'demo' : 'live',
+    notificationPreferences: {
+      ...defaultNotificationPreferences,
+      ...(workspace?.notificationPreferences ?? {}),
+    },
+    notificationFeed: Array.isArray(workspace?.notificationFeed) ? workspace.notificationFeed : live.notificationFeed,
+    incomeEntries: Array.isArray(workspace?.incomeEntries) ? workspace.incomeEntries : live.incomeEntries,
+    expenseEntries: Array.isArray(workspace?.expenseEntries) ? workspace.expenseEntries : live.expenseEntries,
+    receiptScans: Array.isArray(workspace?.receiptScans) ? workspace.receiptScans : live.receiptScans,
+    portfolioHoldings: Array.isArray(workspace?.portfolioHoldings) ? workspace.portfolioHoldings : live.portfolioHoldings,
+    portfolioAnalysisHistory: Array.isArray(workspace?.portfolioAnalysisHistory) ? workspace.portfolioAnalysisHistory : live.portfolioAnalysisHistory,
+    assets: Array.isArray(workspace?.assets) ? workspace.assets : live.assets,
+    liabilities: Array.isArray(workspace?.liabilities) ? workspace.liabilities : live.liabilities,
+    budgetLimits: Array.isArray(workspace?.budgetLimits) ? workspace.budgetLimits : live.budgetLimits,
+  };
+}
+
 function createProfileSnapshot(
   id: string,
   label: string,
@@ -924,6 +945,28 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'wealthos-storage',
+      version: 2,
+      migrate: (persistedState, _version) => {
+        if (!persistedState || typeof persistedState !== 'object') {
+          return persistedState as AppState;
+        }
+
+        const nextState = persistedState as AppState & Partial<RemoteWorkspaceSnapshot>;
+        const locale: Locale = nextState.locale === 'ar' ? 'ar' : 'en';
+        const theme: Theme =
+          nextState.theme === 'dark' || nextState.theme === 'system' ? nextState.theme : 'light';
+
+        return {
+          ...nextState,
+          ...sanitizeRemoteWorkspace(nextState),
+          profiles: Array.isArray(nextState.profiles) ? nextState.profiles : [],
+          activeProfileId: typeof nextState.activeProfileId === 'string' ? nextState.activeProfileId : initialGuestProfile.id,
+          locale,
+          theme,
+          sidebarCollapsed: Boolean(nextState.sidebarCollapsed),
+          shariahFilterEnabled: Boolean(nextState.shariahFilterEnabled),
+        };
+      },
       partialize: (state) => ({
         user: state.user,
         locale: state.locale,

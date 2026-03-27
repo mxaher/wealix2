@@ -7,20 +7,43 @@ import { useAppStore, type RemoteWorkspaceSnapshot } from '@/store/useAppStore';
 export function RemoteProfileSync() {
   const { isLoaded, isSignedIn, user } = useUser();
   const hydrateRemoteWorkspace = useAppStore((state) => state.hydrateRemoteWorkspace);
+  const appMode = useAppStore((state) => state.appMode);
+  const notificationPreferences = useAppStore((state) => state.notificationPreferences);
+  const notificationFeed = useAppStore((state) => state.notificationFeed);
+  const incomeEntries = useAppStore((state) => state.incomeEntries);
+  const expenseEntries = useAppStore((state) => state.expenseEntries);
+  const receiptScans = useAppStore((state) => state.receiptScans);
+  const portfolioHoldings = useAppStore((state) => state.portfolioHoldings);
+  const portfolioAnalysisHistory = useAppStore((state) => state.portfolioAnalysisHistory);
+  const assets = useAppStore((state) => state.assets);
+  const liabilities = useAppStore((state) => state.liabilities);
+  const budgetLimits = useAppStore((state) => state.budgetLimits);
 
-  const remoteWorkspace = useAppStore((state): RemoteWorkspaceSnapshot => ({
-    appMode: state.appMode,
-    notificationPreferences: state.notificationPreferences,
-    notificationFeed: state.notificationFeed,
-    incomeEntries: state.incomeEntries,
-    expenseEntries: state.expenseEntries,
-    receiptScans: state.receiptScans,
-    portfolioHoldings: state.portfolioHoldings,
-    portfolioAnalysisHistory: state.portfolioAnalysisHistory,
-    assets: state.assets,
-    liabilities: state.liabilities,
-    budgetLimits: state.budgetLimits,
-  }));
+  const remoteWorkspace = useMemo<RemoteWorkspaceSnapshot>(() => ({
+    appMode,
+    notificationPreferences,
+    notificationFeed,
+    incomeEntries,
+    expenseEntries,
+    receiptScans,
+    portfolioHoldings,
+    portfolioAnalysisHistory,
+    assets,
+    liabilities,
+    budgetLimits,
+  }), [
+    appMode,
+    notificationPreferences,
+    notificationFeed,
+    incomeEntries,
+    expenseEntries,
+    receiptScans,
+    portfolioHoldings,
+    portfolioAnalysisHistory,
+    assets,
+    liabilities,
+    budgetLimits,
+  ]);
 
   const serializedWorkspace = useMemo(
     () => JSON.stringify(remoteWorkspace),
