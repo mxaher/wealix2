@@ -464,127 +464,63 @@ export default function PortfolioPage() {
     }
 
     const saudiHoldings = holdings.filter((holding) => holding.exchange === 'TASI');
-    const globalHoldings = holdings.filter((holding) => ['EGX', 'NASDAQ', 'NYSE'].includes(holding.exchange));
+    const nonSaudiHoldings = holdings.filter((holding) => ['EGX', 'NASDAQ', 'NYSE'].includes(holding.exchange));
 
-    if (saudiHoldings.length === 0 && globalHoldings.length === 0) {
+    if (saudiHoldings.length === 0) {
       toast({
-        title: isArabic ? 'لا توجد مراكز لتحديثها' : 'No holdings to refresh',
+        title: isArabic ? 'لا توجد أسهم سعودية لتحديثها' : 'No Saudi holdings to refresh',
         description: isArabic
-          ? 'أضف مراكز استثمارية أولاً ثم حدّث الأسعار.'
-          : 'Add some holdings first, then refresh prices.',
+          ? 'حالياً يتم تحديث السوق السعودي فقط عبر SAHMK. أضف مركزاً من تداول أولاً.'
+          : 'Only Saudi holdings are refreshed right now through SAHMK. Add a TASI holding first.',
       });
       return;
     }
 
     setIsRefreshingPrices(true);
     try {
-      let nextHoldings = [...holdings];
-      let nextFxRates = { ...marketRefreshMeta.fxRates };
-      const nextSources = new Set(marketRefreshMeta.sources);
-      const successLabels: string[] = [];
-      const errorLabels: string[] = [];
+      const response = await fetch('/api/market/saudi/quotes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          symbols: saudiHoldings.map((holding) => normalizeSaudiTicker(holding.ticker)),
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.details || data.error || 'Failed to refresh Saudi prices.');
+      }
 
-      if (saudiHoldings.length > 0) {
-        try {
-          const response = await fetch('/api/market/saudi/quotes', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              symbols: saudiHoldings.map((holding) => normalizeSaudiTicker(holding.ticker)),
-            }),
-          });
-          const data = await response.json();
-          if (!response.ok) {
-            throw new Error(data.details || data.error || 'Failed to refresh Saudi prices.');
-          }
-
-          const quotes = data.quotes ?? {};
-          nextHoldings = nextHoldings.map((holding) => {
-            if (holding.exchange !== 'TASI') {
-              return holding;
-            }
-
-            const match = quotes[normalizeSaudiTicker(holding.ticker)];
-            if (!match || !match.price) {
-              return holding;
-            }
-
-            return {
-              ...holding,
-              ticker: holding.ticker.toUpperCase(),
-              name: isArabic ? (match.nameAr || holding.name) : (match.nameEn || holding.name),
-              currentPrice: Number(match.price),
-            };
-          });
-          nextSources.add('SAHMK');
-          successLabels.push(isArabic ? 'السوق السعودي' : 'Saudi market');
-        } catch (error) {
-          errorLabels.push(
-            error instanceof Error && error.message
-              ? `${isArabic ? 'السوق السعودي' : 'Saudi market'}: ${error.message}`
-              : (isArabic ? 'تعذّر تحديث السوق السعودي' : 'Saudi market refresh failed')
-          );
+      const quotes = data.quotes ?? {};
+      const nextHoldings = holdings.map((holding) => {
+        if (holding.exchange !== 'TASI') {
+          return holding;
         }
-      }
 
-      if (globalHoldings.length > 0) {
-        try {
-          const response = await fetch('/api/market/global/quotes', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              holdings: globalHoldings.map((holding) => ({
-                ticker: holding.ticker,
-                exchange: holding.exchange,
-              })),
-            }),
-          });
-          const data = await response.json();
-          if (!response.ok) {
-            throw new Error(data.details || data.error || 'Failed to refresh global prices.');
-          }
-
-          const quotes = data.quotes ?? {};
-          nextFxRates = data.fxRates ?? nextFxRates;
-          nextHoldings = nextHoldings.map((holding) => {
-            const quote = quotes[holding.ticker.toUpperCase()];
-            if (!quote || !quote.price) {
-              return holding;
-            }
-
-            return {
-              ...holding,
-              name: quote.name || holding.name,
-              currentPrice: Number(quote.price),
-            };
-          });
-          nextSources.add('Twelve Data');
-          successLabels.push(isArabic ? 'EGX وUS' : 'EGX & US');
-        } catch (error) {
-          errorLabels.push(
-            error instanceof Error && error.message
-              ? `${isArabic ? 'EGX وUS' : 'EGX & US'}: ${error.message}`
-              : (isArabic ? 'تعذّر تحديث EGX وUS' : 'EGX & US refresh failed')
-          );
+        const match = quotes[normalizeSaudiTicker(holding.ticker)];
+        if (!match || !match.price) {
+          return holding;
         }
-      }
 
-      if (successLabels.length === 0) {
-        throw new Error(errorLabels.join(' | ') || 'Could not refresh prices.');
-      }
+        return {
+          ...holding,
+          ticker: holding.ticker.toUpperCase(),
+          name: isArabic ? (match.nameAr || holding.name) : (match.nameEn || holding.name),
+          currentPrice: Number(match.price),
+        };
+      });
 
       replacePortfolioHoldings(nextHoldings);
       setMarketRefreshMeta({
         updatedAt: new Date().toISOString(),
-        sources: [...nextSources],
-        fxRates: nextFxRates,
+        sources: ['SAHMK'],
+        fxRates: {},
       });
 
       toast({
         title: isArabic ? 'تم تحديث الأسعار' : 'Prices refreshed',
         description: isArabic
-          ? `تم تحديث أسعار ${successLabels.join(' + ')}.${errorLabels.length ? ` مع ملاحظة: ${errorLabels.join(' | ')}` : ''}`
-          : `Updated ${successLabels.join(' + ')}.${errorLabels.length ? ` Note: ${errorLabels.join(' | ')}` : ''}`,
+          ? `تم تحديث ${formatNumber(saudiHoldings.length, locale)} سهم سعودي عبر SAHMK.${nonSaudiHoldings.length > 0 ? ` وتم ترك ${formatNumber(nonSaudiHoldings.length, locale)} مركز غير سعودي بدون تحديث حالياً.` : ''}`
+          : `Updated ${formatNumber(saudiHoldings.length, locale)} Saudi holdings via SAHMK.${nonSaudiHoldings.length > 0 ? ` Left ${formatNumber(nonSaudiHoldings.length, locale)} non-Saudi holdings unchanged for now.` : ''}`,
       });
     } catch (error) {
       toast({
@@ -665,7 +601,7 @@ export default function PortfolioPage() {
               <RefreshCw className={`w-4 h-4 ${isRefreshingPrices ? 'animate-spin' : ''}`} />
               {isRefreshingPrices
                 ? (isArabic ? 'جارٍ التحديث...' : 'Refreshing...')
-                : (isArabic ? 'تحديث كل الأسعار' : 'Refresh All Prices')}
+                : (isArabic ? 'تحديث الأسعار السعودية' : 'Refresh Saudi Prices')}
             </Button>
 
             <Button variant="outline" className="gap-2" disabled={!isSignedIn} asChild={false}>
@@ -1001,28 +937,12 @@ export default function PortfolioPage() {
             <p>
               {appMode === 'demo'
                 ? (isArabic ? 'الأسعار الحالية تجريبية وليست بيانات سوق مباشرة.' : 'Current prices are demo values and not live market data.')
-                : (isArabic ? 'المصدر: سوق تداول عبر SAHMK للأسهم السعودية وTwelve Data لأسهم EGX وNASDAQ وNYSE.' : 'Source: SAHMK for Saudi market holdings and Twelve Data for EGX, NASDAQ, and NYSE holdings.')}
+                : (isArabic ? 'المصدر الحالي لأسعار السوق هو SAHMK للأسهم السعودية فقط.' : 'The current live market data source is SAHMK for Saudi holdings only.')}
             </p>
             {marketRefreshMeta.updatedAt && (
               <p>
                 {isArabic ? 'آخر تحديث:' : 'Last refresh:'} {new Date(marketRefreshMeta.updatedAt).toLocaleString(isArabic ? 'ar-SA-u-nu-latn' : 'en-US')}
               </p>
-            )}
-            {Object.values(marketRefreshMeta.fxRates).some((rate) => Boolean(rate?.rate)) && (
-              <div className="space-y-1">
-                {marketRefreshMeta.fxRates.USD_SAR?.rate ? (
-                  <p>
-                    USD/SAR: {marketRefreshMeta.fxRates.USD_SAR.rate.toFixed(4)}
-                    {marketRefreshMeta.fxRates.USD_SAR.datetime ? ` · ${marketRefreshMeta.fxRates.USD_SAR.datetime}` : ''}
-                  </p>
-                ) : null}
-                {marketRefreshMeta.fxRates.EGP_SAR?.rate ? (
-                  <p>
-                    EGP/SAR: {marketRefreshMeta.fxRates.EGP_SAR.rate.toFixed(4)}
-                    {marketRefreshMeta.fxRates.EGP_SAR.datetime ? ` · ${marketRefreshMeta.fxRates.EGP_SAR.datetime}` : ''}
-                  </p>
-                ) : null}
-              </div>
             )}
           </CardContent>
         </Card>

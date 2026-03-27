@@ -385,7 +385,7 @@ Reference:
 
 ## EGX And US Market Prices
 
-Wealix now also supports `EGX`, `NASDAQ`, and `NYSE` price refresh through Twelve Data.
+`EGX`, `NASDAQ`, and `NYSE` refresh is currently deferred and not used in the live app flow.
 
 Used API docs:
 
@@ -393,8 +393,7 @@ Used API docs:
 
 Current integration in this repo:
 
-- portfolio screen includes:
-  - `Refresh EGX & US Prices`
+- the experimental server route is still present:
 - server route:
   - [src/app/api/market/global/quotes/route.ts](/Users/mohammedzaher/projects/Wealixapp%20v2/src/app/api/market/global/quotes/route.ts)
 
@@ -410,7 +409,7 @@ Optional:
 TWELVEDATA_API_BASE=https://api.twelvedata.com
 ```
 
-What the route does:
+What the route is intended to do later:
 
 - refreshes `EGX`, `NASDAQ`, and `NYSE` holding prices
 - fetches FX rates for:
@@ -424,10 +423,10 @@ Ticker behavior:
 - `EGX` holdings are normalized from patterns like `COMI.CA` to `COMI:EGX`
 - if a symbol is not recognized by Twelve Data, that holding is left unchanged
 
-Portfolio UX behavior:
+Current portfolio UX behavior:
 
 - Saudi holdings refresh from SAHMK
-- EGX and US holdings refresh from Twelve Data
+- EGX and US holdings are left unchanged for now
 - foreign holdings show local market value first
 - SAR conversion is only shown when an FX rate is available
 - the page includes a data-source footer and last refresh timestamp
