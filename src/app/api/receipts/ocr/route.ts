@@ -34,6 +34,30 @@ type DatalabMarkerResult = {
 
 const MAX_RECEIPT_FILE_SIZE = 10 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const SUPPORTED_CURRENCIES = new Set(['SAR', 'USD', 'EUR', 'EGP']);
+const MAX_RECEIPT_AMOUNT = 1_000_000;
+const PROMPT_INJECTION_PATTERNS = [
+  /\bsystem\s*:/i,
+  /\bdeveloper\s*:/i,
+  /\bassistant\s*:/i,
+  /\bignore\s+(all\s+)?(previous|prior)\s+instructions?/i,
+  /\bdisregard\s+(all\s+)?(previous|prior)\s+instructions?/i,
+  /\byou\s+are\s+now\b/i,
+  /\boverride\b/i,
+  /\bflag\s+user\b/i,
+  /\bpremium\s+tier\b/i,
+  /\bchange\s+(the\s+)?amount\b/i,
+];
+
+type ReceiptExtraction = {
+  merchantName: string;
+  amount: number;
+  date: string;
+  currency: string;
+  confidence: number;
+  suggestedCategory: string;
+  rawText: string;
+};
 
 function hasJpegSignature(bytes: Uint8Array) {
   return bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
@@ -148,6 +172,19 @@ function fallbackFromFilename(fileName: string) {
     confidence: 18,
     suggestedCategory: 'Other',
     rawText: '',
+  };
+}
+
+function normalizeWhitespace(value: string) {
+  return value.replace(/\s+/g, ' ').trim();
+}
+
+function detectPromptInjection(text: string) {
+  const normalized = normalizeWhitespace(text);
+  const matches = PROMPT_INJECTION_PATTERNS.filter((pattern) => pattern.test(normalized)).map((pattern) => pattern.source);
+  return {
+    suspicious: matches.length > 0,
+    matches,
   };
 }
 
@@ -297,6 +334,59 @@ function buildStructuredReceipt(rawText: string, fileName: string) {
     date,
     currency,
     confidence: rawText.trim() ? 92 : fallback.confidence,
+    suggestedCategory,
+    rawText,
+  };
+}
+
+function validateReceiptExtraction(extraction: ReceiptExtraction, fileName: string) {
+  const fallback = fallbackFromFilename(fileName);
+  const merchantName = normalizeWhitespace(extraction.merchantName || fallback.merchantName).slice(0, 120);
+  const rawText = String(extraction.rawText || '').slice(0, 8000);
+  const currency = SUPPORTED_CURRENCIES.has(String(extraction.currency || '').toUpperCase())
+    ? String(extraction.currency).toUpperCase()
+    : fallback.currency;
+  const amount = parseAmount(extraction.amount);
+  const confidence = Math.max(0, Math.min(100, Number(extraction.confidence || fallback.confidence)));
+  const suggestedCategory = normalizeCategory(extraction.suggestedCategory || rawText);
+
+  if (!merchantName) {
+    throw new Error('Receipt merchant name could not be validated.');
+  }
+
+  if (!Number.isFinite(amount) || amount <= 0 || amount > MAX_RECEIPT_AMOUNT) {
+    throw new Error('Receipt amount is invalid or outside the allowed range.');
+  }
+
+  const dateValue = new Date(String(extraction.date || fallback.date));
+  if (Number.isNaN(dateValue.getTime())) {
+    throw new Error('Receipt date is invalid.');
+  }
+
+  const now = Date.now();
+  const tenYearsAgo = new Date();
+  tenYearsAgo.setFullYear(tenYearsAgo.getFullYear() - 10);
+  const threeDaysAhead = now + (3 * 24 * 60 * 60 * 1000);
+
+  if (dateValue.getTime() < tenYearsAgo.getTime() || dateValue.getTime() > threeDaysAhead) {
+    throw new Error('Receipt date falls outside the plausible validation range.');
+  }
+
+  const injectionScan = detectPromptInjection(`${merchantName}\n${rawText}`);
+  if (injectionScan.suspicious) {
+    console.warn('[receipt-ocr] suspicious prompt-like content detected', {
+      fileName,
+      matches: injectionScan.matches,
+    });
+    throw new Error('Receipt contains suspicious prompt-like content and must be reviewed manually.');
+  }
+
+  return {
+    merchantName,
+    amount,
+    date: dateValue.toISOString().slice(0, 10),
+    currency,
+    confidence,
     suggestedCategory,
     rawText,
   };
@@ -501,7 +591,7 @@ Rules:
   const parsed = parseJsonObject(content);
   const fallback = fallbackFromFilename(file.name);
 
-  return {
+  return validateReceiptExtraction({
     merchantName: String(parsed?.merchantName || fallback.merchantName),
     amount: parseAmount(parsed?.amount || fallback.amount),
     date: String(parsed?.date || fallback.date),
@@ -509,7 +599,7 @@ Rules:
     confidence: Math.max(0, Math.min(100, Number(parsed?.confidence || fallback.confidence))),
     suggestedCategory: normalizeCategory(parsed?.suggestedCategory || parsed?.rawText),
     rawText: String(parsed?.rawText || fallback.rawText),
-  };
+  }, file.name);
 }
 
 export async function POST(request: NextRequest) {
@@ -547,13 +637,13 @@ export async function POST(request: NextRequest) {
 
       try {
         const rawText = await runDatalabOcr(normalizedFile);
-        return Response.json(buildStructuredReceipt(rawText, file.name), { headers: buildRateLimitHeaders(rateLimit) });
+        return Response.json(validateReceiptExtraction(buildStructuredReceipt(rawText, file.name), file.name), { headers: buildRateLimitHeaders(rateLimit) });
       } catch (primaryError) {
         console.error('Datalab OCR Error:', primaryError);
 
         try {
           const rawText = await runDatalabMarker(normalizedFile);
-          return Response.json(buildStructuredReceipt(rawText, file.name), { headers: buildRateLimitHeaders(rateLimit) });
+          return Response.json(validateReceiptExtraction(buildStructuredReceipt(rawText, file.name), file.name), { headers: buildRateLimitHeaders(rateLimit) });
         } catch (secondaryError) {
           console.error('Datalab Marker Error:', secondaryError);
           const message = [
@@ -571,9 +661,11 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     console.error('Receipt OCR Error:', error);
+    const message = error instanceof Error ? error.message : 'Failed to process the receipt image.';
+    const status = message.includes('suspicious prompt-like content') ? 422 : 500;
     return Response.json(
-      { error: error instanceof Error ? error.message : 'Failed to process the receipt image.' },
-      { status: 500 }
+      { error: message },
+      { status }
     );
   }
 }

@@ -139,7 +139,7 @@ export default function PrivacyPage() {
             <li>Calculate and display your net worth, portfolio performance, FIRE progress, and retirement projections</li>
             <li>Generate budget comparisons and analytics charts</li>
             <li>Process receipt images and extract expense data via OCR</li>
-            <li>Match your investment holdings to market prices via Polygon.io and CoinGecko</li>
+            <li>Match your investment holdings to market data providers such as SAHMK and other supported quote services</li>
             <li>Generate AI financial advisor responses personalized to your financial situation</li>
           </ul>
         </LegalSubsection>
@@ -176,23 +176,22 @@ export default function PrivacyPage() {
 
       <LegalSection title="5. Third-Party Services and Data Sharing">
         <p>We share your data only as necessary and described below. We never sell your personal data to anyone.</p>
-        <LegalSubsection title="5.1 OpenAI (AI Features)">
+        <LegalSubsection title="5.1 NVIDIA and other AI processors (AI Features)">
           <ul className="list-disc space-y-2 pl-6">
-            <li>We send your conversation messages and a summarized financial context (net worth, income, expenses, portfolio, FIRE progress) to OpenAI&apos;s API.</li>
-            <li>OpenAI processes this data to generate responses.</li>
-            <li>Data sent to OpenAI is governed by OpenAI&apos;s Privacy Policy and API Data Usage Policies.</li>
-            <li>Per OpenAI&apos;s API terms, data sent via the API is not used to train OpenAI&apos;s general models.</li>
-            <li>Conversations are logged in our database and subject to our retention policy.</li>
+            <li>We send AI advisor prompts, portfolio analysis requests, and certain OCR requests to NVIDIA-hosted APIs and any other active AI processor required to fulfill the feature you use.</li>
+            <li>The payload may include conversation text, summarized financial context, holdings, cash-flow figures, or receipt image content when needed for the specific request.</li>
+            <li>These providers process the data to generate results for the Service.</li>
+            <li>Saved portfolio analysis outputs and user-approved financial records may remain in your account subject to our retention policy.</li>
           </ul>
         </LegalSubsection>
-        <LegalSubsection title="5.2 Supabase (Database and Storage)">
-          <p>All your financial data and receipt images are stored on Supabase (PostgreSQL + Storage). Supabase infrastructure is hosted on AWS Bahrain (me-south-1) region for MENA data residency compliance. Supabase processes data under a Data Processing Agreement as a data processor on our behalf.</p>
+        <LegalSubsection title="5.2 Cloudflare (Hosting and signed-in data storage)">
+          <p>Wealix is deployed on Cloudflare Workers, and signed-in workspace data is persisted in Cloudflare D1. Cloudflare processes infrastructure logs and storage operations as a service provider on our behalf.</p>
         </LegalSubsection>
         <LegalSubsection title="5.3 Upstash Redis (Caching and Rate Limiting)">
           <p>Stores temporary cached data (market prices, API responses) and rate limiting counters. No personal financial data is permanently stored in Redis. All Redis keys have automatic expiry (maximum 1 hour for market cache).</p>
         </LegalSubsection>
-        <LegalSubsection title="5.4 Polygon.io and CoinGecko (Market Data)">
-          <p>We send stock ticker symbols and cryptocurrency IDs to these services to retrieve current prices. These are not personally identifiable — they are market symbols, not linked to your name or account.</p>
+        <LegalSubsection title="5.4 Market data providers">
+          <p>We send market symbols and quote requests to supported pricing providers such as SAHMK and other enabled market data vendors. These requests are based on market symbols and are not intended to include your personal identity.</p>
         </LegalSubsection>
         <LegalSubsection title="5.5 Moyasar (Payments)">
           <p>We share your email, subscription amount, and plan details with Moyasar for payment processing. Moyasar is a SAMA-licensed payment gateway operating under Saudi financial regulations. Card data is processed entirely on Moyasar&apos;s infrastructure.</p>
@@ -203,10 +202,7 @@ export default function PrivacyPage() {
         <LegalSubsection title="5.7 Sentry (Error Monitoring)">
           <p>Crash reports are sent to Sentry and include anonymized device/browser information and error stack traces. We configure Sentry to scrub personally identifiable information from error payloads before transmission.</p>
         </LegalSubsection>
-        <LegalSubsection title="5.8 Vercel (Hosting)">
-          <p>Wealix is deployed on Vercel&apos;s cloud infrastructure in the Bahrain region. Vercel processes request logs and infrastructure data as a data processor.</p>
-        </LegalSubsection>
-        <LegalSubsection title="5.9 Legal Requirements">
+        <LegalSubsection title="5.8 Legal Requirements">
           <p>We may disclose your data to competent authorities if:</p>
           <ul className="list-disc space-y-2 pl-6">
             <li>Required by a valid court order, subpoena, or legal process</li>
@@ -260,13 +256,12 @@ export default function PrivacyPage() {
         <p>We implement the following security measures to protect your data:</p>
         <ul className="list-disc space-y-2 pl-6">
           <li>Encryption in transit: All data transmitted between your browser/app and our servers uses TLS 1.3</li>
-          <li>Encryption at rest: Database data encrypted using AES-256 via Supabase</li>
+          <li>Encryption at rest: Data is stored on managed cloud infrastructure with provider-managed encryption at rest</li>
           <li>Password security: bcrypt hashing with 12 rounds; passwords are never stored in plain text</li>
           <li>Authentication: JWT tokens with 24-hour expiry, secure HTTP-only cookies</li>
           <li>Rate limiting: Redis-based rate limiting on all API endpoints and authentication flows</li>
           <li>RBAC: Role-based access controls ensuring users can only access their own data</li>
-          <li>Row-level security: Supabase row-level security policies enforced at the database level</li>
-          <li>Signed URLs: Receipt images served only via time-limited signed URLs (1-hour expiry)</li>
+          <li>Environment isolation and access controls: signed-in user workspaces are isolated per authenticated account</li>
           <li>Audit logging: All data modifications are logged with timestamp, action, and IP address</li>
           <li>Penetration testing: Periodic security reviews and testing</li>
         </ul>
@@ -274,7 +269,7 @@ export default function PrivacyPage() {
       </LegalSection>
 
       <LegalSection title="9. International Data Transfers">
-        <p>Our primary infrastructure is located in the AWS Bahrain (me-south-1) region to maintain MENA data residency. However, some third-party processors (OpenAI, Resend, Sentry) operate servers outside Saudi Arabia and the UAE.</p>
+        <p>Signed-in workspace data is primarily stored through Cloudflare infrastructure used by the live application. Some third-party processors, including AI, email, and monitoring vendors, may operate servers outside Saudi Arabia and the UAE depending on the feature used.</p>
         <p>For transfers of Saudi residents&apos; data outside the Kingdom:</p>
         <ul className="list-disc space-y-2 pl-6">
           <li>We ensure appropriate safeguards are in place as required by PDPL Article 29</li>

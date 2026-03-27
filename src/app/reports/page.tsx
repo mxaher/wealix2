@@ -39,6 +39,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
+import { createOpaqueId } from '@/lib/ids';
 
 type ReportTier = 'free' | 'core' | 'pro';
 
@@ -592,7 +593,7 @@ function buildReport({
 </html>`;
 
   return {
-    id: `${reportType.id}-${Date.now()}`,
+    id: createOpaqueId(`report-${reportType.id}`),
     type: reportType.id,
     name,
     generatedAt,

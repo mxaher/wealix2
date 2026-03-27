@@ -72,6 +72,7 @@ import {
   type LiabilityCategory,
 } from '@/store/useAppStore';
 import { toast } from '@/hooks/use-toast';
+import { createOpaqueId } from '@/lib/ids';
 
 const assetIcons: Record<string, React.ReactNode> = {
   cash: <Landmark className="w-5 h-5" />,
@@ -198,7 +199,7 @@ export default function NetWorthPage() {
     }
 
     addAsset({
-      id: `asset-${Date.now()}`,
+      id: createOpaqueId('asset'),
       name: newAsset.name,
       category: newAsset.category as AssetCategory,
       value: Number(newAsset.value),
@@ -219,7 +220,7 @@ export default function NetWorthPage() {
     }
 
     addLiability({
-      id: `liability-${Date.now()}`,
+      id: createOpaqueId('liability'),
       name: newLiability.name,
       category: newLiability.category as LiabilityCategory,
       balance: Number(newLiability.balance),

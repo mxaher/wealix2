@@ -15,6 +15,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { useAppStore, formatCurrency, type IncomeEntry, type IncomeFrequency, type IncomeSource } from '@/store/useAppStore';
 import { toast } from '@/hooks/use-toast';
+import { createOpaqueId } from '@/lib/ids';
 
 const incomeSources: Array<{ value: IncomeSource; en: string; ar: string }> = [
   { value: 'salary', en: 'Salary', ar: 'راتب' },
@@ -96,7 +97,7 @@ export default function IncomePage() {
     const sourceName = form.sourceName.trim() || (isArabic ? selectedSourceName?.ar : selectedSourceName?.en) || form.source;
 
     const entry: IncomeEntry = {
-      id: `income-${Date.now()}`,
+      id: createOpaqueId('income'),
       amount,
       currency: 'SAR',
       source: form.source,

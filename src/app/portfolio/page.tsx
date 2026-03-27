@@ -62,6 +62,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
+import { createOpaqueId } from '@/lib/ids';
 import {
   useAppStore,
   formatNumber,
@@ -306,7 +307,7 @@ export default function PortfolioPage() {
     }
 
     addPortfolioHolding({
-      id: Date.now().toString(),
+      id: createOpaqueId('holding'),
       ticker: newHolding.ticker.toUpperCase(),
       name: newHolding.name || newHolding.ticker.toUpperCase(),
       exchange: newHolding.exchange as PortfolioExchange,
@@ -419,7 +420,7 @@ export default function PortfolioPage() {
           }
 
           return {
-            id: `import-${Date.now()}-${index}`,
+            id: createOpaqueId(`import-${index}`),
             ticker,
             name,
             exchange: ['TASI', 'EGX', 'NASDAQ', 'NYSE'].includes(exchange) ? exchange : 'TASI',
@@ -485,7 +486,7 @@ export default function PortfolioPage() {
         throw new Error(data.error || 'Failed to analyze portfolio.');
       }
       addPortfolioAnalysisRecord({
-        id: `analysis-${Date.now()}`,
+        id: createOpaqueId('analysis'),
         createdAt: new Date().toISOString(),
         summary: data.summary || '',
         actions: Array.isArray(data.actions) ? data.actions as PortfolioAnalysisAction[] : [],
