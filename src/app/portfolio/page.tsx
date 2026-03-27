@@ -175,6 +175,7 @@ export default function PortfolioPage() {
   const { isSignedIn } = useUser();
 
   const [showAddHolding, setShowAddHolding] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isRefreshingPrices, setIsRefreshingPrices] = useState(false);
@@ -607,22 +608,6 @@ export default function PortfolioPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <FeatureGate feature="portfolio.ai_analysis">
-              <Button variant="outline" className="gap-2" onClick={handleAnalyzePortfolio} disabled={!isSignedIn || isAnalyzing}>
-                <Sparkles className={`w-4 h-4 ${isAnalyzing ? 'animate-pulse' : ''}`} />
-                {isAnalyzing
-                  ? (isArabic ? 'جاري التحليل...' : 'Analyzing...')
-                  : (isArabic ? 'تحليل المحفظة' : 'Analyze Portfolio')}
-              </Button>
-            </FeatureGate>
-
-            <Button asChild variant="outline" className="gap-2">
-              <a href="/samples/wealix-portfolio-import-sample.xlsx" download>
-                <FileSpreadsheet className="w-4 h-4" />
-                {isArabic ? 'ملف نموذجي' : 'Sample File'}
-              </a>
-            </Button>
-
             <Button
               variant="outline"
               className="gap-2"
@@ -632,27 +617,14 @@ export default function PortfolioPage() {
               <RefreshCw className={`w-4 h-4 ${isRefreshingPrices ? 'animate-spin' : ''}`} />
               {isRefreshingPrices
                 ? (isArabic ? 'جارٍ التحديث...' : 'Refreshing...')
-                : (isArabic ? 'تحديث الأسعار السعودية' : 'Refresh Saudi Prices')}
-            </Button>
-
-            <Button variant="outline" className="gap-2" disabled={!isSignedIn} asChild={false}>
-              <label className={`cursor-pointer ${!isSignedIn ? 'pointer-events-none opacity-70' : ''}`}>
-                <Upload className="w-4 h-4" />
-                {isImporting ? (isArabic ? 'جارٍ الاستيراد...' : 'Importing...') : (isArabic ? 'استيراد إكسل' : 'Import Excel')}
-                <input
-                  type="file"
-                  accept=".xlsx,.xls,.csv"
-                  className="hidden"
-                  onChange={(e) => handleImportPortfolio(e.target.files?.[0] ?? null)}
-                />
-              </label>
+                : (isArabic ? 'تحديث أسعار السوق' : 'Refresh Market Prices')}
             </Button>
 
             <Dialog open={showAddHolding} onOpenChange={setShowAddHolding}>
               <DialogTrigger asChild>
-                <Button className="gap-2" disabled={!isSignedIn}>
+                <Button variant="outline" className="gap-2" disabled={!isSignedIn}>
                   <Plus className="w-4 h-4" />
-                  {isArabic ? 'إضافة سهم' : 'Add Holding'}
+                  {isArabic ? 'إضافة مركز' : 'Add Holding'}
                 </Button>
               </DialogTrigger>
               <DialogContent>
@@ -732,6 +704,53 @@ export default function PortfolioPage() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+
+            <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="gap-2" disabled={!isSignedIn || isImporting}>
+                  <Upload className="w-4 h-4" />
+                  {isImporting ? (isArabic ? 'جارٍ الاستيراد...' : 'Importing...') : (isArabic ? 'استيراد المراكز' : 'Import Holdings')}
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>{isArabic ? 'استيراد المراكز' : 'Import Holdings'}</DialogTitle>
+                  <DialogDescription>
+                    {isArabic
+                      ? 'ارفع ملف XLSX أو CSV لاستبدال المراكز الحالية، ويمكنك تنزيل الملف النموذجي أولاً.'
+                      : 'Upload an XLSX or CSV file to replace the current holdings. You can download the sample file first.'}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <Button asChild variant="secondary" className="w-full gap-2">
+                    <a href="/samples/wealix-portfolio-import-sample.xlsx" download>
+                      <FileSpreadsheet className="w-4 h-4" />
+                      {isArabic ? 'تنزيل الملف النموذجي' : 'Download Sample File'}
+                    </a>
+                  </Button>
+
+                  <label className={`flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/40 px-4 py-8 text-center ${!isSignedIn ? 'pointer-events-none opacity-70' : ''}`}>
+                    <Upload className="mb-3 h-6 w-6 text-muted-foreground" />
+                    <span className="text-sm font-medium">
+                      {isArabic ? 'اختر ملف المراكز من جهازك' : 'Choose a holdings file from your device'}
+                    </span>
+                    <span className="mt-1 text-xs text-muted-foreground">
+                      {isArabic ? 'يدعم XLSX و XLS و CSV' : 'Supports XLSX, XLS, and CSV'}
+                    </span>
+                    <input
+                      type="file"
+                      accept=".xlsx,.xls,.csv"
+                      className="hidden"
+                      onChange={async (e) => {
+                        await handleImportPortfolio(e.target.files?.[0] ?? null);
+                        e.currentTarget.value = '';
+                        setShowImportDialog(false);
+                      }}
+                    />
+                  </label>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
 
@@ -787,7 +806,8 @@ export default function PortfolioPage() {
           </Card>
         </div>
 
-        <div className="flex flex-col gap-4 sm:flex-row">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row">
           <Select value={selectedExchange} onValueChange={setSelectedExchange}>
             <SelectTrigger className="w-40">
               <Filter className="mr-2 w-4 h-4" />
@@ -805,6 +825,20 @@ export default function PortfolioPage() {
             <Switch checked={shariahFilterEnabled} onCheckedChange={toggleShariahFilter} />
             <span className="text-sm">{isArabic ? 'الشريعة فقط' : 'Shariah Only'}</span>
           </div>
+          </div>
+
+          <FeatureGate feature="portfolio.ai_analysis">
+            <Button
+              className="gap-2 bg-primary hover:bg-primary/90 lg:self-end"
+              onClick={handleAnalyzePortfolio}
+              disabled={!isSignedIn || isAnalyzing}
+            >
+              <Sparkles className={`w-4 h-4 ${isAnalyzing ? 'animate-pulse' : ''}`} />
+              {isAnalyzing
+                ? (isArabic ? 'جاري التحليل...' : 'Analyzing...')
+                : (isArabic ? 'تحليل المحفظة' : 'Analyze Portfolio')}
+            </Button>
+          </FeatureGate>
         </div>
 
         <Tabs defaultValue="holdings" className="space-y-6">
