@@ -310,7 +310,7 @@ export default function AdvisorPage() {
   return (
     <DashboardShell>
       <FeatureGate feature="ai.advisor">
-        <div className="flex h-[calc(100vh-8rem)] gap-4">
+        <div className="flex h-[calc(100vh-8rem)] min-w-0 gap-4 overflow-hidden">
           {/* Sidebar - Session List */}
           <Card className="hidden md:flex w-64 flex-col">
             <CardHeader className="border-b p-4">
@@ -353,7 +353,7 @@ export default function AdvisorPage() {
           </Card>
 
           {/* Main Chat Area */}
-          <Card className="flex-1 flex flex-col">
+          <Card className="flex min-w-0 flex-1 flex-col overflow-hidden">
             {/* Header */}
             <CardHeader className="border-b p-4">
               <div className="flex items-center justify-between">
@@ -379,7 +379,7 @@ export default function AdvisorPage() {
             </CardHeader>
 
             {/* Messages */}
-            <ScrollArea className="flex-1 p-4">
+            <ScrollArea className="min-w-0 flex-1 p-4">
               {activeSession?.messages.length === 0 && !isLoading ? (
                 <div className="h-full flex flex-col items-center justify-center text-center">
                   <div className="w-16 h-16 rounded-full bg-gold/10 flex items-center justify-center mb-4">
@@ -416,7 +416,7 @@ export default function AdvisorPage() {
                         key={message.id}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className={`flex gap-3 ${
+                        className={`flex min-w-0 gap-3 ${
                           message.role === 'user' ? 'flex-row-reverse' : ''
                         }`}
                       >
@@ -425,20 +425,20 @@ export default function AdvisorPage() {
                             {message.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
                           </AvatarFallback>
                         </Avatar>
-                        <div className={`flex-1 ${message.role === 'user' ? 'text-right' : ''}`}>
+                        <div className={`min-w-0 flex-1 ${message.role === 'user' ? 'text-right' : ''}`}>
                           <div
-                            className={`inline-block p-3 rounded-lg max-w-[85%] ${
+                            className={`inline-block max-w-[85%] min-w-0 overflow-hidden rounded-lg p-3 align-top ${
                               message.role === 'user'
                                 ? 'bg-primary text-primary-foreground'
                                 : 'bg-muted'
                             }`}
                           >
                             {message.role === 'assistant' ? (
-                              <div className="prose prose-sm dark:prose-invert max-w-none">
+                              <div className="prose prose-sm dark:prose-invert max-w-none break-words [&_*]:break-words [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_code]:whitespace-pre-wrap [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto">
                                 <ReactMarkdown>{message.content}</ReactMarkdown>
                               </div>
                             ) : (
-                              <p className="text-sm">{message.content}</p>
+                              <p className="break-words text-sm whitespace-pre-wrap">{message.content}</p>
                             )}
                           </div>
                           <p className="text-xs text-muted-foreground mt-1">
@@ -454,16 +454,16 @@ export default function AdvisorPage() {
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="flex gap-3"
+                      className="flex min-w-0 gap-3"
                     >
                       <Avatar className="w-8 h-8">
                         <AvatarFallback className="bg-gold text-navy-dark">
                           <Bot className="w-4 h-4" />
                         </AvatarFallback>
                       </Avatar>
-                      <div className="flex-1">
-                        <div className="inline-block p-3 rounded-lg max-w-[85%] bg-muted">
-                          <div className="prose prose-sm dark:prose-invert max-w-none">
+                      <div className="min-w-0 flex-1">
+                        <div className="inline-block max-w-[85%] min-w-0 overflow-hidden rounded-lg bg-muted p-3 align-top">
+                          <div className="prose prose-sm dark:prose-invert max-w-none break-words [&_*]:break-words [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_code]:whitespace-pre-wrap [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto">
                             <ReactMarkdown>{streamingContent}</ReactMarkdown>
                           </div>
                         </div>
