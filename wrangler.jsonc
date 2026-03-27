@@ -5,6 +5,13 @@
   "compatibility_date": "2026-03-26",
   "compatibility_flags": ["nodejs_compat"],
   "preview_urls": true,
+  "d1_databases": [
+    {
+      "binding": "WEALIX_DB",
+      "database_name": "wealix-db",
+      "database_id": "99beaa7e-d8d3-4718-b4ab-e880803515a5"
+    }
+  ],
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
