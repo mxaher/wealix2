@@ -777,17 +777,28 @@ export default function PortfolioPage() {
         </div>
 
         <Tabs defaultValue="holdings" className="space-y-6">
-          <TabsList className="grid h-auto w-full grid-cols-1 gap-2 rounded-2xl bg-muted/70 p-2 sm:grid-cols-3">
-            <TabsTrigger value="holdings" className="rounded-xl px-4 py-2.5 text-sm font-medium">
+          <div className="overflow-x-auto">
+            <TabsList className="inline-flex h-auto min-w-full flex-nowrap items-stretch gap-2 rounded-2xl border border-border/70 bg-card p-2 shadow-sm sm:grid sm:w-full sm:grid-cols-3">
+              <TabsTrigger
+                value="holdings"
+                className="min-w-[150px] flex-none rounded-xl border border-transparent px-4 py-3 text-sm font-semibold text-muted-foreground data-[state=active]:border-border data-[state=active]:bg-background data-[state=active]:text-foreground"
+              >
               {isArabic ? 'الممتلكات' : 'Holdings'}
-            </TabsTrigger>
-            <TabsTrigger value="allocation" className="rounded-xl px-4 py-2.5 text-sm font-medium">
+              </TabsTrigger>
+              <TabsTrigger
+                value="allocation"
+                className="min-w-[150px] flex-none rounded-xl border border-transparent px-4 py-3 text-sm font-semibold text-muted-foreground data-[state=active]:border-border data-[state=active]:bg-background data-[state=active]:text-foreground"
+              >
               {isArabic ? 'التوزيع' : 'Allocation'}
-            </TabsTrigger>
-            <TabsTrigger value="analysis" className="rounded-xl px-4 py-2.5 text-sm font-medium">
+              </TabsTrigger>
+              <TabsTrigger
+                value="analysis"
+                className="min-w-[150px] flex-none rounded-xl border border-transparent px-4 py-3 text-sm font-semibold text-muted-foreground data-[state=active]:border-border data-[state=active]:bg-background data-[state=active]:text-foreground"
+              >
               {isArabic ? 'التحليل' : 'Analysis'}
-            </TabsTrigger>
-          </TabsList>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="holdings" className="mt-0">
             <Card>

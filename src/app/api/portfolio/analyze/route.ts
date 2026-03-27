@@ -232,6 +232,62 @@ ${locale === 'ar'
 }`}`;
 }
 
+type NvidiaChatResponse = {
+  choices?: Array<{
+    message?: {
+      content?: string;
+    };
+  }>;
+  error?: {
+    message?: string;
+  };
+};
+
+async function createPortfolioAnalysisCompletion(systemPrompt: string, userPrompt: string) {
+  const nvidiaApiKey = process.env.NVIDIA_API_KEY;
+  const nvidiaModel = process.env.NVIDIA_PORTFOLIO_MODEL || process.env.NVIDIA_MODEL || 'meta/llama-3.3-70b-instruct';
+  const nvidiaBase = (process.env.NVIDIA_API_BASE || 'https://integrate.api.nvidia.com/v1').replace(/\/$/, '');
+
+  if (nvidiaApiKey) {
+    const response = await fetch(`${nvidiaBase}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${nvidiaApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: nvidiaModel,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        temperature: 0.2,
+        top_p: 0.9,
+        max_tokens: 1400,
+      }),
+      cache: 'no-store',
+    });
+
+    const json = await response.json().catch(() => null) as NvidiaChatResponse | null;
+    if (!response.ok) {
+      throw new Error(json?.error?.message || `NVIDIA API request failed with status ${response.status}`);
+    }
+
+    return json?.choices?.[0]?.message?.content || '';
+  }
+
+  const zai = await ZAI.create();
+  const completion = await zai.chat.completions.create({
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ],
+    thinking: { type: 'enabled' },
+  });
+
+  return completion.choices[0]?.message?.content || '';
+}
+
 export async function POST(request: NextRequest) {
   try {
     const authResult = await requireTier('pro');
@@ -265,16 +321,7 @@ export async function POST(request: NextRequest) {
     const userPrompt = buildUserPrompt(holdings, locale);
 
     try {
-      const zai = await ZAI.create();
-      const completion = await zai.chat.completions.create({
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        thinking: { type: 'enabled' },
-      });
-
-      const content = completion.choices[0]?.message?.content || '';
+      const content = await createPortfolioAnalysisCompletion(systemPrompt, userPrompt);
       const parsed = parseJsonObject(content);
 
       if (!parsed || typeof parsed.summary !== 'string' || !Array.isArray(parsed.actions)) {
