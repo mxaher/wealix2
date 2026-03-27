@@ -10,9 +10,13 @@ import {
   CalendarDays,
   FileSpreadsheet,
   Filter,
+  Lightbulb,
+  PauseCircle,
   Plus,
   RefreshCw,
+  Scissors,
   Sparkles,
+  ShieldAlert,
   Trash2,
   TrendingDown,
   TrendingUp,
@@ -93,6 +97,42 @@ const ACCEPTED_SPREADSHEET_TYPES = new Set([
   'text/csv',
 ]);
 const REQUIRED_IMPORT_COLUMNS = ['ticker', 'shares', 'avgcost'];
+
+function getAnalysisActionMeta(actionType: string, isArabic: boolean) {
+  switch (actionType) {
+    case 'buy_more':
+      return {
+        label: isArabic ? 'زيادة' : 'Buy More',
+        icon: TrendingUp,
+        wrapperClass: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
+      };
+    case 'trim':
+      return {
+        label: isArabic ? 'تخفيف' : 'Trim',
+        icon: Scissors,
+        wrapperClass: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
+      };
+    case 'reduce':
+      return {
+        label: isArabic ? 'تقليص' : 'Reduce',
+        icon: TrendingDown,
+        wrapperClass: 'bg-rose-500/10 text-rose-600 border-rose-500/20',
+      };
+    case 'new_idea':
+      return {
+        label: isArabic ? 'فكرة جديدة' : 'New Idea',
+        icon: Lightbulb,
+        wrapperClass: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
+      };
+    case 'hold':
+    default:
+      return {
+        label: isArabic ? 'احتفاظ' : 'Hold',
+        icon: PauseCircle,
+        wrapperClass: 'bg-slate-500/10 text-slate-600 border-slate-500/20',
+      };
+  }
+}
 
 function assertSpreadsheetFile(file: File, bytes: Uint8Array) {
   if (file.size > MAX_IMPORT_FILE_SIZE) {
@@ -873,9 +913,9 @@ export default function PortfolioPage() {
 
               <Card className="overflow-hidden border-border/70 bg-card shadow-sm">
                 <CardHeader className="border-b border-border/70 bg-secondary/30">
-                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    <div className="space-y-1">
-                      <CardTitle className="flex items-center gap-2">
+                  <div dir={isArabic ? 'rtl' : 'ltr'} className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div className={`space-y-1 ${isArabic ? 'text-right' : ''}`}>
+                      <CardTitle className={`flex items-center gap-2 ${isArabic ? 'justify-start' : ''}`}>
                         <Bot className="h-5 w-5 text-primary" />
                         {isArabic ? 'مساعد تحليل المحفظة' : 'Portfolio AI Desk'}
                       </CardTitle>
@@ -895,7 +935,7 @@ export default function PortfolioPage() {
                     </FeatureGate>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-5 p-5">
+                <CardContent dir={isArabic ? 'rtl' : 'ltr'} className="space-y-5 p-5">
                   <AnimatePresence initial={false}>
                     {isAnalyzing && (
                       <motion.div
@@ -910,7 +950,7 @@ export default function PortfolioPage() {
                           transition={{ repeat: Infinity, duration: 2.2, ease: 'linear' }}
                         />
                         <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                          <div className="space-y-2">
+                          <div className={`space-y-2 ${isArabic ? 'text-right' : ''}`}>
                             <p className="text-sm font-semibold text-foreground">
                               {isArabic ? 'الذكاء الاصطناعي يراجع مكونات المحفظة الآن' : 'AI is reviewing your portfolio composition now'}
                             </p>
@@ -954,8 +994,8 @@ export default function PortfolioPage() {
                         className="rounded-2xl border border-border bg-background/80 p-5 shadow-sm"
                       >
                         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                          <div className="space-y-2">
-                            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                          <div className={`space-y-2 ${isArabic ? 'text-right' : ''}`}>
+                            <div className={`flex flex-wrap items-center gap-2 text-xs text-muted-foreground ${isArabic ? 'justify-end' : ''}`}>
                               <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1">
                                 <CalendarDays className="h-3.5 w-3.5" />
                                 {new Date(record.createdAt).toLocaleString(isArabic ? 'ar-SA-u-nu-latn' : 'en-US')}
@@ -971,24 +1011,35 @@ export default function PortfolioPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="text-rose-500 hover:text-rose-600"
+                            className={`text-rose-500 hover:text-rose-600 ${isArabic ? 'self-start md:self-auto' : ''}`}
                             onClick={() => deletePortfolioAnalysisRecord(record.id)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                         <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
-                          {record.actions.map((action, actionIndex) => (
+                          {record.actions.map((action, actionIndex) => {
+                            const actionMeta = getAnalysisActionMeta(action.type, isArabic);
+                            const ActionIcon = actionMeta.icon;
+
+                            return (
                             <div key={`${record.id}-${action.title}-${actionIndex}`} className="rounded-xl border border-border/80 bg-card p-4">
-                              <div className="flex items-center gap-2">
-                                <Badge variant="outline" className="capitalize">
-                                  {action.type.replace('_', ' ')}
-                                </Badge>
-                                <div className="font-medium">{action.title}</div>
+                              <div className={`flex items-start gap-3 ${isArabic ? 'flex-row-reverse text-right' : ''}`}>
+                                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${actionMeta.wrapperClass}`}>
+                                  <ActionIcon className="h-4 w-4" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className={`flex flex-wrap items-center gap-2 ${isArabic ? 'justify-end' : ''}`}>
+                                    <Badge variant="outline" className={actionMeta.wrapperClass}>
+                                      {actionMeta.label}
+                                    </Badge>
+                                    <div className="font-medium">{action.title}</div>
+                                  </div>
+                                  <div className="mt-2 text-sm leading-6 text-muted-foreground">{action.description}</div>
+                                </div>
                               </div>
-                              <div className="mt-2 text-sm leading-6 text-muted-foreground">{action.description}</div>
                             </div>
-                          ))}
+                          )})}
                         </div>
                       </motion.div>
                     ))}
