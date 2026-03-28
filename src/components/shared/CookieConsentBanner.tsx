@@ -8,8 +8,9 @@ const COOKIE_CONSENT_KEY = 'wealix-cookie-consent';
 
 type CookieConsent = 'accepted' | 'necessary';
 
-function subscribeToConsent() {
-  return () => {};
+function subscribeToConsent(callback: () => void) {
+  window.addEventListener('storage', callback);
+  return () => window.removeEventListener('storage', callback);
 }
 
 function getConsentSnapshot(): CookieConsent | null {

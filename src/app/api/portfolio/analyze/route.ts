@@ -339,7 +339,7 @@ export async function POST(request: NextRequest) {
       return authResult.error;
     }
 
-    const rateLimit = enforceRateLimit(`portfolio-analyze:${authResult.userId}`, 20, 60 * 60 * 1000);
+    const rateLimit = await enforceRateLimit(`portfolio-analyze:${authResult.userId}`, 20, 60 * 60 * 1000);
     if (!rateLimit.allowed) {
       return Response.json(
         { error: 'Rate limit exceeded', code: 'RATE_LIMITED' },

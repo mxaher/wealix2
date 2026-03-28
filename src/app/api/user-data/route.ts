@@ -1,11 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { requireAuthenticatedUser } from '@/lib/server-auth';
 import {
   isRemotePersistenceConfigured,
   loadRemoteWorkspace,
   saveRemoteWorkspace,
-  type RemoteUserWorkspace,
 } from '@/lib/remote-user-data';
+
+const remoteUserWorkspaceSchema = z.object({
+  appMode: z.enum(['demo', 'live']),
+  notificationPreferences: z.record(z.unknown()),
+  notificationFeed: z.array(z.unknown()),
+  incomeEntries: z.array(z.unknown()),
+  expenseEntries: z.array(z.unknown()),
+  receiptScans: z.array(z.unknown()),
+  portfolioHoldings: z.array(z.unknown()),
+  portfolioAnalysisHistory: z.array(z.unknown()),
+  assets: z.array(z.unknown()),
+  liabilities: z.array(z.unknown()),
+  budgetLimits: z.array(z.unknown()),
+});
 
 function unavailableResponse() {
   return NextResponse.json(
@@ -62,23 +76,23 @@ export async function PUT(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const workspace = body?.workspace as RemoteUserWorkspace | undefined;
     const knownUpdatedAt =
       typeof body?.knownUpdatedAt === 'string' || body?.knownUpdatedAt === null
         ? (body.knownUpdatedAt as string | null)
         : undefined;
 
-    if (!workspace) {
+    const parsed = remoteUserWorkspaceSchema.safeParse(body?.workspace);
+    if (!parsed.success) {
       return NextResponse.json(
         {
-          error: 'Workspace payload is required.',
+          error: 'Workspace payload is invalid.',
           code: 'INVALID_WORKSPACE',
         },
         { status: 400 }
       );
     }
 
-    const result = await saveRemoteWorkspace(authResult.userId, workspace, knownUpdatedAt);
+    const result = await saveRemoteWorkspace(authResult.userId, parsed.data, knownUpdatedAt);
 
     if (knownUpdatedAt && result.updatedAt && knownUpdatedAt !== result.updatedAt) {
       return NextResponse.json(

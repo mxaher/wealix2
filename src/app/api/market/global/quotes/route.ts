@@ -115,7 +115,7 @@ export async function POST(request: Request) {
     return authResult.error;
   }
 
-  const rateLimit = enforceRateLimit(`market-global:${authResult.userId}`, 120, 60 * 60 * 1000);
+  const rateLimit = await enforceRateLimit(`market-global:${authResult.userId}`, 120, 60 * 60 * 1000);
   if (!rateLimit.allowed) {
     return NextResponse.json(
       { error: 'Rate limit exceeded', code: 'RATE_LIMITED' },

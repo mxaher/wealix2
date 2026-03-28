@@ -58,6 +58,23 @@ function safeJsonBlock(value: unknown): string | null {
   }
 }
 
+// Recursively sanitize all string values in an object to prevent prompt injection
+// from persisted data (e.g. merchant names from OCR stored in D1).
+function sanitizeContextStrings(value: unknown): unknown {
+  if (typeof value === 'string') {
+    return sanitizeUserMessage(value).sanitized;
+  }
+  if (Array.isArray(value)) {
+    return value.map(sanitizeContextStrings);
+  }
+  if (value !== null && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([k, v]) => [k, sanitizeContextStrings(v)])
+    );
+  }
+  return value;
+}
+
 type ChatMessage = {
   role: 'system' | 'user' | 'assistant';
   content: string;
@@ -114,7 +131,7 @@ export async function POST(request: NextRequest) {
       return authResult.error;
     }
 
-    const rateLimit = enforceRateLimit(`ai:${authResult.userId}`, 20, 60 * 60 * 1000);
+    const rateLimit = await enforceRateLimit(`ai:${authResult.userId}`, 20, 60 * 60 * 1000);
     if (!rateLimit.allowed) {
       return new Response(
         JSON.stringify({ error: 'Rate limit exceeded', code: 'RATE_LIMITED' }),
@@ -182,7 +199,8 @@ export async function POST(request: NextRequest) {
       systemPrompt += `\n- Income entries in context: ${incomeCount}`;
       systemPrompt += `\n- Expense entries in context: ${expensesCount}`;
 
-      const contextJson = safeJsonBlock(userContext);
+      const sanitizedContext = sanitizeContextStrings(userContext);
+      const contextJson = safeJsonBlock(sanitizedContext);
       if (contextJson) {
         systemPrompt += `\n\nDetailed Wealix account context (JSON):\n${contextJson}`;
       }
@@ -190,12 +208,16 @@ export async function POST(request: NextRequest) {
 
     systemPrompt += `\n\nRespond in ${locale === 'ar' ? 'Arabic' : 'English'}.`;
 
+    // Cap history to prevent token exhaustion (F-06)
+    const cappedMessages = messages.slice(-50);
+
     // Prepare messages for the API
     const apiMessages: ChatMessage[] = [
       { role: 'system' as const, content: systemPrompt },
-      ...messages.map((m: { role: string; content: string }) => {
+      ...cappedMessages.map((m: { role: string; content: string }) => {
         const original = String(m.content || '');
         const result = sanitizeUserMessage(original);
+        // QA-3: sanitize all roles, not just 'user', to block adversarial history injection
         if (m.role === 'user') {
           logAiAuditEvent({
             userId: authResult.userId!,
@@ -205,10 +227,10 @@ export async function POST(request: NextRequest) {
           });
         }
 
-        return ({
-        role: m.role === 'user' ? 'user' as const : 'assistant' as const,
-        content: m.role === 'user' ? result.sanitized : original,
-      });
+        return {
+          role: m.role === 'user' ? 'user' as const : 'assistant' as const,
+          content: result.sanitized,
+        };
       }),
     ];
 
