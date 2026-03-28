@@ -5,11 +5,18 @@ import {
   isRemotePersistenceConfigured,
   loadRemoteWorkspace,
   saveRemoteWorkspace,
+  type RemoteUserWorkspace,
 } from '@/lib/remote-user-data';
 
 const remoteUserWorkspaceSchema = z.object({
   appMode: z.enum(['demo', 'live']),
-  notificationPreferences: z.record(z.string(), z.unknown()),
+  notificationPreferences: z.object({
+    email: z.boolean(),
+    push: z.boolean(),
+    priceAlerts: z.boolean(),
+    budgetAlerts: z.boolean(),
+    weeklyDigest: z.boolean(),
+  }),
   notificationFeed: z.array(z.unknown()),
   incomeEntries: z.array(z.unknown()),
   expenseEntries: z.array(z.unknown()),
@@ -92,7 +99,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const result = await saveRemoteWorkspace(authResult.userId, parsed.data, knownUpdatedAt);
+    const result = await saveRemoteWorkspace(authResult.userId, parsed.data as RemoteUserWorkspace, knownUpdatedAt);
 
     if (knownUpdatedAt && result.updatedAt && knownUpdatedAt !== result.updatedAt) {
       return NextResponse.json(
