@@ -578,12 +578,12 @@ export default function LandingPage() {
                   Wealix
                 </span>
                 <h2 className="mt-5 text-3xl font-semibold tracking-tight sm:text-4xl">
-                  {isArabic ? 'نظام تشغيل الثروة الشخصية' : 'Personal Wealth Operating System'}
+                  {isArabic ? 'ابدأ رحلتك نحو الحرية المالية' : 'Start your path to financial freedom'}
                 </h2>
                 <p className="mt-4 text-base leading-8 text-muted-foreground">
                   {isArabic
-                    ? 'تعكس هذه الصفحة الرئيسية هوية Wealix الحديثة من حيث الألوان والخطوط وبنية المحتوى وتجربة الدخول إلى التطبيق.'
-                    : 'The landing page, token system, split logo, sidebar grouping, and app shell in this repo now follow the live Wealix frontend direction instead of the older navy-gold theme.'}
+                    ? 'تابع ميزانيتك، راقب محفظتك، وخطط لاستقلالك المالي — كل ذلك في مكان واحد مع مستشار ذكي يحوّل أرقامك إلى قرارات.'
+                    : 'Track your budget, monitor your portfolio, and plan your financial independence — all in one place, with an AI advisor that turns your numbers into decisions.'}
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">
