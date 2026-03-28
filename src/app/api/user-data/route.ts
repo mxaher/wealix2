@@ -9,7 +9,7 @@ import {
 
 const remoteUserWorkspaceSchema = z.object({
   appMode: z.enum(['demo', 'live']),
-  notificationPreferences: z.record(z.unknown()),
+  notificationPreferences: z.record(z.string(), z.unknown()),
   notificationFeed: z.array(z.unknown()),
   incomeEntries: z.array(z.unknown()),
   expenseEntries: z.array(z.unknown()),
