@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 import path from "path";
 import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
-import type { Configuration } from "webpack";
 
 const contentSecurityPolicy = `
   default-src 'self';
@@ -35,7 +34,8 @@ const nextConfig: NextConfig = {
   // Reduce Cloudflare Worker bundle size by replacing heavy animation/chart
   // libraries with lightweight server stubs. The real libraries are still
   // shipped as client-side JS chunks — they just don't get SSR'd.
-  webpack(config: Configuration, { isServer }: { isServer: boolean }) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  webpack(config: any, { isServer }: { isServer: boolean }) {
     if (isServer) {
       const cwd = process.cwd();
       config.resolve = config.resolve ?? {};
