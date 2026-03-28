@@ -260,6 +260,7 @@ Guests can:
 - navigate the app
 - view demo data
 - inspect the UI
+- use the app in read-only mode
 
 Guests cannot:
 
@@ -511,10 +512,9 @@ pip install --no-cache-dir git+https://github.com/egxlytics/egxpy.git
   - `numpy`
   - `holidays`
   - `retry`
-  - `tvDatafeed`
+  - `tvDatafeed` jdjjd. jdf
 
 Current Wealix status:
-
 - SAHMK is integrated directly for Saudi `TASI` live quotes
 - `egxpy` is evaluated and documented, but not directly wired into the current Next.js runtime yet
 
