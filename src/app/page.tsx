@@ -544,7 +544,7 @@ export default function LandingPage() {
                     </Show>
                     <Show when="signed-in">
                       <Button asChild className={`w-full rounded-xl ${plan.id === 'pro' ? 'btn-primary' : ''}`} variant={plan.id === 'pro' ? 'default' : 'outline'}>
-                        <Link href="/app/settings/billing">
+                        <Link href="/settings/billing">
                           {isArabic ? 'اشترك الآن' : 'Subscribe Now'}
                         </Link>
                       </Button>
