@@ -86,8 +86,10 @@ const pricingByCycle = {
     {
       id: 'core',
       name: 'Core',
-      price: 31,
+      price: 10,
+      currency: 'USD',
       suffix: { en: '/mo', ar: '/شهرياً' },
+      savings: null,
       description: {
         en: 'Essential wealth planning for individuals who want a clear operating layer for money, assets, and progress.',
         ar: 'الخطة الأساسية لمن يريد طبقة تشغيل واضحة لإدارة الأموال والأصول ومتابعة التقدم المالي.',
@@ -100,8 +102,10 @@ const pricingByCycle = {
     {
       id: 'pro',
       name: 'Pro',
-      price: 38,
+      price: 15,
+      currency: 'USD',
       suffix: { en: '/mo', ar: '/شهرياً' },
+      savings: null,
       description: {
         en: 'The full Wealix layer with deeper analysis, premium workflows, and advanced decision support.',
         ar: 'تجربة Wealix الكاملة مع تحليلات أعمق، ومسارات احترافية، ودعم قرار متقدم.',
@@ -116,11 +120,13 @@ const pricingByCycle = {
     {
       id: 'core',
       name: 'Core',
-      price: 306,
+      price: 108,
+      currency: 'USD',
       suffix: { en: '/year', ar: '/سنوياً' },
+      savings: { en: 'Save $12/yr', ar: 'وفّر 12$ سنوياً' },
       description: {
-        en: 'Annual Core access for users who want better value while keeping every essential money workflow in one place.',
-        ar: 'اشتراك سنوي لخطة Core بقيمة أفضل للمستخدم الذي يريد إدارة شؤونه المالية الأساسية في مكان واحد.',
+        en: 'Annual Core access — same essential layer, better value. Billed once a year.',
+        ar: 'اشتراك سنوي لخطة Core بقيمة أفضل. يُحسب مرة واحدة سنوياً.',
       },
       features: {
         en: ['Income, expenses, budget, and net worth', 'Portfolio tracking and reports', 'Clean financial workspace', '14-day free trial'],
@@ -130,11 +136,13 @@ const pricingByCycle = {
     {
       id: 'pro',
       name: 'Pro',
-      price: 375,
+      price: 144,
+      currency: 'USD',
       suffix: { en: '/year', ar: '/سنوياً' },
+      savings: { en: 'Save $36/yr', ar: 'وفّر 36$ سنوياً' },
       description: {
-        en: 'Annual Pro access for users who want the full Wealix intelligence stack at the best long-term price.',
-        ar: 'اشتراك سنوي لخطة Pro للمستخدم الذي يريد طبقة الذكاء والتحليل الكاملة بأفضل قيمة على المدى الطويل.',
+        en: 'Annual Pro access — the full Wealix intelligence stack at the best long-term price.',
+        ar: 'اشتراك سنوي لخطة Pro للمستخدم الذي يريد طبقة الذكاء والتحليل الكاملة بأفضل قيمة.',
       },
       features: {
         en: ['Everything in Core', 'AI advisor and portfolio analysis', 'Advanced reports and planning tools', '14-day free trial'],
@@ -457,51 +465,65 @@ export default function LandingPage() {
                   ? 'كل حساب جديد يبدأ بتجربة مجانية لمدة 14 يوماً دون بطاقة ائتمان. بعد ذلك يختار المستخدم بين Core أو Pro شهرياً أو سنوياً.'
                   : 'Every first-time account starts on a 14-day free trial without a credit card. After that, users choose Core or Pro monthly or annually.'}
               </p>
-              <div className="mt-8 inline-flex rounded-full border border-border bg-background p-1">
-                <button
-                  type="button"
-                  onClick={() => setBillingCycle('monthly')}
-                  className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                    billingCycle === 'monthly' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
-                  }`}
-                >
-                  {isArabic ? 'شهري' : 'Monthly'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setBillingCycle('annual')}
-                  className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                    billingCycle === 'annual' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
-                  }`}
-                >
-                  {isArabic ? 'سنوي' : 'Annually'}
-                </button>
+              <div className="mt-8 flex flex-col items-center gap-2">
+                <div className="inline-flex rounded-full border border-border bg-background p-1">
+                  <button
+                    type="button"
+                    onClick={() => setBillingCycle('monthly')}
+                    className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                      billingCycle === 'monthly' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
+                    }`}
+                  >
+                    {isArabic ? 'شهري' : 'Monthly'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBillingCycle('annual')}
+                    className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                      billingCycle === 'annual' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
+                    }`}
+                  >
+                    {isArabic ? 'سنوي' : 'Annually'}
+                  </button>
+                </div>
+                {billingCycle === 'annual' && (
+                  <span className="text-xs font-medium text-accent">
+                    {isArabic ? '✦ وفّر حتى 20% مع الاشتراك السنوي' : '✦ Save up to 20% with annual billing'}
+                  </span>
+                )}
               </div>
             </div>
             <div className="mt-12 grid gap-5 md:grid-cols-2">
               {pricingByCycle[billingCycle].map((plan) => (
                 <div
                   key={plan.id}
-                  className={`card-hover rounded-[24px] bg-card p-8 ${
+                  className={`card-hover flex flex-col rounded-[24px] bg-card p-8 ${
                     plan.id === 'pro' ? 'border border-primary/20 ring-1 ring-primary/10' : 'border border-border'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <p className={`text-sm font-medium ${plan.id === 'pro' ? 'text-primary' : 'text-muted-foreground'}`}>{plan.name}</p>
-                      <h3 className="mt-3 text-4xl font-semibold">
-                        {plan.price} SAR
+                      <h3 className="mt-3 text-4xl font-semibold financial-number">
+                        ${plan.price}
                         <span className="ml-1 text-base font-normal text-muted-foreground">{plan.suffix[isArabic ? 'ar' : 'en']}</span>
                       </h3>
                     </div>
-                    {plan.id === 'pro' && (
-                      <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                        {isArabic ? 'الأكثر تقدماً' : 'Most Advanced'}
-                      </span>
-                    )}
+                    <div className="flex flex-col items-end gap-2">
+                      {plan.id === 'pro' && (
+                        <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                          {isArabic ? 'الأكثر تقدماً' : 'Most Advanced'}
+                        </span>
+                      )}
+                      {plan.savings && (
+                        <span className="rounded-full bg-accent/10 px-3 py-1 text-xs font-medium text-accent">
+                          {plan.savings[isArabic ? 'ar' : 'en']}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <p className="mt-3 text-sm leading-7 text-muted-foreground">{plan.description[isArabic ? 'ar' : 'en']}</p>
-                  <ul className="mt-6 space-y-3 text-sm text-muted-foreground">
+                  <ul className="mt-6 flex-1 space-y-3 text-sm text-muted-foreground">
                     {plan.features[isArabic ? 'ar' : 'en'].map((feature) => (
                       <li key={feature} className="flex items-center gap-2">
                         <span className="h-2 w-2 rounded-full bg-accent" />
@@ -509,6 +531,25 @@ export default function LandingPage() {
                       </li>
                     ))}
                   </ul>
+                  <div className="mt-8">
+                    <Show when="signed-out">
+                      <SignUpButton mode="modal">
+                        <Button
+                          className={`w-full rounded-xl ${plan.id === 'pro' ? 'btn-primary' : ''}`}
+                          variant={plan.id === 'pro' ? 'default' : 'outline'}
+                        >
+                          {isArabic ? 'ابدأ التجربة المجانية' : 'Start Free Trial'}
+                        </Button>
+                      </SignUpButton>
+                    </Show>
+                    <Show when="signed-in">
+                      <Button asChild className={`w-full rounded-xl ${plan.id === 'pro' ? 'btn-primary' : ''}`} variant={plan.id === 'pro' ? 'default' : 'outline'}>
+                        <Link href="/app/settings/billing">
+                          {isArabic ? 'اشترك الآن' : 'Subscribe Now'}
+                        </Link>
+                      </Button>
+                    </Show>
+                  </div>
                 </div>
               ))}
             </div>
