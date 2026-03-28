@@ -24,6 +24,11 @@ const nextConfig: NextConfig = {
   },
   turbopack: {
     root: path.resolve(process.cwd()),
+    resolveAlias: {
+      // sharp is a native binary — not compatible with Cloudflare Workers.
+      // Alias it to an empty shim so Turbopack never emits a require() for it.
+      sharp: './scripts/sharp-shim.js',
+    },
   },
   reactStrictMode: true,
   async headers() {
