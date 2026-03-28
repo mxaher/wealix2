@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     return authResult.error;
   }
 
-  const rateLimit = enforceRateLimit(`market-saudi:${authResult.userId}`, 120, 60 * 60 * 1000);
+  const rateLimit = await enforceRateLimit(`market-saudi:${authResult.userId}`, 120, 60 * 60 * 1000);
   if (!rateLimit.allowed) {
     return NextResponse.json(
       { error: 'Rate limit exceeded', code: 'RATE_LIMITED' },
@@ -89,7 +89,7 @@ export async function POST(request: Request) {
     const normalizedSymbols = requestedSymbols
       .map((symbol) => normalizeSaudiSymbol(String(symbol)))
       .filter((symbol): symbol is string => symbol.length > 0);
-    const symbols: string[] = [...new Set(normalizedSymbols)];
+    const symbols: string[] = [...new Set(normalizedSymbols)].slice(0, 50);
 
     if (symbols.length === 0) {
       return NextResponse.json({ quotes: {} }, { headers: buildRateLimitHeaders(rateLimit) });

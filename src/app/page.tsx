@@ -8,6 +8,7 @@ import { useTheme } from 'next-themes';
 import { Show, SignInButton, SignUpButton } from '@clerk/nextjs';
 import { useAppStore } from '@/store/useAppStore';
 import { Button } from '@/components/ui/button';
+import { CookieConsentBanner } from '@/components/shared/CookieConsentBanner';
 
 const sections = {
   en: [
@@ -145,14 +146,20 @@ const pricingByCycle = {
 
 const faqItems = {
   en: [
-    ['How is the app structured?', 'The app is organized into overview, cash flow, investing, planning, and system sections so users can move through their financial life logically.'],
-    ['What fonts does Wealix use?', 'Inter powers the English UI, JetBrains Mono supports numeric emphasis, and Tajawal is used for Arabic with proper RTL layout.'],
-    ['How is color used?', 'Blue is the main action color, mint highlights momentum and success, and calm neutral surfaces keep the product readable for long financial sessions.'],
+    ['What do I get in the 14-day trial?', 'Every new account starts with full premium access for 14 days without a credit card, so you can test the advisor, portfolio analysis, reports, and receipt OCR before choosing a paid plan.'],
+    ['Is Wealix a licensed bank, broker, or financial advisor?', 'No. Wealix is a personal wealth management and analysis platform, not a SAMA-licensed bank, brokerage, or regulated investment advisory firm. It does not hold custody of assets or execute trades for you.'],
+    ['Where is my data stored?', 'Signed-in workspace data is persisted in Cloudflare D1, and some supporting processors such as AI, OCR, email, and monitoring vendors may handle limited data outside Saudi Arabia depending on the feature you use.'],
+    ['How does the AI Advisor use my financial data?', 'When you use AI features, Wealix sends only the financial context needed for that request, such as holdings, cash flow, or receipt content, to the active AI processors. The Privacy Policy explains processing and retention in more detail.'],
+    ['How do live market prices work?', 'Saudi holdings are refreshed through SAHMK today. EGX and US coverage can be expanded through additional market providers, but the portfolio page always labels the active source and whether data is live, delayed, or demo.'],
+    ['Can I review OCR results before they become expenses?', 'Yes. Receipt OCR is review-first. The extracted merchant, amount, date, category, and raw text are shown for confirmation and editing before anything is saved into your expenses.'],
   ],
   ar: [
-    ['كيف تم تنظيم التطبيق؟', 'تم تقسيم التطبيق إلى أقسام واضحة: نظرة عامة، تدفق نقدي، استثمار، تخطيط، وإعدادات النظام حتى تكون التجربة منطقية وسهلة.'],
-    ['ما الخطوط المستخدمة في Wealix؟', 'يستخدم التطبيق Inter للواجهة الإنجليزية، وJetBrains Mono للأرقام والعناصر التحليلية، وTajawal للواجهة العربية مع دعم RTL كامل.'],
-    ['كيف تُستخدم الألوان؟', 'الأزرق هو اللون الأساسي للإجراءات والتنقل، واللون النعناعي يبرز النجاح والزخم، بينما تحافظ الخلفيات الهادئة على وضوح القراءة أثناء متابعة البيانات المالية.'],
+    ['ماذا يتضمن الاشتراك التجريبي لمدة 14 يوماً؟', 'يبدأ كل حساب جديد بفترة تجريبية تمنحك وصولاً كاملاً للميزات المميزة لمدة 14 يوماً دون بطاقة ائتمان، حتى تختبر المستشار الذكي وتحليل المحفظة والتقارير وOCR قبل اختيار الخطة المناسبة.'],
+    ['هل Wealix بنك أو وسيط أو مستشار استثماري مرخّص؟', 'لا. Wealix منصة لإدارة الثروة الشخصية والتحليل المالي وليست بنكاً مرخصاً من البنك المركزي السعودي أو شركة وساطة أو جهة تقدم استشارات استثمارية منظمة. كما أنها لا تحفظ الأصول ولا تنفذ الصفقات نيابة عنك.'],
+    ['أين يتم تخزين بياناتي؟', 'تُحفظ بيانات المستخدمين المسجلين داخل Cloudflare D1، وقد تتعامل بعض الجهات المساندة مثل مزودي الذكاء الاصطناعي وOCR والبريد والمراقبة مع قدر محدود من البيانات خارج السعودية بحسب الميزة المستخدمة.'],
+    ['كيف يستخدم المستشار الذكي بياناتي المالية؟', 'عند استخدام ميزات الذكاء الاصطناعي، يرسل Wealix الحد الأدنى اللازم من السياق المالي المرتبط بطلبك، مثل المحفظة أو التدفق النقدي أو محتوى الإيصال، إلى مزودات المعالجة النشطة. وتوضح سياسة الخصوصية تفاصيل المعالجة والاحتفاظ.'],
+    ['كيف تعمل أسعار السوق الحية؟', 'يتم تحديث الأسهم السعودية حالياً عبر SAHMK. ويمكن توسيع تغطية مصر والأسواق الأمريكية عبر مزودات إضافية، لكن صفحة المحفظة توضّح دائماً مصدر البيانات وما إذا كانت حية أو متأخرة أو تجريبية.'],
+    ['هل أستطيع مراجعة نتيجة OCR قبل حفظها كمصروف؟', 'نعم. مسار OCR في Wealix يعتمد على المراجعة أولاً، حيث تظهر لك بيانات التاجر والمبلغ والتاريخ والتصنيف والنص الخام لتأكيدها أو تعديلها قبل حفظها ضمن المصروفات.'],
   ],
 } as const;
 
@@ -283,6 +290,15 @@ export default function LandingPage() {
                   ? 'كل مستخدم جديد يحصل تلقائياً على تجربة مجانية لمدة 14 يوماً، ثم يختار بين Core و Pro.'
                   : 'Every first-time user gets a 14-day free trial automatically, then chooses Core or Pro.'}
               </p>
+              <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                <Link href="/privacy" className="transition-colors hover:text-foreground">
+                  {isArabic ? 'سياسة الخصوصية' : 'Privacy Policy'}
+                </Link>
+                <span className="text-border">•</span>
+                <Link href="/terms" className="transition-colors hover:text-foreground">
+                  {isArabic ? 'شروط الخدمة' : 'Terms of Service'}
+                </Link>
+              </div>
             </motion.div>
 
             <motion.div
@@ -380,6 +396,53 @@ export default function LandingPage() {
           </div>
         </section>
 
+        <section className="px-4 pb-4 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-7xl rounded-[28px] border border-border bg-card/70 p-6 sm:p-8">
+            <div className="grid gap-5 md:grid-cols-2">
+              <div className="rounded-[20px] border border-border bg-background/80 p-5">
+                <p className="text-sm font-semibold text-foreground">
+                  {isArabic ? 'الخصوصية والشروط' : 'Privacy and terms'}
+                </p>
+                <p className="mt-2 text-sm leading-7 text-muted-foreground">
+                  {isArabic
+                    ? 'روابط شروط الخدمة وسياسة الخصوصية متاحة بشكل واضح من الصفحة الرئيسية، وتوضح كيفية استخدام بياناتك وحقوقك ووسائل التواصل القانونية.'
+                    : 'Terms of Service and Privacy Policy are linked directly from the homepage and explain how your data is used, your rights, and legal contact channels.'}
+                </p>
+              </div>
+              <div className="rounded-[20px] border border-border bg-background/80 p-5">
+                <p className="text-sm font-semibold text-foreground">
+                  {isArabic ? 'الحماية التقنية' : 'Technical safeguards'}
+                </p>
+                <p className="mt-2 text-sm leading-7 text-muted-foreground">
+                  {isArabic
+                    ? 'تستخدم Wealix تشفير TLS 1.2/1.3 أثناء النقل، وتخزيناً مُشفراً لدى مزودي البنية التحتية، مع عزل بيانات كل مستخدم مسجل داخل مساحة عمل مستقلة.'
+                    : 'Wealix uses TLS 1.2/1.3 in transit, encrypted storage with managed infrastructure providers, and isolated signed-in workspaces for each user account.'}
+                </p>
+              </div>
+              <div className="rounded-[20px] border border-border bg-background/80 p-5">
+                <p className="text-sm font-semibold text-foreground">
+                  {isArabic ? 'معالجة بيانات الذكاء الاصطناعي' : 'AI data processing'}
+                </p>
+                <p className="mt-2 text-sm leading-7 text-muted-foreground">
+                  {isArabic
+                    ? 'تُرسل أسئلة المستشار الذكي وتحليل المحفظة إلى واجهات NVIDIA، كما قد تُرسل طلبات OCR إلى NVIDIA أو Datalab بحسب المسار التشغيلي. يتم تمرير الحد الأدنى اللازم من السياق المالي والصور لمعالجة الطلب، وتوضح سياسة الخصوصية تفاصيل المعالجة والاحتفاظ.'
+                    : 'AI advisor prompts and portfolio analysis are sent to NVIDIA APIs, and OCR requests may be processed by NVIDIA or Datalab depending on the active OCR path. Only the minimum financial context and image data needed for the request are sent, and the Privacy Policy explains processing and retention in more detail.'}
+                </p>
+              </div>
+              <div className="rounded-[20px] border border-border bg-background/80 p-5">
+                <p className="text-sm font-semibold text-foreground">
+                  {isArabic ? 'الإفصاح التنظيمي' : 'Regulatory disclosure'}
+                </p>
+                <p className="mt-2 text-sm leading-7 text-muted-foreground">
+                  {isArabic
+                    ? 'Wealix ليست بنكاً أو شركة وساطة أو مستشاراً استثمارياً مرخّصاً من البنك المركزي السعودي، ولا تحتفظ بأصول المستخدمين ولا تنفذ الصفقات. المنصة مخصصة للتتبع والتحليل والتخطيط فقط.'
+                    : 'Wealix is not a SAMA-licensed bank, broker, or regulated investment advisory firm, does not custody user assets, and does not execute trades. The platform is for tracking, analysis, and planning only.'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section id="pricing" className="border-y border-border bg-secondary/35 px-4 py-20 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-6xl">
             <div className="mx-auto max-w-2xl text-center">
@@ -453,7 +516,7 @@ export default function LandingPage() {
         </section>
 
         <section id="faq" className="px-4 py-20 sm:px-6 lg:px-8">
-          <div className="mx-auto grid max-w-6xl gap-5 lg:grid-cols-3">
+          <div className="mx-auto grid max-w-6xl gap-5 md:grid-cols-2 xl:grid-cols-3">
             {currentFaqItems.map((item) => {
               const [title, body] = item;
               return (
@@ -507,6 +570,7 @@ export default function LandingPage() {
           </div>
         </section>
       </main>
+      <CookieConsentBanner isArabic={isArabic} />
     </div>
   );
 }

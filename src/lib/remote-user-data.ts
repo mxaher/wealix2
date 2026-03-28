@@ -27,6 +27,11 @@ export type RemoteUserWorkspace = {
   budgetLimits: BudgetLimit[];
 };
 
+export type RemoteWorkspaceRecord = {
+  workspace: RemoteUserWorkspace | null;
+  updatedAt: string | null;
+};
+
 type D1LikeDatabase = {
   prepare: (query: string) => {
     bind: (...values: unknown[]) => {
@@ -39,6 +44,7 @@ type D1LikeDatabase = {
 
 type WorkspaceRow = {
   workspace_json: string | null;
+  updated_at: string | null;
 };
 
 function getD1Database(): D1LikeDatabase | null {
@@ -65,7 +71,7 @@ async function ensureWorkspaceTable(db: D1LikeDatabase) {
   `).run();
 }
 
-export async function loadRemoteWorkspace(clerkUserId: string) {
+export async function loadRemoteWorkspace(clerkUserId: string): Promise<RemoteWorkspaceRecord> {
   const db = getD1Database();
 
   if (!db) {
@@ -75,18 +81,28 @@ export async function loadRemoteWorkspace(clerkUserId: string) {
   await ensureWorkspaceTable(db);
 
   const row = await db
-    .prepare('SELECT workspace_json FROM user_app_profiles WHERE clerk_user_id = ? LIMIT 1')
+    .prepare('SELECT workspace_json, updated_at FROM user_app_profiles WHERE clerk_user_id = ? LIMIT 1')
     .bind(clerkUserId)
     .first<WorkspaceRow>();
 
   if (!row?.workspace_json) {
-    return null;
+    return {
+      workspace: null,
+      updatedAt: null,
+    };
   }
 
-  return JSON.parse(row.workspace_json) as RemoteUserWorkspace;
+  return {
+    workspace: JSON.parse(row.workspace_json) as RemoteUserWorkspace,
+    updatedAt: row.updated_at ?? null,
+  };
 }
 
-export async function saveRemoteWorkspace(clerkUserId: string, workspace: RemoteUserWorkspace) {
+export async function saveRemoteWorkspace(
+  clerkUserId: string,
+  workspace: RemoteUserWorkspace,
+  knownUpdatedAt?: string | null
+): Promise<RemoteWorkspaceRecord> {
   const db = getD1Database();
 
   if (!db) {
@@ -94,6 +110,18 @@ export async function saveRemoteWorkspace(clerkUserId: string, workspace: Remote
   }
 
   await ensureWorkspaceTable(db);
+
+  const existing = await db
+    .prepare('SELECT workspace_json, updated_at FROM user_app_profiles WHERE clerk_user_id = ? LIMIT 1')
+    .bind(clerkUserId)
+    .first<WorkspaceRow>();
+
+  if (knownUpdatedAt && existing?.updated_at && existing.updated_at !== knownUpdatedAt) {
+    return {
+      workspace: existing.workspace_json ? (JSON.parse(existing.workspace_json) as RemoteUserWorkspace) : null,
+      updatedAt: existing.updated_at,
+    };
+  }
 
   const payload = JSON.stringify(workspace);
 
@@ -108,5 +136,13 @@ export async function saveRemoteWorkspace(clerkUserId: string, workspace: Remote
     .bind(clerkUserId, payload)
     .run();
 
-  return workspace;
+  const saved = await db
+    .prepare('SELECT workspace_json, updated_at FROM user_app_profiles WHERE clerk_user_id = ? LIMIT 1')
+    .bind(clerkUserId)
+    .first<WorkspaceRow>();
+
+  return {
+    workspace: saved?.workspace_json ? (JSON.parse(saved.workspace_json) as RemoteUserWorkspace) : workspace,
+    updatedAt: saved?.updated_at ?? null,
+  };
 }

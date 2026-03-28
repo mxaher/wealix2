@@ -52,6 +52,7 @@ export function RemoteProfileSync() {
 
   const loadedUserIdRef = useRef<string | null>(null);
   const lastSavedSnapshotRef = useRef<string>('');
+  const remoteUpdatedAtRef = useRef<string | null>(null);
   const applyingRemoteRef = useRef(false);
   const saveTimerRef = useRef<number | null>(null);
 
@@ -63,6 +64,7 @@ export function RemoteProfileSync() {
     if (!isSignedIn || !user) {
       loadedUserIdRef.current = null;
       lastSavedSnapshotRef.current = '';
+      remoteUpdatedAtRef.current = null;
       applyingRemoteRef.current = false;
       if (saveTimerRef.current) {
         window.clearTimeout(saveTimerRef.current);
@@ -73,7 +75,7 @@ export function RemoteProfileSync() {
 
     let cancelled = false;
 
-    const loadWorkspace = async () => {
+    const loadWorkspace = async (options?: { silent?: boolean; force?: boolean }) => {
       try {
         const response = await fetch('/api/user-data', {
           method: 'GET',
@@ -88,8 +90,13 @@ export function RemoteProfileSync() {
 
         const data = await response.json();
         const workspace = data?.workspace as RemoteWorkspaceSnapshot | null | undefined;
+        const updatedAt = typeof data?.updatedAt === 'string' ? data.updatedAt : null;
 
         if (cancelled) {
+          return;
+        }
+
+        if (!options?.force && loadedUserIdRef.current === user.id && updatedAt && remoteUpdatedAtRef.current === updatedAt) {
           return;
         }
 
@@ -97,27 +104,49 @@ export function RemoteProfileSync() {
           applyingRemoteRef.current = true;
           hydrateRemoteWorkspace(workspace);
           lastSavedSnapshotRef.current = JSON.stringify(workspace);
+          remoteUpdatedAtRef.current = updatedAt;
           window.setTimeout(() => {
             applyingRemoteRef.current = false;
           }, 0);
         } else {
           lastSavedSnapshotRef.current = serializedWorkspace;
+          remoteUpdatedAtRef.current = updatedAt;
         }
 
         loadedUserIdRef.current = user.id;
       } catch (error) {
-        console.error('[remote-sync] load failed', error);
+        if (!options?.silent) {
+          console.error('[remote-sync] load failed', error);
+        }
         loadedUserIdRef.current = user.id;
         lastSavedSnapshotRef.current = serializedWorkspace;
       }
     };
 
     if (loadedUserIdRef.current !== user.id) {
-      void loadWorkspace();
+      void loadWorkspace({ force: true });
     }
+
+    const refreshWorkspace = () => {
+      if (document.visibilityState === 'visible') {
+        void loadWorkspace({ silent: true });
+      }
+    };
+
+    window.addEventListener('focus', refreshWorkspace);
+    document.addEventListener('visibilitychange', refreshWorkspace);
+
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        void loadWorkspace({ silent: true });
+      }
+    }, 15000);
 
     return () => {
       cancelled = true;
+      window.removeEventListener('focus', refreshWorkspace);
+      document.removeEventListener('visibilitychange', refreshWorkspace);
+      window.clearInterval(intervalId);
     };
   }, [hydrateRemoteWorkspace, isLoaded, isSignedIn, serializedWorkspace, user]);
 
@@ -144,15 +173,35 @@ export function RemoteProfileSync() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ workspace: remoteWorkspace }),
+        body: JSON.stringify({ workspace: remoteWorkspace, knownUpdatedAt: remoteUpdatedAtRef.current }),
       })
         .then(async (response) => {
+          if (response.status === 409) {
+            const data = await response.json().catch(() => null);
+            const workspace = data?.workspace as RemoteWorkspaceSnapshot | null | undefined;
+            const updatedAt = typeof data?.updatedAt === 'string' ? data.updatedAt : null;
+
+            if (workspace) {
+              applyingRemoteRef.current = true;
+              hydrateRemoteWorkspace(workspace);
+              lastSavedSnapshotRef.current = JSON.stringify(workspace);
+              remoteUpdatedAtRef.current = updatedAt;
+              window.setTimeout(() => {
+                applyingRemoteRef.current = false;
+              }, 0);
+            }
+            return;
+          }
+
           if (!response.ok) {
             const data = await response.json().catch(() => null);
             throw new Error(data?.error || 'Failed to persist workspace');
           }
 
+          const data = await response.json().catch(() => null);
+          const updatedAt = typeof data?.updatedAt === 'string' ? data.updatedAt : null;
           lastSavedSnapshotRef.current = serializedWorkspace;
+          remoteUpdatedAtRef.current = updatedAt;
         })
         .catch((error) => {
           console.error('[remote-sync] save failed', error);

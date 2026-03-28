@@ -1,0 +1,6 @@
+Contact: mailto:security@wealix.app
+Contact: mailto:support@wealix.app
+Policy: https://wealix.app/privacy
+Preferred-Languages: en, ar
+Canonical: https://wealix.app/.well-known/security.txt
+Expires: 2027-03-28T23:59:59.000Z

@@ -44,6 +44,18 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Idempotency guard: if the trial is already active, return the existing state
+  // without writing again — prevents double-activation from concurrent requests.
+  if (metadata.trialStatus === 'active' && metadata.trialEndsAt) {
+    return NextResponse.json({
+      effectiveTier: 'pro',
+      trialStatus: 'active',
+      trialPlan: metadata.trialPlan ?? 'pro',
+      trialEndsAt: metadata.trialEndsAt,
+      initialized: false,
+    });
+  }
+
   const trialEndsAt = new Date(Date.now() + TRIAL_DURATION_MS).toISOString();
 
   await client.users.updateUserMetadata(authResult.userId, {
@@ -56,11 +68,16 @@ export async function POST(request: NextRequest) {
     },
   });
 
+  // Re-read after write to confirm our activation took effect (concurrent-request safety)
+  const confirmedUser = await client.users.getUser(authResult.userId);
+  const confirmedEndsAt =
+    (confirmedUser.publicMetadata?.trialEndsAt ?? confirmedUser.privateMetadata?.trialEndsAt) as string | undefined;
+
   return NextResponse.json({
     effectiveTier: 'pro',
     trialStatus: 'active',
     trialPlan: 'pro',
-    trialEndsAt,
+    trialEndsAt: confirmedEndsAt ?? trialEndsAt,
     initialized: true,
   });
 }

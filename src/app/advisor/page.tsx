@@ -37,6 +37,7 @@ import { DashboardShell } from '@/components/layout';
 import { FeatureGate } from '@/components/shared';
 import { useAppStore } from '@/store/useAppStore';
 import ReactMarkdown from 'react-markdown';
+import { createOpaqueId } from '@/lib/ids';
 
 interface Message {
   id: string;
@@ -189,7 +190,7 @@ export default function AdvisorPage() {
     if (!messageText.trim() || isLoading) return;
 
     const userMessage: Message = {
-      id: Date.now().toString(),
+      id: createOpaqueId('chat-message'),
       role: 'user',
       content: messageText.trim(),
       timestamp: new Date(),
@@ -252,7 +253,7 @@ export default function AdvisorPage() {
 
       // Add assistant message
       const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
+        id: createOpaqueId('chat-message'),
         role: 'assistant',
         content: fullContent,
         timestamp: new Date(),
@@ -267,7 +268,7 @@ export default function AdvisorPage() {
       console.error('Chat error:', error);
       // Add error message
       const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
+        id: createOpaqueId('chat-message'),
         role: 'assistant',
         content: isArabic 
           ? 'عذراً، حدث خطأ. يرجى المحاولة مرة أخرى.' 
@@ -288,7 +289,7 @@ export default function AdvisorPage() {
 
   const createNewSession = () => {
     const newSession: ChatSession = {
-      id: Date.now().toString(),
+      id: createOpaqueId('chat-session'),
       title: isArabic ? 'محادثة جديدة' : 'New Conversation',
       messages: [],
       createdAt: new Date(),

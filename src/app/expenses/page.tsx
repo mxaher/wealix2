@@ -15,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAppStore, formatCurrency, type ExpenseCategory, type ExpenseEntry, type PaymentMethod } from '@/store/useAppStore';
 import { toast } from '@/hooks/use-toast';
+import { createOpaqueId } from '@/lib/ids';
 
 const expenseCategories: ExpenseCategory[] = [
   'Food',
@@ -121,7 +122,7 @@ export default function ExpensesPage() {
     }
 
     const entry: ExpenseEntry = {
-      id: `expense-${Date.now()}`,
+      id: createOpaqueId('expense'),
       amount,
       currency: 'SAR',
       category: form.category,
@@ -223,7 +224,7 @@ export default function ExpensesPage() {
       return;
     }
 
-    const receiptId = `receipt-${Date.now()}`;
+    const receiptId = createOpaqueId('receipt');
     addReceiptScan({
       id: receiptId,
       merchantName: ocrDraft.merchantName.trim() || (isArabic ? 'إيصال بدون اسم' : 'Unnamed receipt'),
@@ -237,7 +238,7 @@ export default function ExpensesPage() {
     });
 
     addExpenseEntry({
-      id: `expense-${Date.now()}`,
+      id: createOpaqueId('expense'),
       amount,
       currency: ocrDraft.currency,
       category: ocrDraft.suggestedCategory,

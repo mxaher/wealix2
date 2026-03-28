@@ -17,11 +17,10 @@ export const metadata: Metadata = {
   authors: [{ name: "Wealix Team" }],
   icons: {
     icon: [
-      { url: "/icon.svg?v=20260327b", type: "image/svg+xml" },
-      { url: "/favicon.svg?v=20260327b", type: "image/svg+xml" },
+      { url: "/wealix-tab-icon.svg?v=20260328d", type: "image/svg+xml" },
     ],
-    shortcut: "/icon.svg?v=20260327b",
-    apple: "/apple-icon.svg?v=20260327b",
+    shortcut: "/wealix-tab-icon.svg?v=20260328d",
+    apple: "/wealix-apple-icon.svg?v=20260328d",
   },
   openGraph: {
     title: "Wealix App",

@@ -60,6 +60,7 @@ import { DashboardShell } from '@/components/layout';
 import { StatCard } from '@/components/shared';
 import { useAppStore, formatCurrency, type ExpenseEntry } from '@/store/useAppStore';
 import { toast } from '@/hooks/use-toast';
+import { createOpaqueId } from '@/lib/ids';
 
 const budgetToExpenseCategory: Record<string, ExpenseEntry['category']> = {
   housing: 'Housing',
@@ -184,7 +185,7 @@ export default function BudgetPage() {
     }
 
     const entry: ExpenseEntry = {
-      id: `budget-expense-${Date.now()}`,
+      id: createOpaqueId('budget-expense'),
       category: budgetToExpenseCategory[newExpense.category] || 'Other',
       description: newExpense.description,
       amount: Number(newExpense.amount),

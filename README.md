@@ -103,6 +103,7 @@ These are required if you deploy the current app with full auth and OCR support:
 ```env
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
 CLERK_SECRET_KEY=
+NVIDIA_API_KEY=
 DATALAB_API_KEY=
 SAHMK_API_KEY=
 TWELVEDATA_API_KEY=
@@ -111,6 +112,8 @@ TWELVEDATA_API_KEY=
 ### Optional
 
 ```env
+NVIDIA_API_BASE=https://integrate.api.nvidia.com/v1
+NVIDIA_OCR_MODEL=meta/llama-3.2-90b-vision-instruct
 DATALAB_API_BASE=https://www.datalab.to
 CHANDRA_API_KEY=
 SAHMK_API_BASE=https://app.sahmk.sa/api/v1
@@ -121,6 +124,9 @@ Notes:
 
 - `DATALAB_API_KEY` is the primary key used for Chandra/Datalab hosted OCR.
 - `CHANDRA_API_KEY` is supported as an alternate name, but `DATALAB_API_KEY` is preferred.
+- `NVIDIA_API_KEY` is used by the AI Advisor, portfolio analysis, and NVIDIA-based receipt OCR.
+- `NVIDIA_API_BASE` is optional unless you are pointing to a non-default NVIDIA API base.
+- `NVIDIA_OCR_MODEL` defaults to `meta/llama-3.2-90b-vision-instruct`.
 - `DATALAB_API_BASE` is optional unless you are pointing to a non-default Datalab base URL.
 - `SAHMK_API_KEY` is used to fetch Saudi market quotes for TASI holdings.
 - `SAHMK_API_BASE` is optional unless you are pointing to a custom SAHMK API base.
@@ -146,7 +152,7 @@ CLERK_SECRET_KEY=
 
 Without valid Clerk keys, production auth will fail.
 
-### Chandra / Datalab OCR
+### NVIDIA OCR
 
 Used for:
 
@@ -157,13 +163,14 @@ Used for:
 Required var:
 
 ```env
-DATALAB_API_KEY=
+NVIDIA_API_KEY=
 ```
 
 Optional:
 
 ```env
-DATALAB_API_BASE=https://www.datalab.to
+NVIDIA_API_BASE=https://integrate.api.nvidia.com/v1
+NVIDIA_OCR_MODEL=meta/llama-3.2-90b-vision-instruct
 ```
 
 The receipt OCR route is:
@@ -172,8 +179,9 @@ The receipt OCR route is:
 
 Current behavior:
 
-- first tries Datalab/Chandra OCR
-- falls back to the older vision-based OCR path if Datalab is unavailable
+- first tries NVIDIA vision OCR
+- falls back to Datalab/Chandra OCR if NVIDIA is unavailable or fails
+- then falls back to Datalab Marker as the final structured OCR fallback
 
 ### Cloudflare D1
 
