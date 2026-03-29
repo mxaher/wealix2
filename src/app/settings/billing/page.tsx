@@ -46,8 +46,8 @@ const PLANS: PlanDef[] = [
     id: 'core',
     name: 'Core',
     monthlyPrice: 10,
-    annualPrice: 108,
-    annualSavings: 12,
+    annualPrice: 100.08,
+    annualSavings: 19.92,
     currency: 'USD',
     highlight: false,
     description: {
@@ -63,8 +63,8 @@ const PLANS: PlanDef[] = [
     id: 'pro',
     name: 'Pro',
     monthlyPrice: 15,
-    annualPrice: 144,
-    annualSavings: 36,
+    annualPrice: 150,
+    annualSavings: 30,
     currency: 'USD',
     highlight: true,
     description: {
@@ -295,21 +295,28 @@ function BillingPageContent() {
   const handleSubscribe = useCallback(async (planId: PlanId) => {
     if (!clerkUser) return;
     setLoadingPlan(`${planId}-${billingCycle}`);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30_000);
     try {
       const res = await fetch('/api/billing/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ plan: planId, cycle: billingCycle }),
+        signal: controller.signal,
       });
+      clearTimeout(timeout);
       const data = await res.json() as { url?: string; error?: string };
       if (!res.ok || !data.url) {
         throw new Error(data.error ?? 'Failed to create checkout');
       }
       window.location.href = data.url;
     } catch (err) {
+      clearTimeout(timeout);
       toast({
         title: isArabic ? 'خطأ' : 'Error',
-        description: err instanceof Error ? err.message : 'Something went wrong',
+        description: err instanceof Error && err.name === 'AbortError'
+          ? (isArabic ? 'انتهت مهلة الطلب. حاول مجدداً.' : 'Request timed out. Please try again.')
+          : (err instanceof Error ? err.message : 'Something went wrong'),
         variant: 'destructive',
       });
       setLoadingPlan(null);

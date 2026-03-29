@@ -29,7 +29,7 @@ export async function POST(_req: NextRequest) {
   const { default: Stripe } = await import('stripe');
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://wealixapp.workers.dev';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://wealix.app';
 
   const session = await stripe.billingPortal.sessions.create({
     customer: customerId,

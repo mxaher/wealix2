@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://wealixapp.workers.dev';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://wealix.app';
 
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
