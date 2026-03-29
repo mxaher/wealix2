@@ -4,12 +4,12 @@ import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 
 const contentSecurityPolicy = `
   default-src 'self';
-  script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.clerk.com https://*.clerk.accounts.dev https://clerk.wealix.app https://*.wealix.app;
+  script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.clerk.com https://*.clerk.accounts.dev https://clerk.wealix.app https://*.wealix.app https://challenges.cloudflare.com;
   style-src 'self' 'unsafe-inline';
   img-src 'self' data: blob: https:;
   font-src 'self' data: https://clerk.wealix.app https://*.wealix.app;
-  connect-src 'self' https://*.clerk.com https://*.clerk.accounts.dev https://api.clerk.com https://clerk.wealix.app https://*.wealix.app https://www.datalab.to https://app.sahmk.sa https://api.twelvedata.com;
-  frame-src https://*.clerk.com https://*.clerk.accounts.dev https://clerk.wealix.app https://*.wealix.app;
+  connect-src 'self' https://*.clerk.com https://*.clerk.accounts.dev https://api.clerk.com https://clerk.wealix.app https://*.wealix.app https://challenges.cloudflare.com https://www.datalab.to https://app.sahmk.sa https://api.twelvedata.com;
+  frame-src https://*.clerk.com https://*.clerk.accounts.dev https://clerk.wealix.app https://*.wealix.app https://challenges.cloudflare.com https://accounts.wealix.app;
   object-src 'none';
   base-uri 'self';
   frame-ancestors 'none';
