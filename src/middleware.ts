@@ -24,7 +24,7 @@ export default clerkMiddleware(async (auth, req) => {
     return;
   }
 
-  const { userId, sessionClaims } = await auth();
+  const { userId } = await auth();
 
   if (!userId) {
     if (isAppRoute(req) || isOnboarding(req)) {
@@ -35,23 +35,7 @@ export default clerkMiddleware(async (auth, req) => {
     return;
   }
 
-  const meta = (sessionClaims?.publicMetadata ?? {}) as Record<string, unknown>;
-  const hasPaid = meta.subscriptionTier === 'core' || meta.subscriptionTier === 'pro';
-  const hasTrial =
-    meta.trialStatus === 'active' &&
-    typeof meta.trialEndsAt === 'string' &&
-    new Date(meta.trialEndsAt as string).getTime() > Date.now();
-  const hasAccess = hasPaid || hasTrial;
-
   if (isRoot(req)) {
-    return NextResponse.redirect(new URL(hasAccess ? '/app' : '/onboarding', req.url));
-  }
-
-  if (isAppRoute(req) && !hasAccess) {
-    return NextResponse.redirect(new URL('/onboarding', req.url));
-  }
-
-  if (isOnboarding(req) && hasAccess) {
     return NextResponse.redirect(new URL('/app', req.url));
   }
 });

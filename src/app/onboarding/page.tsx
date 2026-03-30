@@ -39,6 +39,7 @@ export default function OnboardingPage() {
   const router = useRouter();
   const { isLoaded, isSignedIn, user } = useUser();
   const locale = useAppStore((s) => s.locale);
+  const updateUser = useAppStore((s) => s.updateUser);
   const isArabic = locale === 'ar';
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [cycle, setCycle] = useState<'monthly' | 'annual'>('monthly');
@@ -73,6 +74,11 @@ export default function OnboardingPage() {
       if (!res.ok || !data.effectiveTier) {
         throw new Error(data.error ?? 'Failed to start trial');
       }
+      updateUser({
+        subscriptionTier: data.effectiveTier === 'core' || data.effectiveTier === 'pro' ? data.effectiveTier : 'free',
+      });
+      await user?.reload?.().catch(() => undefined);
+      setLoadingPlan(null);
       router.replace('/app');
     } catch (err) {
       toast({
