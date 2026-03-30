@@ -43,8 +43,6 @@ export default function RootLayout({
         className="antialiased bg-background text-foreground font-sans"
       >
         <ClerkProvider
-          isSatellite
-          domain="wealix.app"
           signInUrl={accountPortalSignInUrl}
           signUpUrl={accountPortalSignUpUrl}
           afterSignOutUrl="/"
