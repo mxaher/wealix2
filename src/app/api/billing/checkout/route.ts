@@ -68,6 +68,15 @@ export async function POST(req: NextRequest) {
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://wealix.app';
 
+  // Check if the user still has an active trial — if so, collect payment now
+  // so the subscription starts immediately after trial ends (no re-checkout needed).
+  // If they already paid, skip trial.
+  const userMeta = user.publicMetadata as Record<string, unknown> | undefined;
+  const trialActive =
+    userMeta?.trialStatus === 'active' &&
+    typeof userMeta?.trialEndsAt === 'string' &&
+    new Date(userMeta.trialEndsAt as string).getTime() > Date.now();
+
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
     mode: 'subscription',
@@ -75,10 +84,20 @@ export async function POST(req: NextRequest) {
     success_url: `${appUrl}/settings/billing?success=true&plan=${plan}`,
     cancel_url: `${appUrl}/settings/billing?canceled=true`,
     allow_promotion_codes: true,
+    // If user has never had a trial, give them 14 days free with no CC required upfront
+    ...(!trialActive && {
+      payment_method_collection: 'if_required',
+      subscription_data: {
+        trial_period_days: 14,
+        metadata: { clerkUserId: authResult.userId, plan },
+      },
+    }),
+    ...(trialActive && {
+      subscription_data: {
+        metadata: { clerkUserId: authResult.userId, plan },
+      },
+    }),
     metadata: { clerkUserId: authResult.userId, plan, cycle },
-    subscription_data: {
-      metadata: { clerkUserId: authResult.userId, plan },
-    },
   });
 
   return NextResponse.json({ url: session.url });

@@ -10,6 +10,10 @@ export async function POST(request: NextRequest) {
     return authResult.error ?? NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
   }
 
+  // Accept optional plan from request body (defaults to 'pro')
+  const body = await request.json().catch(() => ({})) as { plan?: string };
+  const chosenPlan: 'core' | 'pro' = body.plan === 'core' ? 'core' : 'pro';
+
   const client = await clerkClient();
   const user = await client.users.getUser(authResult.userId);
 
@@ -48,9 +52,9 @@ export async function POST(request: NextRequest) {
   // without writing again — prevents double-activation from concurrent requests.
   if (metadata.trialStatus === 'active' && metadata.trialEndsAt) {
     return NextResponse.json({
-      effectiveTier: 'pro',
+      effectiveTier: metadata.trialPlan ?? chosenPlan,
       trialStatus: 'active',
-      trialPlan: metadata.trialPlan ?? 'pro',
+      trialPlan: metadata.trialPlan ?? chosenPlan,
       trialEndsAt: metadata.trialEndsAt,
       initialized: false,
     });
@@ -63,7 +67,7 @@ export async function POST(request: NextRequest) {
       ...user.publicMetadata,
       subscriptionTier: isPaidTier ? metadata.subscriptionTier : 'free',
       trialStatus: 'active',
-      trialPlan: 'pro',
+      trialPlan: chosenPlan,
       trialEndsAt,
     },
   });
@@ -74,9 +78,9 @@ export async function POST(request: NextRequest) {
     (confirmedUser.publicMetadata?.trialEndsAt ?? confirmedUser.privateMetadata?.trialEndsAt) as string | undefined;
 
   return NextResponse.json({
-    effectiveTier: 'pro',
+    effectiveTier: chosenPlan,
     trialStatus: 'active',
-    trialPlan: 'pro',
+    trialPlan: chosenPlan,
     trialEndsAt: confirmedEndsAt ?? trialEndsAt,
     initialized: true,
   });

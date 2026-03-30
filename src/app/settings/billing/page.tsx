@@ -46,8 +46,8 @@ const PLANS: PlanDef[] = [
     id: 'core',
     name: 'Core',
     monthlyPrice: 10,
-    annualPrice: 100.08,
-    annualSavings: 19.92,
+    annualPrice: 100,
+    annualSavings: 20,
     currency: 'USD',
     highlight: false,
     description: {

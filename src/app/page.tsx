@@ -120,10 +120,10 @@ const pricingByCycle = {
     {
       id: 'core',
       name: 'Core',
-      price: 100.08,
+      price: 100,
       currency: 'USD',
       suffix: { en: '/year', ar: '/سنوياً' },
-      savings: { en: 'Save $19.92/yr', ar: 'وفّر 19.92$ سنوياً' },
+      savings: { en: 'Save $20/yr', ar: 'وفّر 20$ سنوياً' },
       description: {
         en: 'Annual Core access — same essential layer, better value. Billed once a year.',
         ar: 'اشتراك سنوي لخطة Core بقيمة أفضل. يُحسب مرة واحدة سنوياً.',
