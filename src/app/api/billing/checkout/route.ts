@@ -1,8 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server';
-import { requireAuthenticatedUser } from '@/lib/server-auth';
-import { clerkClient } from '@clerk/nextjs/server';
+import { auth } from '@clerk/nextjs/server';
 
-// Stripe price IDs — set these in Cloudflare Pages environment variables
 const PRICE_IDS: Record<string, Record<string, string | undefined>> = {
   core: {
     monthly: process.env.STRIPE_PRICE_CORE_MONTHLY,
@@ -14,10 +12,36 @@ const PRICE_IDS: Record<string, Record<string, string | undefined>> = {
   },
 };
 
+function getPublicMetadataValue(
+  sessionClaims: Awaited<ReturnType<typeof auth>>['sessionClaims'],
+  key: string
+) {
+  const publicMetadata = (sessionClaims?.publicMetadata ?? {}) as Record<string, unknown>;
+  return publicMetadata[key];
+}
+
+async function withTimeout<T>(label: string, action: Promise<T>, timeoutMs = 12_000): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([action, timeoutPromise]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
+}
+
 export async function POST(req: NextRequest) {
-  const authResult = await requireAuthenticatedUser();
-  if (authResult.error || !authResult.userId) {
-    return authResult.error ?? NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const { userId, sessionClaims } = await auth();
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   if (!process.env.STRIPE_SECRET_KEY) {
@@ -27,7 +51,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const body = await req.json() as { plan?: string; cycle?: string };
+  const body = (await req.json()) as { plan?: string; cycle?: string };
   const { plan, cycle } = body;
 
   if (!plan || !['core', 'pro'].includes(plan)) {
@@ -47,58 +71,67 @@ export async function POST(req: NextRequest) {
 
   const { default: Stripe } = await import('stripe');
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-
-  const clerk = await clerkClient();
-  const user = await clerk.users.getUser(authResult.userId);
-  const email = user.emailAddresses[0]?.emailAddress;
-
-  // Reuse existing Stripe customer or create one
-  let customerId = user.privateMetadata?.stripeCustomerId as string | undefined;
-  if (!customerId) {
-    const customer = await stripe.customers.create({
-      email,
-      name: `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || undefined,
-      metadata: { clerkUserId: authResult.userId },
-    });
-    customerId = customer.id;
-    await clerk.users.updateUserMetadata(authResult.userId, {
-      privateMetadata: { stripeCustomerId: customerId },
-    });
-  }
+  const customerId =
+    typeof getPublicMetadataValue(sessionClaims, 'stripeCustomerId') === 'string'
+      ? (getPublicMetadataValue(sessionClaims, 'stripeCustomerId') as string)
+      : undefined;
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://wealix.app';
-
-  // Check if the user still has an active trial — if so, collect payment now
-  // so the subscription starts immediately after trial ends (no re-checkout needed).
-  // If they already paid, skip trial.
-  const userMeta = user.publicMetadata as Record<string, unknown> | undefined;
   const trialActive =
-    userMeta?.trialStatus === 'active' &&
-    typeof userMeta?.trialEndsAt === 'string' &&
-    new Date(userMeta.trialEndsAt as string).getTime() > Date.now();
+    getPublicMetadataValue(sessionClaims, 'trialStatus') === 'active' &&
+    typeof getPublicMetadataValue(sessionClaims, 'trialEndsAt') === 'string' &&
+    new Date(getPublicMetadataValue(sessionClaims, 'trialEndsAt') as string).getTime() > Date.now();
 
-  const session = await stripe.checkout.sessions.create({
-    customer: customerId,
-    mode: 'subscription',
-    line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${appUrl}/settings/billing?success=true&plan=${plan}`,
-    cancel_url: `${appUrl}/settings/billing?canceled=true`,
-    allow_promotion_codes: true,
-    // If user has never had a trial, give them 14 days free with no CC required upfront
-    ...(!trialActive && {
-      payment_method_collection: 'if_required',
-      subscription_data: {
-        trial_period_days: 14,
-        metadata: { clerkUserId: authResult.userId, plan },
-      },
-    }),
-    ...(trialActive && {
-      subscription_data: {
-        metadata: { clerkUserId: authResult.userId, plan },
-      },
-    }),
-    metadata: { clerkUserId: authResult.userId, plan, cycle },
-  });
+  try {
+    const session = await withTimeout(
+      'stripe.checkout.sessions.create',
+      stripe.checkout.sessions.create({
+        ...(customerId ? { customer: customerId } : {}),
+        mode: 'subscription',
+        line_items: [{ price: priceId, quantity: 1 }],
+        success_url: `${appUrl}/settings/billing?success=true&plan=${plan}`,
+        cancel_url: `${appUrl}/settings/billing?canceled=true`,
+        allow_promotion_codes: true,
+        client_reference_id: userId,
+        ...(!trialActive && {
+          payment_method_collection: 'if_required' as const,
+          subscription_data: {
+            trial_period_days: 14,
+            metadata: { clerkUserId: userId, plan },
+          },
+        }),
+        ...(trialActive && {
+          subscription_data: {
+            metadata: { clerkUserId: userId, plan },
+          },
+        }),
+        metadata: { clerkUserId: userId, plan, cycle },
+      })
+    );
 
-  return NextResponse.json({ url: session.url });
+    if (!session.url) {
+      console.error('[billing/checkout] Stripe session created without URL', { userId, plan, cycle });
+      return NextResponse.json({ error: 'Stripe checkout URL was not returned.' }, { status: 502 });
+    }
+
+    return NextResponse.json({ url: session.url });
+  } catch (error) {
+    console.error('[billing/checkout] failed', {
+      userId,
+      plan,
+      cycle,
+      hasCustomerId: Boolean(customerId),
+      error: error instanceof Error ? error.message : error,
+    });
+
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? `Unable to start Stripe checkout: ${error.message}`
+            : 'Unable to start Stripe checkout.',
+      },
+      { status: 502 }
+    );
+  }
 }

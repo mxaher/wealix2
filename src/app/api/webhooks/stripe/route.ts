@@ -35,11 +35,18 @@ export async function POST(req: NextRequest) {
       const plan = session.metadata?.plan;
 
       if (clerkUserId && (plan === 'core' || plan === 'pro')) {
+        const stripeCustomerId =
+          typeof session.customer === 'string' ? session.customer : session.customer?.id ?? null;
+
         await clerk.users.updateUserMetadata(clerkUserId, {
           publicMetadata: {
             subscriptionTier: plan,
             subscriptionStatus: 'active',
             stripeSubscriptionId: typeof session.subscription === 'string' ? session.subscription : null,
+            stripeCustomerId,
+          },
+          privateMetadata: {
+            stripeCustomerId,
           },
         });
       }
