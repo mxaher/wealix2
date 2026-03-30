@@ -34,17 +34,14 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const accountPortalSignInUrl = "https://accounts.wealix.app/sign-in";
-  const accountPortalSignUpUrl = "https://accounts.wealix.app/sign-up";
-
   return (
     <html lang="en" suppressHydrationWarning>
       <body
         className="antialiased bg-background text-foreground font-sans"
       >
         <ClerkProvider
-          signInUrl={accountPortalSignInUrl}
-          signUpUrl={accountPortalSignUpUrl}
+          signInUrl="/sign-in"
+          signUpUrl="/sign-up"
           afterSignOutUrl="/"
         >
           <ThemeProvider

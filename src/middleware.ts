@@ -16,6 +16,7 @@ const isAppRoute = createRouteMatcher([
   '/retirement(.*)',
 ]);
 const isOnboarding = createRouteMatcher(['/onboarding(.*)']);
+const isLocalAuthRoute = createRouteMatcher(['/sign-in(.*)', '/sign-up(.*)']);
 const isRoot = createRouteMatcher(['/']);
 
 export default clerkMiddleware(async (auth, req) => {
@@ -28,7 +29,7 @@ export default clerkMiddleware(async (auth, req) => {
 
   if (!userId) {
     if (isAppRoute(req) || isOnboarding(req)) {
-      const signInUrl = new URL('https://accounts.wealix.app/sign-in');
+      const signInUrl = new URL('/sign-in', req.url);
       signInUrl.searchParams.set('redirect_url', req.url);
       return NextResponse.redirect(signInUrl);
     }
@@ -36,6 +37,10 @@ export default clerkMiddleware(async (auth, req) => {
   }
 
   if (isRoot(req)) {
+    return NextResponse.redirect(new URL('/app', req.url));
+  }
+
+  if (isLocalAuthRoute(req)) {
     return NextResponse.redirect(new URL('/app', req.url));
   }
 });
