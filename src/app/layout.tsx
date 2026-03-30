@@ -44,7 +44,7 @@ export default function RootLayout({
       >
         <ClerkProvider
           isSatellite
-          domain={(url) => url.host}
+          domain="wealix.app"
           signInUrl={accountPortalSignInUrl}
           signUpUrl={accountPortalSignUpUrl}
           afterSignOutUrl="/"
