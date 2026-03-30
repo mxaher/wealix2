@@ -42,8 +42,7 @@ export default function RootLayout({
         <ClerkProvider
           signInUrl="https://accounts.wealix.app/sign-in"
           signUpUrl="https://accounts.wealix.app/sign-up"
-          afterSignInUrl="/app"
-          afterSignUpUrl="/app"
+          afterSignOutUrl="/"
         >
           <ThemeProvider
             attribute="class"
