@@ -5,7 +5,6 @@ import {
   isRemotePersistenceConfigured,
   loadRemoteWorkspace,
   saveRemoteWorkspace,
-  type RemoteUserWorkspace,
 } from '@/lib/remote-user-data';
 
 const remoteUserWorkspaceSchema = z.object({
