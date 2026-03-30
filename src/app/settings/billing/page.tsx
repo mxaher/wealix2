@@ -267,6 +267,11 @@ function BillingPageContent() {
 
   const trialPlan = (metadata?.trialPlan as string) ?? 'pro';
 
+  const syncActiveTier = useCallback(async (tier: PlanId) => {
+    useAppStore.getState().updateUser({ subscriptionTier: tier });
+    await clerkUser?.reload?.().catch(() => undefined);
+  }, [clerkUser]);
+
   // ── Handle success/cancel redirects ──────────────────────────────────────
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -292,6 +297,38 @@ function BillingPageContent() {
   }, [isArabic, router]);
 
   // ── Subscribe ─────────────────────────────────────────────────────────────
+  const handleStartTrial = useCallback(async (planId: PlanId) => {
+    if (!clerkUser) return;
+    setLoadingPlan(`${planId}-trial`);
+    try {
+      const res = await fetch('/api/billing/trial/ensure', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: planId }),
+      });
+      const data = await res.json() as { effectiveTier?: string; error?: string };
+      if (!res.ok || !data.effectiveTier) {
+        throw new Error(data.error ?? 'Failed to activate trial');
+      }
+
+      await syncActiveTier(data.effectiveTier === 'core' ? 'core' : 'pro');
+      toast({
+        title: isArabic ? 'تم تفعيل التجربة' : 'Trial activated',
+        description: isArabic
+          ? `تم تفعيل تجربة ${planId === 'pro' ? 'Pro' : 'Core'} لمدة 14 يوماً دون بطاقة ائتمان.`
+          : `Your ${planId === 'pro' ? 'Pro' : 'Core'} 14-day trial is now active with no credit card required.`,
+      });
+      router.replace('/app');
+    } catch (err) {
+      toast({
+        title: isArabic ? 'خطأ' : 'Error',
+        description: err instanceof Error ? err.message : 'Something went wrong',
+        variant: 'destructive',
+      });
+      setLoadingPlan(null);
+    }
+  }, [clerkUser, isArabic, router, syncActiveTier]);
+
   const handleSubscribe = useCallback(async (planId: PlanId) => {
     if (!clerkUser) return;
     setLoadingPlan(`${planId}-${billingCycle}`);
@@ -447,7 +484,9 @@ function BillingPageContent() {
                   ? (isArabic ? '/شهرياً' : '/mo')
                   : (isArabic ? '/سنوياً' : '/yr');
                 const isCurrentPlan = subscriptionTier === plan.id;
-                const isLoading = loadingPlan === `${plan.id}-${billingCycle}`;
+                const isCheckoutLoading = loadingPlan === `${plan.id}-${billingCycle}`;
+                const isTrialLoading = loadingPlan === `${plan.id}-trial`;
+                const isLoading = isCheckoutLoading || isTrialLoading;
 
                 return (
                   <div
@@ -511,7 +550,7 @@ function BillingPageContent() {
                       className={`mt-8 w-full rounded-xl ${plan.highlight ? 'btn-primary' : ''}`}
                       variant={plan.highlight ? 'default' : 'outline'}
                       disabled={isLoading || !clerkUser}
-                      onClick={() => handleSubscribe(plan.id)}
+                      onClick={() => (trialActive ? handleSubscribe(plan.id) : handleStartTrial(plan.id))}
                     >
                       {isLoading ? (
                         <RefreshCw className="h-4 w-4 animate-spin" />

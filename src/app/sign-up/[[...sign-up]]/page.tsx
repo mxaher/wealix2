@@ -8,11 +8,11 @@ export default function SignUpPage() {
   const { isSignedIn } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectUrl = searchParams.get('redirect_url') ?? '/app';
+  const redirectUrl = searchParams.get('redirect_url') ?? '/onboarding';
 
   useEffect(() => {
     if (isSignedIn) {
-      router.replace('/app');
+      router.replace('/onboarding');
     }
   }, [isSignedIn, router]);
 
@@ -27,7 +27,7 @@ export default function SignUpPage() {
         routing="path"
         signInUrl="/sign-in"
         forceRedirectUrl={redirectUrl}
-        fallbackRedirectUrl="/app"
+        fallbackRedirectUrl="/onboarding"
       />
     </div>
   );
