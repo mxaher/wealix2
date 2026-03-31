@@ -56,7 +56,7 @@ function SettingsPageContent() {
   const actualPlan =
     metadata?.subscriptionTier === 'core' || metadata?.subscriptionTier === 'pro'
       ? metadata.subscriptionTier
-      : 'free';
+      : 'none';
   const activeTrial =
     metadata?.trialStatus === 'active' &&
     (metadata?.trialPlan === 'core' || metadata?.trialPlan === 'pro') &&
@@ -445,19 +445,19 @@ function SettingsPageContent() {
                         <p className="text-sm text-muted-foreground">{isArabic ? 'خطتك الحالية' : 'Current Plan'}</p>
                         <p className="text-2xl font-bold">
                           {activeTrial
-                            ? (isArabic ? 'تجربة مجانية' : 'Free Trial')
-                            : currentPlan === 'free'
-                            ? (isArabic ? 'مجاني' : 'Free')
+                            ? (isArabic ? 'تجربة 14 يوماً' : '14-Day Trial')
+                            : currentPlan === 'none'
+                            ? (isArabic ? 'لا توجد خطة مفعّلة' : 'No active plan')
                             : currentPlan === 'core'
                             ? 'Core'
                             : 'Pro'}
                         </p>
                         {activeTrial && (
                           <p className="text-sm text-muted-foreground">
-                            {isArabic ? '14 يوماً ثم تختار Core أو Pro' : '14 days, then choose Core or Pro'}
+                            {isArabic ? 'الوصول القياسي مفعّل الآن. الذكاء الاصطناعي والتقارير بعد الدفع.' : 'Standard access is active now. AI and reports unlock after payment.'}
                           </p>
                         )}
-                        {!activeTrial && currentPlan !== 'free' && (
+                        {!activeTrial && currentPlan !== 'none' && (
                           <p className="text-sm text-muted-foreground">
                             {isArabic ? 'الخطة المفعلة حالياً على حسابك.' : 'This is the plan currently active on your account.'}
                           </p>
@@ -470,8 +470,8 @@ function SettingsPageContent() {
 
               <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
                 {isArabic
-                  ? 'يحصل كل مستخدم جديد على تجربة مجانية لمدة 14 يوماً بدون بطاقة ائتمان. بعد انتهائها ستحتاج إلى اختيار Core أو Pro للمتابعة.'
-                  : 'Every new user starts with a 14-day free trial and no credit card. After the trial ends, choose Core or Pro to continue.'}
+                  ? 'بعد إنشاء الحساب تختار Core أو Pro ثم تبدأ تجربة 14 يوماً. إذا لم يتم الدفع بعد انتهاء التجربة، يتوقف الوصول حتى تفعيل الاشتراك.'
+                  : 'After signup you choose Core or Pro and start a 14-day trial. If payment is not completed when the trial ends, access pauses until the subscription is activated.'}
               </div>
             </div>
           </TabsContent>

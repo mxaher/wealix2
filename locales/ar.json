@@ -254,7 +254,7 @@
     "deleteWarning": "هذا الإجراء لا يمكن التراجع عنه"
   },
   "subscription": {
-    "free": "مجاني",
+    "free": "بدون خطة",
     "core": "الأساسية",
     "pro": "المحترفة",
     "perMonth": "/شهر",
@@ -275,7 +275,7 @@
       "priceAlertsUnlimited": "تنبيهات الأسعار (غير محدودة)",
       "dataExport": "تصدير البيانات"
     },
-    "startTrial": "ابدأ التجربة المجانية 14 يوماً",
+    "startTrial": "ابدأ تجربة 14 يوماً",
     "upgradeTo": "ترقية إلى {plan}"
   },
   "market": {

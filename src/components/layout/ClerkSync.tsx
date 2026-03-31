@@ -6,32 +6,32 @@ import { useAppStore } from '@/store/useAppStore';
 import type { SubscriptionTier } from '@/store/useAppStore';
 
 function normalizeTier(value: unknown): SubscriptionTier {
-  return value === 'core' || value === 'pro' ? value : 'free';
+  return value === 'core' || value === 'pro' ? value : 'none';
 }
 
 function getEffectiveTier(metadata: Record<string, unknown> | undefined): SubscriptionTier {
   const subscriptionTier = normalizeTier(metadata?.subscriptionTier);
-  if (subscriptionTier !== 'free') {
+  if (subscriptionTier !== 'none') {
     return subscriptionTier;
   }
 
   if (metadata?.trialStatus !== 'active') {
-    return 'free';
+    return 'none';
   }
 
   const trialPlan = metadata?.trialPlan;
   const trialEndsAt = metadata?.trialEndsAt;
   if (trialPlan !== 'core' && trialPlan !== 'pro') {
-    return 'free';
+    return 'none';
   }
 
   if (typeof trialEndsAt !== 'string') {
-    return 'free';
+    return 'none';
   }
 
   const endsAt = new Date(trialEndsAt).getTime();
   if (!Number.isFinite(endsAt) || endsAt <= Date.now()) {
-    return 'free';
+    return 'none';
   }
 
   return trialPlan;

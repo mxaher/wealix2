@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
   const effectiveTier = getEffectiveTierFromMetadata(metadata);
   const isPaidTier = metadata.subscriptionTier === 'core' || metadata.subscriptionTier === 'pro';
 
-  if (isPaidTier || effectiveTier !== 'free') {
+  if (isPaidTier || effectiveTier !== 'none') {
     return NextResponse.json({
       effectiveTier,
       trialStatus: metadata.trialStatus ?? null,
@@ -40,9 +40,9 @@ export async function POST(request: NextRequest) {
   if (metadata.trialStatus === 'expired') {
     return NextResponse.json(
       {
-        error: 'Trial already used',
+        error: 'Trial already used. Complete payment to continue with your selected plan.',
         code: 'TRIAL_ALREADY_USED',
-        effectiveTier: 'free',
+        effectiveTier: 'none',
       },
       { status: 409 }
     );
@@ -65,7 +65,8 @@ export async function POST(request: NextRequest) {
   await client.users.updateUserMetadata(authResult.userId, {
     publicMetadata: {
       ...user.publicMetadata,
-      subscriptionTier: isPaidTier ? metadata.subscriptionTier : 'free',
+      subscriptionTier: isPaidTier ? metadata.subscriptionTier : undefined,
+      subscriptionStatus: isPaidTier ? user.publicMetadata?.subscriptionStatus : 'trialing',
       trialStatus: 'active',
       trialPlan: chosenPlan,
       trialEndsAt,

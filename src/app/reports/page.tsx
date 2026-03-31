@@ -41,7 +41,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { createOpaqueId } from '@/lib/ids';
 
-type ReportTier = 'free' | 'core' | 'pro';
+type ReportTier = 'core' | 'pro';
 
 interface ReportType {
   id: string;

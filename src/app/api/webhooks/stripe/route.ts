@@ -44,6 +44,8 @@ export async function POST(req: NextRequest) {
             subscriptionStatus: 'active',
             stripeSubscriptionId: typeof session.subscription === 'string' ? session.subscription : null,
             stripeCustomerId,
+            trialStatus: 'converted',
+            trialEndsAt: null,
           },
           privateMetadata: {
             stripeCustomerId,
@@ -71,9 +73,9 @@ export async function POST(req: NextRequest) {
       if (clerkUserId) {
         await clerk.users.updateUserMetadata(clerkUserId, {
           publicMetadata: {
-            subscriptionTier: 'free',
             subscriptionStatus: 'canceled',
             stripeSubscriptionId: null,
+            trialStatus: 'expired',
           },
         });
       }

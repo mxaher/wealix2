@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useUser, SignInButton } from '@clerk/nextjs';
+import { useUser } from '@clerk/nextjs';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Crown,
@@ -108,7 +109,7 @@ function PlanBanner({
   onManage,
   isManaging,
 }: PlanBannerProps) {
-  const isPaid = subscriptionTier === 'core' || subscriptionTier === 'pro';
+  const isPaid = (subscriptionTier === 'core' || subscriptionTier === 'pro') && subscriptionStatus === 'active';
   const isPastDue = subscriptionStatus === 'past_due';
   const isCanceled = subscriptionStatus === 'canceled';
 
@@ -215,11 +216,11 @@ function PlanBanner({
         <CreditCard className="h-5 w-5" />
       </div>
       <div className="flex-1">
-        <p className="font-semibold">{isArabic ? 'الخطة المجانية' : 'Free plan'}</p>
+        <p className="font-semibold">{isArabic ? 'لا توجد خطة مفعّلة بعد' : 'No active plan yet'}</p>
         <p className="mt-1 text-sm leading-6 text-muted-foreground">
           {isArabic
-            ? 'اشترك في Core أو Pro أدناه للوصول الكامل إلى Wealix.'
-            : 'Subscribe to Core or Pro below to unlock full access to Wealix.'}
+            ? 'اختر Core أو Pro لبدء تجربة 14 يوماً. يتطلب الذكاء الاصطناعي والتقارير إتمام الدفع.'
+            : 'Choose Core or Pro to begin a 14-day trial. AI features and reports require completed payment.'}
         </p>
       </div>
     </div>
@@ -244,7 +245,12 @@ function BillingPageContent() {
   const subscriptionTier: string =
     metadata?.subscriptionTier === 'core' || metadata?.subscriptionTier === 'pro'
       ? (metadata.subscriptionTier as string)
-      : 'free';
+      : 'none';
+  const hasSelectedPlan =
+    subscriptionTier === 'core' ||
+    subscriptionTier === 'pro' ||
+    metadata?.trialPlan === 'core' ||
+    metadata?.trialPlan === 'pro';
 
   const subscriptionStatus: SubscriptionStatus =
     metadata?.subscriptionStatus === 'active'
@@ -389,14 +395,14 @@ function BillingPageContent() {
           </h2>
           <p className="mt-3 text-sm leading-7 text-muted-foreground">
             {isArabic
-              ? 'أنشئ حساباً واحصل على تجربة مجانية 14 يوماً، ثم اختر بين Core و Pro.'
-              : 'Create an account and get a 14-day free trial, then choose Core or Pro.'}
+              ? 'أنشئ حساباً، اختر Core أو Pro، ثم ابدأ تجربة 14 يوماً للخطة التي اخترتها.'
+              : 'Create an account, choose Core or Pro, and start a 14-day trial on the plan you selected.'}
           </p>
-          <SignInButton mode="modal">
-            <Button className="btn-primary mt-6 rounded-xl">
+          <Button asChild className="btn-primary mt-6 rounded-xl">
+            <Link href="/sign-in">
               {isArabic ? 'تسجيل الدخول' : 'Sign In'} <ArrowRight className="h-4 w-4" />
-            </Button>
-          </SignInButton>
+            </Link>
+          </Button>
         </div>
       </DashboardShell>
     );
@@ -442,8 +448,8 @@ function BillingPageContent() {
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
                 {isArabic
-                  ? 'تبدأ جميع الخطط بتجربة مجانية 14 يوماً بدون بطاقة ائتمان.'
-                  : 'All plans start with a 14-day free trial, no credit card required.'}
+                  ? 'ابدأ تجربة 14 يوماً للخطة المختارة. الذكاء الاصطناعي والتقارير لا تُفتح إلا بعد إتمام الدفع.'
+                  : 'Start a 14-day trial on your chosen plan. AI features and reports unlock only after payment is completed.'}
               </p>
             </div>
 
@@ -550,12 +556,12 @@ function BillingPageContent() {
                       className={`mt-8 w-full rounded-xl ${plan.highlight ? 'btn-primary' : ''}`}
                       variant={plan.highlight ? 'default' : 'outline'}
                       disabled={isLoading || !clerkUser}
-                      onClick={() => (trialActive ? handleSubscribe(plan.id) : handleStartTrial(plan.id))}
+                      onClick={() => (trialActive || hasSelectedPlan ? handleSubscribe(plan.id) : handleStartTrial(plan.id))}
                     >
                       {isLoading ? (
                         <RefreshCw className="h-4 w-4 animate-spin" />
-                      ) : trialActive ? (
-                        isArabic ? `اشترك في ${plan.name}` : `Subscribe to ${plan.name}`
+                      ) : trialActive || hasSelectedPlan ? (
+                        isArabic ? `أكمل اشتراك ${plan.name}` : `Complete ${plan.name} Subscription`
                       ) : (
                         isArabic ? `ابدأ التجربة — ${plan.name}` : `Start trial — ${plan.name}`
                       )}
@@ -597,13 +603,13 @@ function BillingPageContent() {
           <h2 className="text-lg font-semibold">{isArabic ? 'أسئلة شائعة' : 'Billing FAQ'}</h2>
           <div className="grid gap-4 md:grid-cols-2">
             {(isArabic ? [
-              ['هل أحتاج بطاقة ائتمان للتجربة المجانية؟', 'لا. التجربة المجانية لمدة 14 يوماً تبدأ تلقائياً عند إنشاء الحساب دون الحاجة لبطاقة ائتمان.'],
-              ['ماذا يحدث بعد انتهاء التجربة؟', 'ينتقل حسابك إلى الخطة المجانية تلقائياً. لن تُحسب منك أي رسوم ما لم تختر خطة مدفوعة.'],
+              ['هل أحتاج بطاقة ائتمان لبدء التجربة؟', 'لا. تختار Core أو Pro أولاً ثم تبدأ تجربة 14 يوماً دون بطاقة ائتمان.'],
+              ['ماذا يحدث بعد انتهاء التجربة؟', 'إذا لم تكمل الدفع، يتوقف الوصول إلى التطبيق حتى تُفعّل اشتراكك المدفوع على Core أو Pro.'],
               ['هل يمكنني الإلغاء في أي وقت؟', 'نعم. يمكنك إلغاء اشتراكك في أي وقت من بوابة الفوترة. يبقى وصولك فعّالاً حتى نهاية فترة الفوترة.'],
               ['ما طرق الدفع المقبولة؟', 'جميع البطاقات الائتمانية والمدينة الرئيسية (Visa، Mastercard، Mada) عبر Stripe.'],
             ] : [
-              ['Do I need a credit card for the trial?', 'No. The 14-day free trial starts automatically when you create your account, no credit card required.'],
-              ['What happens when the trial ends?', 'Your account downgrades to the free tier automatically. No charge unless you choose a paid plan.'],
+              ['Do I need a credit card to start the trial?', 'No. You choose Core or Pro first, then the 14-day trial starts with no card required.'],
+              ['What happens when the trial ends?', 'If payment is not completed, app access pauses until you activate a paid Core or Pro subscription.'],
               ['Can I cancel any time?', 'Yes. Cancel from the billing portal at any time. Access remains active until the end of the billing period.'],
               ['What payment methods are accepted?', 'All major credit and debit cards (Visa, Mastercard) via Stripe.'],
             ]).map(([q, a]) => (

@@ -17,7 +17,7 @@ model User {
   avatarUrl         String?
   locale            String    @default("ar")       // "ar" | "en"
   currency          String    @default("SAR")
-  subscriptionTier  String    @default("free")     // "free" | "core" | "pro"
+  subscriptionTier  String    @default("none")     // "none" | "core" | "pro"
   subscriptionEndsAt DateTime?
   onboardingDone    Boolean   @default(false)
   createdAt         DateTime  @default(now())

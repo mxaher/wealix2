@@ -9,13 +9,13 @@ type TrialMetadata = {
 };
 
 const TIER_RANK: Record<SubscriptionTier, number> = {
-  free: 0,
+  none: 0,
   core: 1,
   pro: 2,
 };
 
 function normalizeTier(value: unknown): SubscriptionTier {
-  return value === 'core' || value === 'pro' ? value : 'free';
+  return value === 'core' || value === 'pro' ? value : 'none';
 }
 
 function getTrialTier(metadata: TrialMetadata): SubscriptionTier {
@@ -24,20 +24,20 @@ function getTrialTier(metadata: TrialMetadata): SubscriptionTier {
   const trialEndsAt = metadata.trialEndsAt;
 
   if (trialStatus !== 'active') {
-    return 'free';
+    return 'none';
   }
 
   if (trialPlan !== 'core' && trialPlan !== 'pro') {
-    return 'free';
+    return 'none';
   }
 
   if (typeof trialEndsAt !== 'string') {
-    return 'free';
+    return 'none';
   }
 
   const endsAt = new Date(trialEndsAt).getTime();
   if (!Number.isFinite(endsAt) || endsAt <= Date.now()) {
-    return 'free';
+    return 'none';
   }
 
   return trialPlan;
@@ -45,7 +45,7 @@ function getTrialTier(metadata: TrialMetadata): SubscriptionTier {
 
 export function getEffectiveTierFromMetadata(metadata: TrialMetadata): SubscriptionTier {
   const subscriptionTier = normalizeTier(metadata.subscriptionTier);
-  if (subscriptionTier !== 'free') {
+  if (subscriptionTier !== 'none') {
     return subscriptionTier;
   }
 
@@ -81,7 +81,7 @@ export async function requireTier(requiredTier: 'core' | 'pro') {
   if (authResult.error || !authResult.userId) {
     return {
       userId: null,
-      tier: 'free' as const,
+      tier: 'none' as const,
       error: authResult.error,
     };
   }

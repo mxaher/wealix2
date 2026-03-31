@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Bell, Moon, Sun, Globe, Settings, PanelLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
-import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/nextjs';
+import { Show, UserButton } from '@clerk/nextjs';
 import { useAppStore } from '@/store/useAppStore';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,6 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { WealixLogo } from '@/components/shared/WealixLogo';
 
 export function Header() {
   const router = useRouter();
@@ -42,13 +43,16 @@ export function Header() {
         <Button variant="ghost" size="icon" className="hidden rounded-xl md:inline-flex" onClick={toggleSidebar}>
           <PanelLeft className="h-4 w-4" />
         </Button>
-        <div className="hidden sm:block">
-          <p className="text-sm font-medium text-foreground">
-            {isArabic ? 'مساحة Wealix' : 'Wealix Workspace'}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {isArabic ? 'نظام تشغيل الثروة الشخصية' : 'Personal Wealth Operating System'}
-          </p>
+        <div className="hidden sm:flex sm:items-center sm:gap-3">
+          <WealixLogo compact />
+          <div>
+            <p className="text-sm font-medium text-foreground">
+              {isArabic ? 'مساحة Wealix' : 'Wealix Workspace'}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {isArabic ? 'نظام تشغيل الثروة الشخصية' : 'Personal Wealth Operating System'}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -132,12 +136,12 @@ export function Header() {
 
         <div className="flex items-center gap-2 rounded-full border border-border bg-card px-1 py-1 shadow-sm">
           <Show when="signed-out">
-            <SignInButton mode="modal">
-              <Button variant="ghost" size="sm" className="rounded-full">{isArabic ? 'دخول' : 'Sign in'}</Button>
-            </SignInButton>
-            <SignUpButton mode="modal">
-              <Button size="sm" className="btn-primary rounded-full">{isArabic ? 'إنشاء حساب' : 'Sign up'}</Button>
-            </SignUpButton>
+            <Button asChild variant="ghost" size="sm" className="rounded-full">
+              <Link href="/sign-in">{isArabic ? 'دخول' : 'Sign in'}</Link>
+            </Button>
+            <Button asChild size="sm" className="btn-primary rounded-full">
+              <Link href="/sign-up">{isArabic ? 'إنشاء حساب' : 'Sign up'}</Link>
+            </Button>
           </Show>
           <Show when="signed-in">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full">

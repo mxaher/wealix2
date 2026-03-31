@@ -2,7 +2,7 @@ import type { SubscriptionTier } from '@/store/useAppStore';
 
 const TRIAL_PLAN_STORAGE_KEY = 'wealix-preferred-trial-plan';
 
-export type TrialPlan = Exclude<SubscriptionTier, 'free'>;
+export type TrialPlan = Exclude<SubscriptionTier, 'none'>;
 
 export function setPreferredTrialPlan(plan: TrialPlan) {
   if (typeof window === 'undefined') {

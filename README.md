@@ -231,18 +231,19 @@ Wealix now supports app-managed 14-day trials without a credit card.
 The app stores and evaluates these Clerk metadata fields:
 
 ```ts
-subscriptionTier: 'free' | 'core' | 'pro'
-trialStatus: 'active' | 'expired' | 'inactive'
+subscriptionTier: 'none' | 'core' | 'pro'
+trialStatus: 'active' | 'expired' | 'inactive' | 'converted'
 trialPlan: 'core' | 'pro'
 trialEndsAt: string // ISO timestamp
 ```
 
 Runtime behavior:
 
-- every brand-new account gets a 14-day trial automatically on first real sign-in
-- [src/app/api/billing/trial/ensure/route.ts](/Users/mohammedzaher/projects/Wealixapp%20v2/src/app/api/billing/trial/ensure/route.ts) initializes that one-time trial if one has not already been used
-- during the trial, premium access is granted through the active trial metadata
-- once the trial expires, access falls back to `free` unless the user converts to a paid plan
+- a newly signed-up user must choose either Core or Pro before entering the app
+- [src/app/api/billing/trial/ensure/route.ts](/Users/mohammedzaher/projects/Wealixapp%20v2/src/app/api/billing/trial/ensure/route.ts) starts a one-time 14-day trial for the selected plan
+- during the trial, standard app features are available
+- AI features and reports remain locked until payment is completed
+- once the trial expires, access pauses until the user converts to a paid Core or Pro subscription
 
 ### API protection
 

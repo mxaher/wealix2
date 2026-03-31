@@ -5,10 +5,11 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, Bot, Briefcase, Flame, Globe, LineChart, Moon, Receipt, ShieldCheck, Sun, Wallet } from 'lucide-react';
 import { useTheme } from 'next-themes';
-import { useAuth, SignInButton, SignUpButton } from '@clerk/nextjs';
+import { useAuth } from '@clerk/nextjs';
 import { useAppStore } from '@/store/useAppStore';
 import { Button } from '@/components/ui/button';
 import { CookieConsentBanner } from '@/components/shared/CookieConsentBanner';
+import { WealixLogo } from '@/components/shared/WealixLogo';
 
 const sections = {
   en: [
@@ -95,8 +96,8 @@ const pricingByCycle = {
         ar: 'الخطة الأساسية لمن يريد طبقة تشغيل واضحة لإدارة الأموال والأصول ومتابعة التقدم المالي.',
       },
       features: {
-        en: ['Income, expenses, budget, and net worth', 'Portfolio tracking and reports', 'Clean financial workspace', '14-day free trial'],
-        ar: ['الدخل والمصروفات والميزانية وصافي الثروة', 'متابعة المحفظة والتقارير', 'مساحة مالية منظمة وواضحة', 'تجربة مجانية لمدة 14 يوماً'],
+        en: ['Income, expenses, budget, and net worth', 'Portfolio tracking and FIRE planning', 'Clean financial workspace', '14-day plan trial'],
+        ar: ['الدخل والمصروفات والميزانية وصافي الثروة', 'متابعة المحفظة وتخطيط FIRE', 'مساحة مالية منظمة وواضحة', 'تجربة 14 يوماً للخطة المختارة'],
       },
     },
     {
@@ -111,8 +112,8 @@ const pricingByCycle = {
         ar: 'تجربة Wealix الكاملة مع تحليلات أعمق، ومسارات احترافية، ودعم قرار متقدم.',
       },
       features: {
-        en: ['Everything in Core', 'AI advisor and portfolio analysis', 'Advanced reports and planning tools', '14-day free trial'],
-        ar: ['كل ما في Core', 'المستشار الذكي وتحليل المحفظة', 'تقارير متقدمة وأدوات تخطيط أوسع', 'تجربة مجانية لمدة 14 يوماً'],
+        en: ['Everything in Core', 'AI advisor after payment', 'Portfolio AI analysis after payment', 'Advanced reports after payment'],
+        ar: ['كل ما في Core', 'المستشار الذكي بعد الدفع', 'تحليل المحفظة بالذكاء الاصطناعي بعد الدفع', 'تقارير متقدمة بعد الدفع'],
       },
     },
   ],
@@ -129,8 +130,8 @@ const pricingByCycle = {
         ar: 'اشتراك سنوي لخطة Core بقيمة أفضل. يُحسب مرة واحدة سنوياً.',
       },
       features: {
-        en: ['Income, expenses, budget, and net worth', 'Portfolio tracking and reports', 'Clean financial workspace', '14-day free trial'],
-        ar: ['الدخل والمصروفات والميزانية وصافي الثروة', 'متابعة المحفظة والتقارير', 'مساحة مالية منظمة وواضحة', 'تجربة مجانية لمدة 14 يوماً'],
+        en: ['Income, expenses, budget, and net worth', 'Portfolio tracking and FIRE planning', 'Clean financial workspace', '14-day plan trial'],
+        ar: ['الدخل والمصروفات والميزانية وصافي الثروة', 'متابعة المحفظة وتخطيط FIRE', 'مساحة مالية منظمة وواضحة', 'تجربة 14 يوماً للخطة المختارة'],
       },
     },
     {
@@ -145,8 +146,8 @@ const pricingByCycle = {
         ar: 'اشتراك سنوي لخطة Pro للمستخدم الذي يريد طبقة الذكاء والتحليل الكاملة بأفضل قيمة.',
       },
       features: {
-        en: ['Everything in Core', 'AI advisor and portfolio analysis', 'Advanced reports and planning tools', '14-day free trial'],
-        ar: ['كل ما في Core', 'المستشار الذكي وتحليل المحفظة', 'تقارير متقدمة وأدوات تخطيط أوسع', 'تجربة مجانية لمدة 14 يوماً'],
+        en: ['Everything in Core', 'AI advisor after payment', 'Portfolio AI analysis after payment', 'Advanced reports after payment'],
+        ar: ['كل ما في Core', 'المستشار الذكي بعد الدفع', 'تحليل المحفظة بالذكاء الاصطناعي بعد الدفع', 'تقارير متقدمة بعد الدفع'],
       },
     },
   ],
@@ -154,7 +155,7 @@ const pricingByCycle = {
 
 const faqItems = {
   en: [
-    ['What do I get in the 14-day trial?', 'Every new account starts with full premium access for 14 days without a credit card, so you can test the advisor, portfolio analysis, reports, and receipt OCR before choosing a paid plan.'],
+    ['What do I get in the 14-day trial?', 'After you choose Core or Pro, the 14-day trial unlocks the standard app experience for that plan. AI features and reports stay locked until payment is completed.'],
     ['Is Wealix a licensed bank, broker, or financial advisor?', 'No. Wealix is a personal wealth management and analysis platform, not a SAMA-licensed bank, brokerage, or regulated investment advisory firm. It does not hold custody of assets or execute trades for you.'],
     ['Where is my data stored?', 'Signed-in workspace data is persisted in Cloudflare D1, and some supporting processors such as AI, OCR, email, and monitoring vendors may handle limited data outside Saudi Arabia depending on the feature you use.'],
     ['How does the AI Advisor use my financial data?', 'When you use AI features, Wealix sends only the financial context needed for that request, such as holdings, cash flow, or receipt content, to the active AI processors. The Privacy Policy explains processing and retention in more detail.'],
@@ -162,7 +163,7 @@ const faqItems = {
     ['Can I review OCR results before they become expenses?', 'Yes. Receipt OCR is review-first. The extracted merchant, amount, date, category, and raw text are shown for confirmation and editing before anything is saved into your expenses.'],
   ],
   ar: [
-    ['ماذا يتضمن الاشتراك التجريبي لمدة 14 يوماً؟', 'يبدأ كل حساب جديد بفترة تجريبية تمنحك وصولاً كاملاً للميزات المميزة لمدة 14 يوماً دون بطاقة ائتمان، حتى تختبر المستشار الذكي وتحليل المحفظة والتقارير وOCR قبل اختيار الخطة المناسبة.'],
+    ['ماذا يتضمن الاشتراك التجريبي لمدة 14 يوماً؟', 'بعد اختيار Core أو Pro تبدأ تجربة 14 يوماً تمنحك استخدام التطبيق الأساسي للخطة المختارة، بينما تبقى ميزات الذكاء الاصطناعي والتقارير مقفلة حتى إتمام الدفع.'],
     ['هل Wealix بنك أو وسيط أو مستشار استثماري مرخّص؟', 'لا. Wealix منصة لإدارة الثروة الشخصية والتحليل المالي وليست بنكاً مرخصاً من البنك المركزي السعودي أو شركة وساطة أو جهة تقدم استشارات استثمارية منظمة. كما أنها لا تحفظ الأصول ولا تنفذ الصفقات نيابة عنك.'],
     ['أين يتم تخزين بياناتي؟', 'تُحفظ بيانات المستخدمين المسجلين داخل Cloudflare D1، وقد تتعامل بعض الجهات المساندة مثل مزودي الذكاء الاصطناعي وOCR والبريد والمراقبة مع قدر محدود من البيانات خارج السعودية بحسب الميزة المستخدمة.'],
     ['كيف يستخدم المستشار الذكي بياناتي المالية؟', 'عند استخدام ميزات الذكاء الاصطناعي، يرسل Wealix الحد الأدنى اللازم من السياق المالي المرتبط بطلبك، مثل المحفظة أو التدفق النقدي أو محتوى الإيصال، إلى مزودات المعالجة النشطة. وتوضح سياسة الخصوصية تفاصيل المعالجة والاحتفاظ.'],
@@ -188,9 +189,8 @@ export default function LandingPage() {
     <div className={`min-h-screen bg-background text-foreground ${isArabic ? 'font-[family-name:var(--font-arabic)]' : ''}`} dir={isArabic ? 'rtl' : 'ltr'}>
       <nav className="glass fixed inset-x-0 top-0 z-50 border-b border-border/70">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link href="/" dir="ltr" className="brand-wordmark flex flex-row items-center gap-0.5 text-xl font-bold">
-            <span className="logo-weal">Weal</span>
-            <span className="logo-ix">ix</span>
+          <Link href="/" dir="ltr">
+            <WealixLogo />
           </Link>
 
           <div className="hidden items-center gap-8 md:flex">
@@ -226,16 +226,12 @@ export default function LandingPage() {
             </Button>
             {!clerkSignedIn && (
               <>
-                <SignInButton mode="modal">
-                  <Button variant="ghost" className="hidden rounded-full md:inline-flex">
-                    {isArabic ? 'تسجيل الدخول' : 'Log In'}
-                  </Button>
-                </SignInButton>
-                <SignUpButton mode="modal">
-                  <Button className="btn-primary rounded-full">
-                    {isArabic ? 'ابدأ الآن' : 'Get Started'}
-                  </Button>
-                </SignUpButton>
+                <Button asChild variant="ghost" className="hidden rounded-full md:inline-flex">
+                  <Link href="/sign-in">{isArabic ? 'تسجيل الدخول' : 'Log In'}</Link>
+                </Button>
+                <Button asChild className="btn-primary rounded-full">
+                  <Link href="/sign-up">{isArabic ? 'ابدأ الآن' : 'Get Started'}</Link>
+                </Button>
               </>
             )}
             {clerkSignedIn && (
@@ -280,12 +276,12 @@ export default function LandingPage() {
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 {!clerkSignedIn && (
-                  <SignUpButton mode="modal">
-                    <Button className="btn-primary rounded-xl px-5 py-6 text-sm">
+                  <Button asChild className="btn-primary rounded-xl px-5 py-6 text-sm">
+                    <Link href="/sign-up">
                       {isArabic ? 'ابدأ التجربة المجانية 14 يوماً' : 'Start 14-Day Trial'}
                       <ArrowRight className="h-4 w-4" />
-                    </Button>
-                  </SignUpButton>
+                    </Link>
+                  </Button>
                 )}
                 {clerkSignedIn && (
                   <Button asChild className="btn-primary rounded-xl px-5 py-6 text-sm">
@@ -301,8 +297,8 @@ export default function LandingPage() {
               </div>
               <p className="mt-3 text-sm text-muted-foreground">
                 {isArabic
-                  ? 'كل مستخدم جديد يحصل تلقائياً على تجربة مجانية لمدة 14 يوماً، ثم يختار بين Core و Pro.'
-                  : 'Every first-time user gets a 14-day free trial automatically, then chooses Core or Pro.'}
+                  ? 'كل مستخدم جديد يختار Core أو Pro أولاً، ثم تبدأ تجربة لمدة 14 يوماً للخطة المختارة.'
+                  : 'Every new user chooses Core or Pro first, then the selected 14-day trial starts immediately.'}
               </p>
               <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                 <Link href="/privacy" className="transition-colors hover:text-foreground">
@@ -464,12 +460,12 @@ export default function LandingPage() {
                 {isArabic ? 'الأسعار' : 'Pricing'}
               </span>
               <h2 className="mt-5 text-3xl font-semibold tracking-tight sm:text-4xl">
-                {isArabic ? 'ابدأ بالتجربة المجانية ثم اختر الخطة المناسبة' : 'Simple paid plans with a 14-day trial first'}
+                {isArabic ? 'اختر خطتك ثم ابدأ تجربة 14 يوماً' : 'Choose your plan, then start a 14-day trial'}
               </h2>
               <p className="mt-4 text-sm leading-7 text-muted-foreground">
                 {isArabic
-                  ? 'كل حساب جديد يبدأ بتجربة مجانية لمدة 14 يوماً دون بطاقة ائتمان. بعد ذلك يختار المستخدم بين Core أو Pro شهرياً أو سنوياً.'
-                  : 'Every first-time account starts on a 14-day free trial without a credit card. After that, users choose Core or Pro monthly or annually.'}
+                  ? 'يختار كل مستخدم جديد Core أو Pro أولاً، ثم تبدأ تجربة 14 يوماً للخطة المختارة. الذكاء الاصطناعي والتقارير تتطلب إتمام الدفع.'
+                  : 'Every new user chooses Core or Pro first, then the selected 14-day trial starts. AI features and reports require completed payment.'}
               </p>
               <div className="mt-8 flex flex-col items-center gap-2">
                 <div className="inline-flex rounded-full border border-border bg-background p-1">
@@ -539,14 +535,13 @@ export default function LandingPage() {
                   </ul>
                   <div className="mt-8">
                     {!clerkSignedIn && (
-                      <SignUpButton mode="modal">
-                        <Button
-                          className={`w-full rounded-xl ${plan.id === 'pro' ? 'btn-primary' : ''}`}
-                          variant={plan.id === 'pro' ? 'default' : 'outline'}
-                        >
-                          {isArabic ? 'ابدأ التجربة المجانية' : 'Start Free Trial'}
-                        </Button>
-                      </SignUpButton>
+                      <Button
+                        asChild
+                        className={`w-full rounded-xl ${plan.id === 'pro' ? 'btn-primary' : ''}`}
+                        variant={plan.id === 'pro' ? 'default' : 'outline'}
+                      >
+                        <Link href="/sign-up">{isArabic ? 'اختر وابدأ التجربة' : 'Choose and Start Trial'}</Link>
+                      </Button>
                     )}
                     {clerkSignedIn && (
                       <Button asChild className={`w-full rounded-xl ${plan.id === 'pro' ? 'btn-primary' : ''}`} variant={plan.id === 'pro' ? 'default' : 'outline'}>
@@ -594,9 +589,9 @@ export default function LandingPage() {
               </div>
               <div className="flex flex-wrap gap-3">
                 {!clerkSignedIn && (
-                  <SignUpButton mode="modal">
-                    <Button className="btn-primary rounded-xl">{isArabic ? 'أنشئ مساحتك الآن' : 'Create your workspace'}</Button>
-                  </SignUpButton>
+                  <Button asChild className="btn-primary rounded-xl">
+                    <Link href="/sign-up">{isArabic ? 'أنشئ مساحتك الآن' : 'Create your workspace'}</Link>
+                  </Button>
                 )}
                 {clerkSignedIn && (
                   <Button asChild className="btn-primary rounded-xl">

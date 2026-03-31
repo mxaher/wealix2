@@ -90,7 +90,7 @@ export default function TermsPage() {
 
       <LegalSection title="Part Three — Subscriptions and Billing">
         <LegalSubsection title="6. Subscription Plans">
-          <p>6.1 Free Trial: New users receive a 14-day free trial with full Pro plan features. No credit card is required to start the trial. The trial begins on the date of account creation. Only one trial is permitted per person. Creating multiple accounts to obtain additional trials is a violation of these Terms.</p>
+          <p>6.1 Trial Access: New users must choose either the Core plan or the Pro plan during onboarding. Once selected, a 14-day trial for that chosen plan begins. Standard app features are available during the trial, while AI features and reports remain locked until payment is completed. Only one trial is permitted per person. Creating multiple accounts to obtain additional trials is a violation of these Terms.</p>
           <p>6.2 Core Plan: SAR 25.00 per month. Includes net worth dashboard, income and expense tracking, investment portfolio tracking, FIRE tracker, retirement planning, budget management, reports, and basic receipt OCR scanning.</p>
           <p>6.3 Pro Plan: SAR 49.00 per month. Includes everything in Core plus unlimited AI Financial Advisor messages, AI portfolio analysis, buy/sell/hold recommendations, smart rebalancing suggestions, multiple FIRE scenarios, custom smart alerts, monthly PDF reports, and AI-powered receipt OCR with auto-categorization.</p>
           <p>6.4 We reserve the right to modify plan pricing with at least 30 days&apos; written notice to existing subscribers before any price change takes effect. If you do not cancel before the price change takes effect, you agree to the new pricing.</p>
@@ -108,7 +108,7 @@ export default function TermsPage() {
 
         <LegalSubsection title="8. Cancellation Policy">
           <p>8.1 You may cancel your subscription at any time from your Account Settings under the Subscription tab. Cancellation takes effect at the end of the current billing period. You will retain full plan access until that date.</p>
-          <p>8.2 Cancellation does not delete your account or your data. Your data remains accessible at the free tier level after cancellation.</p>
+          <p>8.2 Cancellation does not delete your account or your data. After cancellation or expiry of unpaid trial access, your account remains available for billing management, account settings, and data export, but standard app access is paused until a paid subscription is active.</p>
           <p>8.3 To close your account entirely and request data deletion, use the Delete Account function in Settings. See Section 19 for data retention after deletion.</p>
         </LegalSubsection>
       </LegalSection>

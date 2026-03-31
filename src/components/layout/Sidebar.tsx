@@ -24,6 +24,7 @@ import { useAppStore } from '@/store/useAppStore';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { WealixLogo } from '@/components/shared/WealixLogo';
 
 const navSections = [
   {
@@ -77,25 +78,12 @@ export function Sidebar() {
         )}
       >
         <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
-          <Link href="/app" dir="ltr" className="brand-wordmark flex items-center gap-0.5 overflow-hidden text-lg font-bold">
-            <span className="logo-weal">Weal</span>
-            {!sidebarCollapsed && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex min-w-0 items-center gap-2"
-              >
-                <span className="logo-ix">ix</span>
-                <span className="text-xs font-medium text-muted-foreground">
-                  OS
-                </span>
-              </motion.div>
-            )}
+          <Link href="/app" dir="ltr" className="overflow-hidden">
+            <WealixLogo compact={sidebarCollapsed} textClassName={sidebarCollapsed ? 'sr-only' : ''} />
           </Link>
           {!sidebarCollapsed && (
             <div className="rounded-full bg-accent/10 px-2 py-1 text-[11px] font-medium text-accent">
-              Pro
+              Core / Pro
             </div>
           )}
         </div>

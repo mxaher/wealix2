@@ -77,11 +77,6 @@ export async function POST(req: NextRequest) {
       : undefined;
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://wealix.app';
-  const trialActive =
-    getPublicMetadataValue(sessionClaims, 'trialStatus') === 'active' &&
-    typeof getPublicMetadataValue(sessionClaims, 'trialEndsAt') === 'string' &&
-    new Date(getPublicMetadataValue(sessionClaims, 'trialEndsAt') as string).getTime() > Date.now();
-
   try {
     const session = await withTimeout(
       'stripe.checkout.sessions.create',
@@ -93,18 +88,10 @@ export async function POST(req: NextRequest) {
         cancel_url: `${appUrl}/settings/billing?canceled=true`,
         allow_promotion_codes: true,
         client_reference_id: userId,
-        ...(!trialActive && {
-          payment_method_collection: 'if_required' as const,
-          subscription_data: {
-            trial_period_days: 14,
-            metadata: { clerkUserId: userId, plan },
-          },
-        }),
-        ...(trialActive && {
-          subscription_data: {
-            metadata: { clerkUserId: userId, plan },
-          },
-        }),
+        payment_method_collection: 'always',
+        subscription_data: {
+          metadata: { clerkUserId: userId, plan },
+        },
         metadata: { clerkUserId: userId, plan, cycle },
       })
     );

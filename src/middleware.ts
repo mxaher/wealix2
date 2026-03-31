@@ -15,17 +15,21 @@ const isAppRoute = createRouteMatcher([
   '/fire(.*)',
   '/retirement(.*)',
 ]);
-const isPremiumRoute = createRouteMatcher([
-  '/advisor(.*)',
+const isStandardAccessRoute = createRouteMatcher([
+  '/app(.*)',
   '/budget(.*)',
   '/expenses(.*)',
   '/income(.*)',
   '/portfolio(.*)',
-  '/reports(.*)',
   '/net-worth(.*)',
   '/fire(.*)',
   '/retirement(.*)',
 ]);
+const isPaidOnlyRoute = createRouteMatcher([
+  '/advisor(.*)',
+  '/reports(.*)',
+]);
+const isBillingRoute = createRouteMatcher(['/settings/billing(.*)']);
 const isOnboarding = createRouteMatcher(['/onboarding(.*)']);
 const isLocalAuthRoute = createRouteMatcher(['/sign-in(.*)', '/sign-up(.*)']);
 const isRoot = createRouteMatcher(['/']);
@@ -56,14 +60,45 @@ export default clerkMiddleware(async (auth, req) => {
   }
 
   const meta = (sessionClaims?.publicMetadata ?? {}) as Record<string, unknown>;
-  const hasPaid = meta.subscriptionTier === 'core' || meta.subscriptionTier === 'pro';
+  const hasPaid =
+    (meta.subscriptionTier === 'core' || meta.subscriptionTier === 'pro') &&
+    meta.subscriptionStatus === 'active';
+  const hasSelectedPlan =
+    (meta.subscriptionTier === 'core' || meta.subscriptionTier === 'pro') ||
+    meta.trialPlan === 'core' ||
+    meta.trialPlan === 'pro';
   const hasTrial =
     (meta.trialPlan === 'core' || meta.trialPlan === 'pro') &&
     meta.trialStatus === 'active' &&
     typeof meta.trialEndsAt === 'string' &&
     new Date(meta.trialEndsAt as string).getTime() > Date.now();
+  const hasStandardAccess = hasPaid || hasTrial;
 
-  if (isPremiumRoute(req) && !hasPaid && !hasTrial) {
+  if (isRoot(req)) {
+    if (!hasSelectedPlan) {
+      return NextResponse.redirect(new URL('/onboarding', req.url));
+    }
+
+    return NextResponse.redirect(new URL(hasStandardAccess ? '/app' : '/settings/billing', req.url));
+  }
+
+  if (isLocalAuthRoute(req)) {
+    return NextResponse.redirect(new URL(hasStandardAccess ? '/app' : '/onboarding', req.url));
+  }
+
+  if (!hasSelectedPlan && !isOnboarding(req) && !isBillingRoute(req)) {
+    return NextResponse.redirect(new URL('/onboarding', req.url));
+  }
+
+  if (isOnboarding(req) && hasSelectedPlan) {
+    return NextResponse.redirect(new URL(hasStandardAccess ? '/app' : '/settings/billing', req.url));
+  }
+
+  if (isStandardAccessRoute(req) && !hasStandardAccess) {
+    return NextResponse.redirect(new URL('/settings/billing', req.url));
+  }
+
+  if (isPaidOnlyRoute(req) && !hasPaid) {
     return NextResponse.redirect(new URL('/settings/billing', req.url));
   }
 });

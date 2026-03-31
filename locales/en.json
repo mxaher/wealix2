@@ -254,7 +254,7 @@
     "deleteWarning": "This action cannot be undone"
   },
   "subscription": {
-    "free": "Free",
+    "free": "No plan",
     "core": "Core",
     "pro": "Pro",
     "perMonth": "/month",
@@ -275,7 +275,7 @@
       "priceAlertsUnlimited": "Price Alerts (Unlimited)",
       "dataExport": "Data Export"
     },
-    "startTrial": "Start 14-day free trial",
+    "startTrial": "Start 14-day trial",
     "upgradeTo": "Upgrade to {plan}"
   },
   "market": {

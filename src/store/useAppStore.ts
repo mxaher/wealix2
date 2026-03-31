@@ -1,12 +1,13 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { useUser } from '@clerk/nextjs';
 
 const APP_STORAGE_KEY = 'wealix-storage-v4';
 const LEGACY_STORAGE_KEYS = ['wealthos-storage', 'wealix-storage-v3'];
 
 export type Locale = 'ar' | 'en';
 export type Theme = 'dark' | 'light' | 'system';
-export type SubscriptionTier = 'free' | 'core' | 'pro';
+export type SubscriptionTier = 'none' | 'core' | 'pro';
 export type AppMode = 'demo' | 'live';
 export type IncomeSource = 'salary' | 'freelance' | 'business' | 'investment' | 'rental' | 'other';
 export type IncomeFrequency = 'one_time' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
@@ -226,7 +227,7 @@ const defaultUser: User = {
   avatarUrl: null,
   locale: 'en',
   currency: 'SAR',
-  subscriptionTier: 'free',
+  subscriptionTier: 'none',
   onboardingDone: true,
 };
 
@@ -654,7 +655,7 @@ export const useAppStore = create<AppState>()(
           mode === 'demo'
             ? {
                 ...(state.user ?? defaultUser),
-                subscriptionTier: state.user?.subscriptionTier ?? 'free',
+                subscriptionTier: state.user?.subscriptionTier ?? 'none',
               }
             : state.user
               ? {
@@ -663,7 +664,7 @@ export const useAppStore = create<AppState>()(
                   name: state.user?.name ?? '',
                   email: state.user?.email ?? '',
                   avatarUrl: state.user?.avatarUrl ?? null,
-                  subscriptionTier: state.user?.subscriptionTier ?? 'free',
+                  subscriptionTier: state.user?.subscriptionTier ?? 'none',
                 }
               : null;
 
@@ -719,7 +720,7 @@ export const useAppStore = create<AppState>()(
             avatarUrl: authUser.avatarUrl,
             locale: state.locale,
             currency: 'SAR',
-            subscriptionTier: authUser.subscriptionTier ?? existing?.user?.subscriptionTier ?? 'free',
+            subscriptionTier: authUser.subscriptionTier ?? existing?.user?.subscriptionTier ?? 'none',
             onboardingDone: true,
           };
 
@@ -884,7 +885,7 @@ export const useAppStore = create<AppState>()(
             user: state.user
               ? {
                   ...state.user,
-                  subscriptionTier: state.user.subscriptionTier ?? 'free',
+                  subscriptionTier: state.user.subscriptionTier ?? 'none',
                 }
               : null,
             locale: 'en',
@@ -999,42 +1000,56 @@ export const useAppStore = create<AppState>()(
 // Feature gating based on subscription
 export const useSubscription = () => {
   const user = useAppStore((state) => state.user);
-  const tier = user?.subscriptionTier || 'free';
+  const { user: clerkUser } = useUser();
+  const tier = user?.subscriptionTier || 'none';
+  const metadata = clerkUser?.publicMetadata as Record<string, unknown> | undefined;
+  const subscriptionStatus =
+    typeof metadata?.subscriptionStatus === 'string' ? metadata.subscriptionStatus : 'inactive';
+  const trialActive =
+    metadata?.trialStatus === 'active' &&
+    (metadata?.trialPlan === 'core' || metadata?.trialPlan === 'pro') &&
+    typeof metadata?.trialEndsAt === 'string' &&
+    new Date(metadata.trialEndsAt as string).getTime() > Date.now();
+  const hasPaidAccess = (tier === 'core' || tier === 'pro') && subscriptionStatus === 'active';
+  const hasStandardAccess = hasPaidAccess || trialActive;
   
   return {
     tier,
-    isFree: tier === 'free',
+    isFree: tier === 'none',
     isCore: tier === 'core',
     isPro: tier === 'pro',
+    hasPaidAccess,
+    hasStandardAccess,
+    trialActive,
     canAccess: (feature: string) => {
-      const features: Record<string, SubscriptionTier[]> = {
-        // Portfolio
-        'portfolio.unlimited': ['core', 'pro'],
-        'portfolio.ai_analysis': ['pro'],
-        
-        // FIRE
-        'fire.scenarios': ['pro'],
-        
-        // Budget
-        'budget.history': ['core', 'pro'],
-        
-        // AI
-        'ai.advisor': ['pro'],
-        'ai.portfolio_analysis': ['pro'],
-        
-        // Reports
-        'reports.basic': ['core', 'pro'],
-        'reports.full': ['pro'],
-        
-        // Alerts
-        'alerts.unlimited': ['pro'],
-        'alerts.3max': ['core', 'pro'],
-        
-        // Data
-        'data.export': ['core', 'pro'],
+      const features: Record<string, 'standard' | 'paid' | 'pro-paid'> = {
+        'portfolio.unlimited': 'standard',
+        'portfolio.ai_analysis': 'pro-paid',
+        'fire.scenarios': 'standard',
+        'budget.history': 'standard',
+        'ai.advisor': 'pro-paid',
+        'ai.portfolio_analysis': 'pro-paid',
+        'reports.basic': 'paid',
+        'reports.full': 'pro-paid',
+        'alerts.unlimited': 'pro-paid',
+        'alerts.3max': 'standard',
+        'data.export': 'standard',
       };
-      
-      return features[feature]?.includes(tier as SubscriptionTier) ?? false;
+      const requirement = features[feature];
+
+      if (!requirement) {
+        return false;
+      }
+
+      if (requirement === 'standard') {
+        return hasStandardAccess;
+      }
+
+      if (requirement === 'paid') {
+        return hasPaidAccess;
+      }
+
+      return hasPaidAccess && tier === 'pro';
     },
   };
 };

@@ -17,8 +17,8 @@ const PLANS = [
     annualSavings: 20,
     highlight: false,
     features: {
-      en: ['Income, expenses, budget & net worth', 'Portfolio tracking and reports', 'Clean financial workspace', 'FIRE progress tracking'],
-      ar: ['الدخل والمصروفات والميزانية وصافي الثروة', 'متابعة المحفظة والتقارير', 'مساحة مالية منظمة وواضحة', 'متابعة تقدم الاستقلال المالي'],
+      en: ['Income, expenses, budget & net worth', 'Portfolio tracking', 'Clean financial workspace', 'FIRE progress tracking'],
+      ar: ['الدخل والمصروفات والميزانية وصافي الثروة', 'متابعة المحفظة', 'مساحة مالية منظمة وواضحة', 'متابعة تقدم الاستقلال المالي'],
     },
   },
   {
@@ -29,8 +29,8 @@ const PLANS = [
     annualSavings: 30,
     highlight: true,
     features: {
-      en: ['Everything in Core', 'AI wealth advisor', 'Portfolio AI analysis', 'Advanced reports and planning tools'],
-      ar: ['كل ما في Core', 'المستشار الذكي للثروة', 'تحليل المحفظة بالذكاء الاصطناعي', 'تقارير متقدمة وأدوات تخطيط'],
+      en: ['Everything in Core', 'AI advisor after payment', 'Portfolio AI analysis after payment', 'Advanced reports after payment'],
+      ar: ['كل ما في Core', 'المستشار الذكي بعد الدفع', 'تحليل المحفظة بالذكاء الاصطناعي بعد الدفع', 'تقارير متقدمة بعد الدفع'],
     },
   },
 ];
@@ -53,12 +53,21 @@ export default function OnboardingPage() {
     }
     const meta = user?.publicMetadata as Record<string, unknown> | undefined;
     const hasPaid = meta?.subscriptionTier === 'core' || meta?.subscriptionTier === 'pro';
+    const hasSelectedPlan =
+      meta?.subscriptionTier === 'core' ||
+      meta?.subscriptionTier === 'pro' ||
+      meta?.trialPlan === 'core' ||
+      meta?.trialPlan === 'pro';
     const hasTrial =
       meta?.trialStatus === 'active' &&
       typeof meta?.trialEndsAt === 'string' &&
       new Date(meta.trialEndsAt as string).getTime() > Date.now();
     if (hasPaid || hasTrial) {
       router.replace('/app');
+      return;
+    }
+    if (hasSelectedPlan) {
+      router.replace('/settings/billing');
     }
   }, [isLoaded, isSignedIn, user, router]);
 
@@ -75,7 +84,7 @@ export default function OnboardingPage() {
         throw new Error(data.error ?? 'Failed to start trial');
       }
       updateUser({
-        subscriptionTier: data.effectiveTier === 'core' || data.effectiveTier === 'pro' ? data.effectiveTier : 'free',
+        subscriptionTier: data.effectiveTier === 'core' || data.effectiveTier === 'pro' ? data.effectiveTier : 'none',
       });
       await user?.reload?.().catch(() => undefined);
       setLoadingPlan(null);
@@ -106,8 +115,8 @@ export default function OnboardingPage() {
           </h1>
           <p className="text-muted-foreground text-sm leading-7 max-w-md mx-auto">
             {isArabic
-              ? 'جرّب Wealix مجاناً لمدة 14 يوماً. لا حاجة لبطاقة ائتمان الآن.'
-              : 'Try Wealix free for 14 days. No credit card required right now.'}
+              ? 'اختر Core أو Pro أولاً، ثم ابدأ تجربة 14 يوماً. الذكاء الاصطناعي والتقارير لا تُفتح إلا بعد إتمام الدفع.'
+              : 'Choose Core or Pro first, then start a 14-day trial. AI features and reports unlock only after payment.'}
           </p>
         </div>
 

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { WealixLogo } from '@/components/shared/WealixLogo';
 
 type LegalPageLayoutProps = {
   title: string;
@@ -13,9 +14,8 @@ export function LegalPageLayout({ title, effectiveDate, version, children }: Leg
     <div className="min-h-screen bg-background text-foreground">
       <div className="border-b border-border/70 bg-background/90 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-          <Link href="/" dir="ltr" className="brand-wordmark flex flex-row items-center gap-0.5 text-xl font-bold">
-            <span className="logo-weal">Weal</span>
-            <span className="logo-ix">ix</span>
+          <Link href="/" dir="ltr">
+            <WealixLogo />
           </Link>
           <Link
             href="/"
