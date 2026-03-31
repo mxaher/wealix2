@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import ZAI from 'z-ai-web-dev-sdk';
 import { buildRateLimitHeaders, enforceRateLimit } from '@/lib/rate-limit';
-import { requireTier } from '@/lib/server-auth';
+import { requirePaidTier } from '@/lib/server-auth';
 
 type Holding = {
   ticker: string;
@@ -334,7 +334,7 @@ async function createPortfolioAnalysisCompletion(systemPrompt: string, userPromp
 
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireTier('pro');
+    const authResult = await requirePaidTier('pro');
     if (authResult.error) {
       return authResult.error;
     }

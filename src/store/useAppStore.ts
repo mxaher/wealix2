@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { useUser } from '@clerk/nextjs';
+import { getBillingState } from '@/lib/billing-state';
 
 const APP_STORAGE_KEY = 'wealix-storage-v4';
 const LEGACY_STORAGE_KEYS = ['wealthos-storage', 'wealix-storage-v3'];
@@ -1003,15 +1004,15 @@ export const useSubscription = () => {
   const { user: clerkUser } = useUser();
   const tier = user?.subscriptionTier || 'none';
   const metadata = clerkUser?.publicMetadata as Record<string, unknown> | undefined;
-  const subscriptionStatus =
-    typeof metadata?.subscriptionStatus === 'string' ? metadata.subscriptionStatus : 'inactive';
-  const trialActive =
-    metadata?.trialStatus === 'active' &&
-    (metadata?.trialPlan === 'core' || metadata?.trialPlan === 'pro') &&
-    typeof metadata?.trialEndsAt === 'string' &&
-    new Date(metadata.trialEndsAt as string).getTime() > Date.now();
-  const hasPaidAccess = (tier === 'core' || tier === 'pro') && subscriptionStatus === 'active';
-  const hasStandardAccess = hasPaidAccess || trialActive;
+  const billingState = getBillingState(metadata);
+  const hasPaidAccess =
+    (tier === 'core' || tier === 'pro') &&
+    billingState.hasPaidAccess &&
+    billingState.selectedPlan === tier;
+  const hasStandardAccess =
+    (tier === 'core' || tier === 'pro') &&
+    billingState.hasStandardAccess &&
+    billingState.selectedPlan === tier;
   
   return {
     tier,
@@ -1020,7 +1021,8 @@ export const useSubscription = () => {
     isPro: tier === 'pro',
     hasPaidAccess,
     hasStandardAccess,
-    trialActive,
+    trialActive: billingState.trialActive,
+    paymentAdded: billingState.paymentAdded,
     canAccess: (feature: string) => {
       const features: Record<string, 'standard' | 'paid' | 'pro-paid'> = {
         'portfolio.unlimited': 'standard',

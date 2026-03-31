@@ -1,6 +1,8 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
+import { getBillingState } from '@/lib/billing-state';
 
+const isPublicApiRoute = createRouteMatcher(['/api/webhooks/stripe(.*)']);
 const isProtectedApiRoute = createRouteMatcher(['/api(.*)']);
 const isAppRoute = createRouteMatcher([
   '/app(.*)',
@@ -35,6 +37,10 @@ const isLocalAuthRoute = createRouteMatcher(['/sign-in(.*)', '/sign-up(.*)']);
 const isRoot = createRouteMatcher(['/']);
 
 export default clerkMiddleware(async (auth, req) => {
+  if (isPublicApiRoute(req)) {
+    return;
+  }
+
   if (isProtectedApiRoute(req)) {
     await auth.protect();
     return;
@@ -51,28 +57,11 @@ export default clerkMiddleware(async (auth, req) => {
     return;
   }
 
-  if (isRoot(req)) {
-    return NextResponse.redirect(new URL('/app', req.url));
-  }
-
-  if (isLocalAuthRoute(req)) {
-    return NextResponse.redirect(new URL('/app', req.url));
-  }
-
   const meta = (sessionClaims?.publicMetadata ?? {}) as Record<string, unknown>;
-  const hasPaid =
-    (meta.subscriptionTier === 'core' || meta.subscriptionTier === 'pro') &&
-    meta.subscriptionStatus === 'active';
-  const hasSelectedPlan =
-    (meta.subscriptionTier === 'core' || meta.subscriptionTier === 'pro') ||
-    meta.trialPlan === 'core' ||
-    meta.trialPlan === 'pro';
-  const hasTrial =
-    (meta.trialPlan === 'core' || meta.trialPlan === 'pro') &&
-    meta.trialStatus === 'active' &&
-    typeof meta.trialEndsAt === 'string' &&
-    new Date(meta.trialEndsAt as string).getTime() > Date.now();
-  const hasStandardAccess = hasPaid || hasTrial;
+  const billingState = getBillingState(meta);
+  const hasSelectedPlan = billingState.selectedPlan !== 'none';
+  const hasStandardAccess = billingState.hasStandardAccess;
+  const hasPaid = billingState.hasPaidAccess;
 
   if (isRoot(req)) {
     if (!hasSelectedPlan) {

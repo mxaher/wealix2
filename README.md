@@ -226,15 +226,20 @@ Wealix currently uses Clerk as the main user management system.
 
 ### Trials
 
-Wealix now supports app-managed 14-day trials without a credit card.
+Wealix now supports a Core/Pro-only signup flow with a 14-day trial for the selected plan.
 
 The app stores and evaluates these Clerk metadata fields:
 
 ```ts
+plan: 'core' | 'pro'
 subscriptionTier: 'none' | 'core' | 'pro'
+subscriptionStatus: 'none' | 'trialing' | 'active' | 'past_due' | 'canceled'
+trialActive: boolean
 trialStatus: 'active' | 'expired' | 'inactive' | 'converted'
 trialPlan: 'core' | 'pro'
+trialEnd: string // ISO timestamp
 trialEndsAt: string // ISO timestamp
+paymentAdded: boolean
 ```
 
 Runtime behavior:
@@ -242,17 +247,19 @@ Runtime behavior:
 - a newly signed-up user must choose either Core or Pro before entering the app
 - [src/app/api/billing/trial/ensure/route.ts](/Users/mohammedzaher/projects/Wealixapp%20v2/src/app/api/billing/trial/ensure/route.ts) starts a one-time 14-day trial for the selected plan
 - during the trial, standard app features are available
-- AI features and reports remain locked until payment is completed
+- AI features and reports remain locked until a payment method is added and Stripe checkout completes
+- [src/app/api/billing/checkout/route.ts](/Users/mohammedzaher/projects/Wealixapp%20v2/src/app/api/billing/checkout/route.ts) creates the Stripe subscription and preserves the active trial window with `trial_period_days` / `trial_end`
 - once the trial expires, access pauses until the user converts to a paid Core or Pro subscription
 
 ### API protection
 
-All non-public API routes now enforce authentication at the route-handler level. Sensitive AI routes also require a Clerk subscription tier of `pro` from metadata.
+All non-public API routes now enforce authentication at the route-handler level. Sensitive AI routes require a paid `pro` plan, not just an unpaid trial.
 
 Current server-side auth helpers:
 
 - [src/lib/server-auth.ts](/Users/mohammedzaher/projects/Wealixapp%20v2/src/lib/server-auth.ts)
-- [src/proxy.ts](/Users/mohammedzaher/projects/Wealixapp%20v2/src/proxy.ts)
+- [src/lib/billing-state.ts](/Users/mohammedzaher/projects/Wealixapp%20v2/src/lib/billing-state.ts)
+- [src/middleware.ts](/Users/mohammedzaher/projects/Wealixapp%20v2/src/middleware.ts)
 
 ### Guest users
 

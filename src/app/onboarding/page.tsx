@@ -7,6 +7,7 @@ import { Crown, Zap, CheckCircle2, ArrowRight, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAppStore } from '@/store/useAppStore';
 import { toast } from '@/hooks/use-toast';
+import { getBillingState } from '@/lib/billing-state';
 
 const PLANS = [
   {
@@ -52,21 +53,12 @@ export default function OnboardingPage() {
       return;
     }
     const meta = user?.publicMetadata as Record<string, unknown> | undefined;
-    const hasPaid = meta?.subscriptionTier === 'core' || meta?.subscriptionTier === 'pro';
-    const hasSelectedPlan =
-      meta?.subscriptionTier === 'core' ||
-      meta?.subscriptionTier === 'pro' ||
-      meta?.trialPlan === 'core' ||
-      meta?.trialPlan === 'pro';
-    const hasTrial =
-      meta?.trialStatus === 'active' &&
-      typeof meta?.trialEndsAt === 'string' &&
-      new Date(meta.trialEndsAt as string).getTime() > Date.now();
-    if (hasPaid || hasTrial) {
+    const billingState = getBillingState(meta);
+    if (billingState.hasStandardAccess) {
       router.replace('/app');
       return;
     }
-    if (hasSelectedPlan) {
+    if (billingState.selectedPlan !== 'none') {
       router.replace('/settings/billing');
     }
   }, [isLoaded, isSignedIn, user, router]);
@@ -115,8 +107,8 @@ export default function OnboardingPage() {
           </h1>
           <p className="text-muted-foreground text-sm leading-7 max-w-md mx-auto">
             {isArabic
-              ? 'اختر Core أو Pro أولاً، ثم ابدأ تجربة 14 يوماً. الذكاء الاصطناعي والتقارير لا تُفتح إلا بعد إتمام الدفع.'
-              : 'Choose Core or Pro first, then start a 14-day trial. AI features and reports unlock only after payment.'}
+          ? 'اختر Core أو Pro أولاً، ثم ابدأ تجربة 14 يوماً. الذكاء الاصطناعي والتقارير لا تُفتح إلا بعد إتمام الدفع.'
+              : 'Choose Core or Pro first, then start a 14-day trial. Standard app features unlock immediately, while AI and reports unlock after payment is added.'}
           </p>
         </div>
 
@@ -216,8 +208,8 @@ export default function OnboardingPage() {
 
         <p className="text-center text-xs text-muted-foreground">
           {isArabic
-            ? 'لا حاجة لبطاقة ائتمان الآن. بعد 14 يوماً يمكنك الاشتراك بسهولة من صفحة الفوترة.'
-            : 'No credit card required now. After 14 days, subscribe from the billing page to continue.'}
+            ? 'لا حاجة لبطاقة ائتمان للبدء. فعّل وسيلة دفع أثناء التجربة لفتح الذكاء الاصطناعي والتقارير قبل انتهاء الفترة.'
+            : 'No card is required to start. Add a payment method during trial to unlock AI and reports before the trial ends.'}
         </p>
       </div>
     </div>

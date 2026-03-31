@@ -54,6 +54,18 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        source: '/(app|advisor|budget|expenses|income|portfolio|reports|net-worth|fire|retirement|settings|onboarding|sign-in|sign-up)/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'private, no-store, no-cache, max-age=0, must-revalidate' },
+        ],
+      },
+      {
+        source: '/api/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'private, no-store, no-cache, max-age=0, must-revalidate' },
+        ],
+      },
+      {
         source: '/:path*',
         headers: [
           { key: 'Content-Security-Policy', value: contentSecurityPolicy },

@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { sanitizeUserMessage, logAiAuditEvent } from '@/lib/ai-safety';
 import { buildRateLimitHeaders, enforceRateLimit } from '@/lib/rate-limit';
-import { requireTier } from '@/lib/server-auth';
+import { requirePaidTier } from '@/lib/server-auth';
 
 // Financial advisor system prompt
 const FINANCIAL_ADVISOR_SYSTEM_PROMPT = `You are a professional financial advisor specializing in the Saudi and MENA market. You have deep expertise in:
@@ -126,7 +126,7 @@ async function createAdvisorCompletion(messages: ChatMessage[]) {
 
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireTier('pro');
+    const authResult = await requirePaidTier('pro');
     if (authResult.error) {
       return authResult.error;
     }

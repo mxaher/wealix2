@@ -12,9 +12,9 @@ export default function SignInPage() {
 
   useEffect(() => {
     if (isSignedIn) {
-      router.replace('/app');
+      router.replace(redirectUrl);
     }
-  }, [isSignedIn, router]);
+  }, [isSignedIn, redirectUrl, router]);
 
   if (isSignedIn) {
     return null;
@@ -27,7 +27,7 @@ export default function SignInPage() {
         routing="path"
         signUpUrl="/sign-up"
         forceRedirectUrl={redirectUrl}
-        fallbackRedirectUrl="/app"
+        fallbackRedirectUrl={redirectUrl}
       />
     </div>
   );

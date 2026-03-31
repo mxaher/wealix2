@@ -9,6 +9,9 @@ import { ThemeProvider } from "next-themes";
 import { LocaleSync } from "@/components/layout/LocaleSync";
 import { ClerkSync } from "@/components/layout/ClerkSync";
 import { RemoteProfileSync } from "@/components/layout/RemoteProfileSync";
+import { getPublicEnv } from "@/lib/env";
+
+const publicEnv = getPublicEnv();
 
 export const metadata: Metadata = {
   title: "Wealix App",
@@ -40,6 +43,7 @@ export default function RootLayout({
         className="antialiased bg-background text-foreground font-sans"
       >
         <ClerkProvider
+          publishableKey={publicEnv.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
           signInUrl="/sign-in"
           signUpUrl="/sign-up"
           afterSignOutUrl="/"

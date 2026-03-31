@@ -21,13 +21,12 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useAppStore } from '@/store/useAppStore';
 import { toast } from '@/hooks/use-toast';
+import { getBillingState, type NormalizedSubscriptionStatus } from '@/lib/billing-state';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type PlanId = 'core' | 'pro';
 type BillingCycle = 'monthly' | 'annual';
-type SubscriptionStatus = 'active' | 'canceled' | 'past_due' | 'none';
-
 interface PlanDef {
   id: PlanId;
   name: string;
@@ -91,10 +90,11 @@ function daysRemaining(endsAt: string): number {
 interface PlanBannerProps {
   isArabic: boolean;
   subscriptionTier: string;
-  subscriptionStatus: SubscriptionStatus;
+  subscriptionStatus: NormalizedSubscriptionStatus;
   onTrial: boolean;
   trialDaysLeft: number;
   trialPlan: string;
+  paymentAdded: boolean;
   onManage: () => void;
   isManaging: boolean;
 }
@@ -106,10 +106,14 @@ function PlanBanner({
   onTrial,
   trialDaysLeft,
   trialPlan,
+  paymentAdded,
   onManage,
   isManaging,
 }: PlanBannerProps) {
-  const isPaid = (subscriptionTier === 'core' || subscriptionTier === 'pro') && subscriptionStatus === 'active';
+  const isPaid =
+    (subscriptionTier === 'core' || subscriptionTier === 'pro') &&
+    (subscriptionStatus === 'active' || subscriptionStatus === 'trialing') &&
+    paymentAdded;
   const isPastDue = subscriptionStatus === 'past_due';
   const isCanceled = subscriptionStatus === 'canceled';
 
@@ -194,16 +198,20 @@ function PlanBanner({
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <p className="font-semibold">
-              {isArabic ? `تجربة مجانية — ${trialPlan === 'pro' ? 'Pro' : 'Core'}` : `Free Trial — ${trialPlan === 'pro' ? 'Pro' : 'Core'}`}
+              {isArabic ? `تجربة ${trialPlan === 'pro' ? 'Pro' : 'Core'} نشطة` : `${trialPlan === 'pro' ? 'Pro' : 'Core'} trial active`}
             </p>
             <Badge className="bg-primary/15 text-primary hover:bg-primary/15">
               {isArabic ? `${trialDaysLeft} يوم متبقٍ` : `${trialDaysLeft}d left`}
             </Badge>
           </div>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
-            {isArabic
-              ? `تجربتك تنتهي خلال ${trialDaysLeft} يوم. اشترك الآن للاستمرار دون انقطاع.`
-              : `Your trial ends in ${trialDaysLeft} days. Subscribe now to continue without interruption.`}
+            {paymentAdded
+              ? (isArabic
+                  ? `تمت إضافة وسيلة دفع. الذكاء الاصطناعي والتقارير مفعّلة أثناء التجربة، وسيبدأ الاشتراك المدفوع تلقائياً بعد ${trialDaysLeft} يوم.`
+                  : `A payment method is on file. AI and reports are unlocked during trial, and the paid subscription will begin automatically in ${trialDaysLeft} days.`)
+              : (isArabic
+                  ? `تجربتك تنتهي خلال ${trialDaysLeft} يوم. أضف وسيلة دفع الآن لفتح الذكاء الاصطناعي والتقارير قبل انتهاء الفترة.`
+                  : `Your trial ends in ${trialDaysLeft} days. Add a payment method now to unlock AI and reports before the trial ends.`)}
           </p>
         </div>
       </div>
@@ -241,37 +249,14 @@ function BillingPageContent() {
 
   // ── Parse Clerk metadata ──────────────────────────────────────────────────
   const metadata = clerkUser?.publicMetadata as Record<string, unknown> | undefined;
-
-  const subscriptionTier: string =
-    metadata?.subscriptionTier === 'core' || metadata?.subscriptionTier === 'pro'
-      ? (metadata.subscriptionTier as string)
-      : 'none';
-  const hasSelectedPlan =
-    subscriptionTier === 'core' ||
-    subscriptionTier === 'pro' ||
-    metadata?.trialPlan === 'core' ||
-    metadata?.trialPlan === 'pro';
-
-  const subscriptionStatus: SubscriptionStatus =
-    metadata?.subscriptionStatus === 'active'
-      ? 'active'
-      : metadata?.subscriptionStatus === 'past_due'
-        ? 'past_due'
-        : metadata?.subscriptionStatus === 'canceled'
-          ? 'canceled'
-          : 'none';
-
-  const trialActive =
-    metadata?.trialStatus === 'active' &&
-    (metadata?.trialPlan === 'core' || metadata?.trialPlan === 'pro') &&
-    typeof metadata?.trialEndsAt === 'string' &&
-    new Date(metadata.trialEndsAt as string).getTime() > Date.now();
-
-  const trialDaysLeft = trialActive && typeof metadata?.trialEndsAt === 'string'
-    ? daysRemaining(metadata.trialEndsAt as string)
-    : 0;
-
-  const trialPlan = (metadata?.trialPlan as string) ?? 'pro';
+  const billingState = getBillingState(metadata);
+  const subscriptionTier = billingState.selectedPlan;
+  const hasSelectedPlan = subscriptionTier === 'core' || subscriptionTier === 'pro';
+  const subscriptionStatus = billingState.subscriptionStatus;
+  const trialActive = billingState.trialActive;
+  const trialDaysLeft = trialActive && billingState.trialEndsAt ? daysRemaining(billingState.trialEndsAt) : 0;
+  const trialPlan = billingState.trialPlan === 'none' ? 'pro' : billingState.trialPlan;
+  const paymentAdded = billingState.paymentAdded;
 
   const syncActiveTier = useCallback(async (tier: PlanId) => {
     useAppStore.getState().updateUser({ subscriptionTier: tier });
@@ -408,7 +393,7 @@ function BillingPageContent() {
     );
   }
 
-  const isPaid = subscriptionTier === 'core' || subscriptionTier === 'pro';
+  const isPaid = billingState.hasPaidAccess;
 
   return (
     <DashboardShell>
@@ -434,6 +419,7 @@ function BillingPageContent() {
           onTrial={Boolean(trialActive)}
           trialDaysLeft={trialDaysLeft}
           trialPlan={trialPlan}
+          paymentAdded={paymentAdded}
           onManage={handleManage}
           isManaging={isManaging}
         />
@@ -493,6 +479,7 @@ function BillingPageContent() {
                 const isCheckoutLoading = loadingPlan === `${plan.id}-${billingCycle}`;
                 const isTrialLoading = loadingPlan === `${plan.id}-trial`;
                 const isLoading = isCheckoutLoading || isTrialLoading;
+                const shouldPromptForPayment = trialActive && !paymentAdded && isCurrentPlan;
 
                 return (
                   <div
@@ -531,7 +518,7 @@ function BillingPageContent() {
                             {isArabic ? `وفّر $${plan.annualSavings}` : `Save $${plan.annualSavings}`}
                           </Badge>
                         )}
-                        {isCurrentPlan && subscriptionStatus === 'active' && (
+                        {isCurrentPlan && (subscriptionStatus === 'active' || subscriptionStatus === 'trialing') && (
                           <Badge variant="outline" className="border-accent/40 text-accent">
                             {isArabic ? 'خطتك الحالية' : 'Current plan'}
                           </Badge>
@@ -560,10 +547,12 @@ function BillingPageContent() {
                     >
                       {isLoading ? (
                         <RefreshCw className="h-4 w-4 animate-spin" />
+                      ) : shouldPromptForPayment ? (
+                        isArabic ? `أضف وسيلة دفع — ${plan.name}` : `Add payment method — ${plan.name}`
                       ) : trialActive || hasSelectedPlan ? (
-                        isArabic ? `أكمل اشتراك ${plan.name}` : `Complete ${plan.name} Subscription`
+                        isArabic ? `إكمال اشتراك ${plan.name}` : `Complete ${plan.name} subscription`
                       ) : (
-                        isArabic ? `ابدأ التجربة — ${plan.name}` : `Start trial — ${plan.name}`
+                        isArabic ? `ابدأ تجربة ${plan.name}` : `Start ${plan.name} trial`
                       )}
                     </Button>
                   </div>
@@ -603,13 +592,13 @@ function BillingPageContent() {
           <h2 className="text-lg font-semibold">{isArabic ? 'أسئلة شائعة' : 'Billing FAQ'}</h2>
           <div className="grid gap-4 md:grid-cols-2">
             {(isArabic ? [
-              ['هل أحتاج بطاقة ائتمان لبدء التجربة؟', 'لا. تختار Core أو Pro أولاً ثم تبدأ تجربة 14 يوماً دون بطاقة ائتمان.'],
-              ['ماذا يحدث بعد انتهاء التجربة؟', 'إذا لم تكمل الدفع، يتوقف الوصول إلى التطبيق حتى تُفعّل اشتراكك المدفوع على Core أو Pro.'],
+              ['هل أحتاج بطاقة ائتمان لبدء التجربة؟', 'لا. تختار Core أو Pro أولاً ثم تبدأ تجربة 14 يوماً. أضف وسيلة دفع أثناء التجربة لفتح الذكاء الاصطناعي والتقارير.'],
+              ['ماذا يحدث بعد انتهاء التجربة؟', 'إذا لم تضف وسيلة دفع، سيتوقف الوصول إلى التطبيق حتى تُفعّل اشتراكك المدفوع على Core أو Pro.'],
               ['هل يمكنني الإلغاء في أي وقت؟', 'نعم. يمكنك إلغاء اشتراكك في أي وقت من بوابة الفوترة. يبقى وصولك فعّالاً حتى نهاية فترة الفوترة.'],
               ['ما طرق الدفع المقبولة؟', 'جميع البطاقات الائتمانية والمدينة الرئيسية (Visa، Mastercard، Mada) عبر Stripe.'],
             ] : [
-              ['Do I need a credit card to start the trial?', 'No. You choose Core or Pro first, then the 14-day trial starts with no card required.'],
-              ['What happens when the trial ends?', 'If payment is not completed, app access pauses until you activate a paid Core or Pro subscription.'],
+              ['Do I need a credit card to start the trial?', 'No. You choose Core or Pro first, then the 14-day trial starts. Add a payment method during trial to unlock AI and reports.'],
+              ['What happens when the trial ends?', 'If no payment method is added, app access pauses until you activate a paid Core or Pro subscription.'],
               ['Can I cancel any time?', 'Yes. Cancel from the billing portal at any time. Access remains active until the end of the billing period.'],
               ['What payment methods are accepted?', 'All major credit and debit cards (Visa, Mastercard) via Stripe.'],
             ]).map(([q, a]) => (

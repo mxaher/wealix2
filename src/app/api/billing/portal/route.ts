@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
+import { getPublicEnv, getRequiredEnv } from '@/lib/env';
 
 async function withTimeout<T>(label: string, action: Promise<T>, timeoutMs = 12_000): Promise<T> {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -20,44 +21,43 @@ async function withTimeout<T>(label: string, action: Promise<T>, timeoutMs = 12_
 }
 
 export async function POST(_req: NextRequest) {
-  const { userId, sessionClaims } = await auth();
-  if (!userId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  if (!process.env.STRIPE_SECRET_KEY) {
-    return NextResponse.json(
-      { error: 'Stripe is not configured. Add STRIPE_SECRET_KEY to environment variables.' },
-      { status: 503 }
-    );
-  }
-
-  let customerId =
-    typeof (sessionClaims?.publicMetadata as Record<string, unknown> | undefined)?.stripeCustomerId === 'string'
-      ? ((sessionClaims?.publicMetadata as Record<string, unknown>).stripeCustomerId as string)
-      : undefined;
-
-  if (!customerId) {
-    const clerk = await clerkClient();
-    const user = await withTimeout('clerk.users.getUser', clerk.users.getUser(userId));
-    customerId =
-      (user.privateMetadata?.stripeCustomerId as string | undefined) ||
-      (user.publicMetadata?.stripeCustomerId as string | undefined);
-  }
-
-  if (!customerId) {
-    return NextResponse.json(
-      { error: 'No Stripe customer found. Please subscribe first.' },
-      { status: 404 }
-    );
-  }
-
-  const { default: Stripe } = await import('stripe');
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://wealix.app';
+  let userId: string | null = null;
+  let customerId: string | undefined;
 
   try {
+    const authResult = await auth();
+    userId = authResult.userId;
+    const sessionClaims = authResult.sessionClaims;
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const stripeSecretKey = getRequiredEnv('STRIPE_SECRET_KEY');
+    const appUrl = getPublicEnv().NEXT_PUBLIC_APP_URL;
+
+    customerId =
+      typeof (sessionClaims?.publicMetadata as Record<string, unknown> | undefined)?.stripeCustomerId === 'string'
+        ? ((sessionClaims?.publicMetadata as Record<string, unknown>).stripeCustomerId as string)
+        : undefined;
+
+    if (!customerId) {
+      const clerk = await clerkClient();
+      const user = await withTimeout('clerk.users.getUser', clerk.users.getUser(userId));
+      customerId =
+        (user.privateMetadata?.stripeCustomerId as string | undefined) ||
+        (user.publicMetadata?.stripeCustomerId as string | undefined);
+    }
+
+    if (!customerId) {
+      return NextResponse.json(
+        { error: 'No Stripe customer found. Please add a payment method first.' },
+        { status: 404 }
+      );
+    }
+
+    const { default: Stripe } = await import('stripe');
+    const stripe = new Stripe(stripeSecretKey);
+
     const session = await withTimeout(
       'stripe.billingPortal.sessions.create',
       stripe.billingPortal.sessions.create({
