@@ -34,14 +34,18 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Hardcoded production key to force the correct instance
+  const publishableKey = "pk_live_Y2xlcmsud2VhbGl4LmFwcCQ";
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body
         className="antialiased bg-background text-foreground font-sans"
       >
         <ClerkProvider
-          signInUrl={process.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL}
-          signUpUrl={process.env.NEXT_PUBLIC_CLERK_SIGN_UP_URL}
+          publishableKey={publishableKey}
+          signInUrl={process.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL || "https://accounts.wealix.app/sign-in"}
+          signUpUrl={process.env.NEXT_PUBLIC_CLERK_SIGN_UP_URL || "https://accounts.wealix.app/sign-up"}
           afterSignOutUrl="/"
         >
           <ThemeProvider
