@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useUser } from '@clerk/nextjs';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Crown,
   Zap,
@@ -242,10 +242,12 @@ function BillingPageContent() {
   const locale = useAppStore((state) => state.locale);
   const isArabic = locale === 'ar';
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [billingCycle, setBillingCycle] = useState<BillingCycle>('monthly');
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [isManaging, setIsManaging] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // ── Parse Clerk metadata ──────────────────────────────────────────────────
   const metadata = clerkUser?.publicMetadata as Record<string, unknown> | undefined;
@@ -263,21 +265,60 @@ function BillingPageContent() {
     await clerkUser?.reload?.().catch(() => undefined);
   }, [clerkUser]);
 
-  // ── Handle success/cancel redirects ──────────────────────────────────────
+  // ── Handle success/cancel redirects + auto-sync from Stripe ──────────────
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('success') === 'true') {
-      const plan = params.get('plan') ?? '';
-      toast({
-        title: isArabic ? 'تم الاشتراك بنجاح!' : 'Subscription activated!',
-        description: isArabic
-          ? `مرحباً بك في خطة ${plan === 'pro' ? 'Pro' : 'Core'}.`
-          : `Welcome to the ${plan === 'pro' ? 'Pro' : 'Core'} plan.`,
-      });
-      router.replace('/settings/billing');
+    const success = searchParams.get('success');
+    const canceled = searchParams.get('canceled');
+    const plan = searchParams.get('plan') ?? '';
+
+    if (success === 'true' && isLoaded && clerkUser) {
+      setIsSyncing(true);
+
+      // Call sync API to pull latest subscription state from Stripe into Clerk
+      fetch('/api/billing/sync', { method: 'POST' })
+        .then((r) => r.json())
+        .then(async (data: { synced?: boolean; status?: string; plan?: string; error?: string }) => {
+          if (data.synced) {
+            // Reload Clerk session so publicMetadata reflects new subscription
+            await clerkUser.reload?.().catch(() => undefined);
+            useAppStore.getState().updateUser({
+              subscriptionTier: (data.plan === 'pro' ? 'pro' : 'core') as PlanId,
+            });
+            toast({
+              title: isArabic ? 'تم تفعيل الاشتراك!' : 'Subscription activated!',
+              description: isArabic
+                ? `مرحباً بك في خطة ${plan === 'pro' ? 'Pro' : 'Core'}. اشتراكك الآن نشط.`
+                : `Welcome to the ${plan === 'pro' ? 'Pro' : 'Core'} plan. Your subscription is now active.`,
+            });
+          } else {
+            // Sync found nothing — still show success toast (webhook may arrive shortly)
+            toast({
+              title: isArabic ? 'جارٍ تفعيل الاشتراك…' : 'Activating subscription…',
+              description: isArabic
+                ? 'تم استلام الدفع. قد يستغرق تحديث حالة الاشتراك لحظة.'
+                : 'Payment received. Your subscription status may take a moment to update.',
+            });
+            // Retry reload after 3s to catch webhook-updated metadata
+            setTimeout(async () => {
+              await clerkUser.reload?.().catch(() => undefined);
+            }, 3000);
+          }
+        })
+        .catch(() => {
+          toast({
+            title: isArabic ? 'تم الدفع بنجاح' : 'Payment successful',
+            description: isArabic
+              ? 'سيتم تحديث حالة اشتراكك قريباً.'
+              : 'Your subscription status will update shortly.',
+          });
+        })
+        .finally(() => {
+          setIsSyncing(false);
+          router.replace('/settings/billing');
+        });
     }
-    if (params.get('canceled') === 'true') {
+
+    if (canceled === 'true') {
       toast({
         title: isArabic ? 'تم الإلغاء' : 'Checkout canceled',
         description: isArabic ? 'لم يتم إجراء أي عملية دفع.' : 'No payment was made.',
@@ -285,7 +326,7 @@ function BillingPageContent() {
       });
       router.replace('/settings/billing');
     }
-  }, [isArabic, router]);
+  }, [searchParams, isLoaded, clerkUser, isArabic, router]);
 
   // ── Subscribe ─────────────────────────────────────────────────────────────
   const handleStartTrial = useCallback(async (planId: PlanId) => {
@@ -410,6 +451,16 @@ function BillingPageContent() {
               : 'Manage your plan, payment method, and invoices.'}
           </p>
         </div>
+
+        {/* ── Syncing overlay ── */}
+        {isSyncing && (
+          <div className="flex items-center gap-3 rounded-[16px] border border-primary/25 bg-primary/6 px-5 py-4">
+            <RefreshCw className="h-4 w-4 animate-spin text-primary" />
+            <p className="text-sm font-medium text-primary">
+              {isArabic ? 'جارٍ تحديث حالة الاشتراك…' : 'Syncing subscription status…'}
+            </p>
+          </div>
+        )}
 
         {/* ── Current plan banner ── */}
         <PlanBanner
