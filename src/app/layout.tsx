@@ -10,14 +10,17 @@ import { LocaleSync } from "@/components/layout/LocaleSync";
 import { ClerkSync } from "@/components/layout/ClerkSync";
 import { RemoteProfileSync } from "@/components/layout/RemoteProfileSync";
 
-const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://wealix.app';
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://wealix.app";
+
+// Dynamic OG image via /og route — avoids missing static file reference
+const ogImageUrl = `${siteUrl}/og?title=Wealix%20%E2%80%94%20AI%20Wealth%20OS&subtitle=Portfolio%20Tracker%20%26%20FIRE%20Planner`;
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
-    { media: '(prefers-color-scheme: dark)',  color: '#0f172a' },
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0f172a" },
   ],
-  width: 'device-width',
+  width: "device-width",
   initialScale: 1,
 };
 
@@ -69,7 +72,7 @@ export const metadata: Metadata = {
       "Track your net worth, analyze your investment portfolio across global markets, and plan financial independence with AI. One calm operating system for personal wealth.",
     images: [
       {
-        url: "/og/og-default.png",
+        url: ogImageUrl,
         width: 1200,
         height: 630,
         alt: "Wealix — AI Wealth Operating System",
@@ -83,18 +86,20 @@ export const metadata: Metadata = {
     title: "Wealix — AI Wealth OS | Portfolio Tracker & FIRE Planner",
     description:
       "Track portfolios across global markets. Plan FIRE. Get AI-powered wealth advice. One operating system for your personal wealth.",
-    images: ["/og/og-default.png"],
+    images: [ogImageUrl],
   },
   icons: {
     icon: [
-      { url: "/brand/logo-fav-icon.png?v=20260331a", type: "image/png", sizes: "32x32" },
+      {
+        url: "/brand/logo-fav-icon.png?v=20260331a",
+        type: "image/png",
+        sizes: "32x32",
+      },
     ],
     shortcut: "/brand/logo-fav-icon.png?v=20260331a",
     apple: "/wealix-apple-icon.svg",
   },
-  // NOTE: hreflang alternates are intentionally pointing to the root
-  // until locale-prefixed routes (/en/*, /ar/*) are implemented.
-  // Do NOT add language alternates that resolve to 404 pages.
+  // NOTE: hreflang alternates point to root until /en/* and /ar/* routes exist.
   alternates: {
     canonical: siteUrl,
   },
@@ -108,20 +113,22 @@ export const metadata: Metadata = {
 const softwareAppSchema = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
-  "name": "Wealix",
-  "url": siteUrl,
-  "applicationCategory": "FinanceApplication",
-  "operatingSystem": "Web, iOS, Android",
-  "description": "AI-powered personal wealth OS for MENA investors. Track net worth, portfolios, FIRE, and expenses in Arabic and English.",
-  "offers": {
+  name: "Wealix",
+  url: siteUrl,
+  applicationCategory: "FinanceApplication",
+  operatingSystem: "Web, iOS, Android",
+  description:
+    "AI-powered personal wealth OS for MENA investors. Track net worth, portfolios, FIRE, and expenses in Arabic and English.",
+  offers: {
     "@type": "Offer",
-    "price": "0",
-    "priceCurrency": "USD",
-    "description": "14-day free trial. Core and Pro plans available."
+    price: "0",
+    priceCurrency: "USD",
+    description: "14-day free trial. Core and Pro plans available.",
   },
-  "inLanguage": ["en", "ar"],
-  "availableOnDevice": "Desktop, Mobile",
-  "screenshot": `${siteUrl}/og/og-default.png`
+  inLanguage: ["en", "ar"],
+  availableOnDevice: "Desktop, Mobile",
+  // screenshot now references the dynamic OG route — no missing static file
+  screenshot: ogImageUrl,
 };
 
 export default function RootLayout({
