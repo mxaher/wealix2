@@ -78,6 +78,7 @@ const nextConfig: NextConfig = {
         ],
       },
       // Feature pages — public landing shells, indexable
+      // Authenticated users see live data; guests see demo data.
       {
         source: '/(advisor|budget|expenses|income|portfolio|reports|net-worth|fire|retirement)/:path*',
         headers: [
