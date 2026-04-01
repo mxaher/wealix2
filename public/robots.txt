@@ -1,16 +1,17 @@
 User-agent: *
 Allow: /
-Disallow: /app
-Disallow: /api
-Disallow: /advisor
-Disallow: /portfolio
-Disallow: /fire
-Disallow: /retirement
-Disallow: /net-worth
-Disallow: /budget
-Disallow: /income
-Disallow: /expenses
-Disallow: /reports
-Disallow: /settings
+
+# Gated app routes — require sign-in, not for indexing
+Disallow: /app/
+Disallow: /api/
+Disallow: /settings/
+Disallow: /onboarding/
+Disallow: /sign-in/
+Disallow: /sign-up/
+
+# NOTE: /fire, /portfolio, /net-worth, /retirement, /advisor,
+# /budget, /income, /expenses, /reports are intentionally ALLOWED.
+# Each has a public landing shell with per-page metadata for SEO.
+# Authenticated users see live data; guests see demo data.
 
 Sitemap: https://wealix.app/sitemap.xml
