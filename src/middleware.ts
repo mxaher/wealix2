@@ -34,8 +34,8 @@ export default clerkMiddleware(async (auth, req) => {
     return new NextResponse('Not Found', { status: 404 });
   }
 
-  // 2. Public API
-  if (isPublicApiRoute(req)) return;
+  // 2. Allow public routes through without auth
+  if (isPublicRoute(req)) return;
 
   // 3. Protected API
   if (isProtectedApiRoute(req)) {
