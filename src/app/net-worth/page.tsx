@@ -470,7 +470,7 @@ export default function NetWorthPage() {
                           <Tooltip formatter={(value: number) => [formatCurrency(value, 'SAR', locale), '']} />
                           <Legend />
                           <Bar dataKey="assets" name={isArabic ? 'الأصول' : 'Assets'} fill="var(--chart-2)" radius={[4, 4, 0, 0]} />
-                          <Bar dataKey="liabilities" name={isArabic ? 'الالتزامات' : 'Liabilities'} fill="var(--chart-5)" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="liabilities" name={isArabic ? 'الالتزامات' : 'Liabilities'} fill="#ef4444" radius={[4, 4, 0, 0]} />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
