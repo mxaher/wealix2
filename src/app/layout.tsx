@@ -12,8 +12,9 @@ import { RemoteProfileSync } from "@/components/layout/RemoteProfileSync";
 
 const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://wealix.app";
 
-// Dynamic OG image via /og route — avoids missing static file reference
-const ogImageUrl = `${siteUrl}/og?title=Wealix%20%E2%80%94%20AI%20Wealth%20OS&subtitle=Portfolio%20Tracker%20%26%20FIRE%20Planner`;
+// Static OG image — served directly by Cloudflare Pages as a static asset.
+// No edge runtime, no dynamic route, no missing file.
+const ogImageUrl = `${siteUrl}/og-default.svg`;
 
 export const viewport: Viewport = {
   themeColor: [
@@ -99,7 +100,6 @@ export const metadata: Metadata = {
     shortcut: "/brand/logo-fav-icon.png?v=20260331a",
     apple: "/wealix-apple-icon.svg",
   },
-  // NOTE: hreflang alternates point to root until /en/* and /ar/* routes exist.
   alternates: {
     canonical: siteUrl,
   },
@@ -108,8 +108,7 @@ export const metadata: Metadata = {
   },
 };
 
-// Global SoftwareApplication schema — injected once at root level.
-// Per-page schemas (FAQPage, BreadcrumbList) are injected in each page.tsx.
+// Global SoftwareApplication schema
 const softwareAppSchema = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
@@ -127,7 +126,6 @@ const softwareAppSchema = {
   },
   inLanguage: ["en", "ar"],
   availableOnDevice: "Desktop, Mobile",
-  // screenshot now references the dynamic OG route — no missing static file
   screenshot: ogImageUrl,
 };
 
