@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useUser } from '@clerk/nextjs';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -235,7 +235,7 @@ function PlanBanner({
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// ─── Main Page Content ────────────────────────────────────────────────────────
 
 function BillingPageContent() {
   const { user: clerkUser, isLoaded } = useUser();
@@ -274,12 +274,10 @@ function BillingPageContent() {
     if (success === 'true' && isLoaded && clerkUser) {
       setIsSyncing(true);
 
-      // Call sync API to pull latest subscription state from Stripe into Clerk
       fetch('/api/billing/sync', { method: 'POST' })
         .then((r) => r.json())
         .then(async (data: { synced?: boolean; status?: string; plan?: string; error?: string }) => {
           if (data.synced) {
-            // Reload Clerk session so publicMetadata reflects new subscription
             await clerkUser.reload?.().catch(() => undefined);
             useAppStore.getState().updateUser({
               subscriptionTier: (data.plan === 'pro' ? 'pro' : 'core') as PlanId,
@@ -291,14 +289,12 @@ function BillingPageContent() {
                 : `Welcome to the ${plan === 'pro' ? 'Pro' : 'Core'} plan. Your subscription is now active.`,
             });
           } else {
-            // Sync found nothing — still show success toast (webhook may arrive shortly)
             toast({
               title: isArabic ? 'جارٍ تفعيل الاشتراك…' : 'Activating subscription…',
               description: isArabic
                 ? 'تم استلام الدفع. قد يستغرق تحديث حالة الاشتراك لحظة.'
                 : 'Payment received. Your subscription status may take a moment to update.',
             });
-            // Retry reload after 3s to catch webhook-updated metadata
             setTimeout(async () => {
               await clerkUser.reload?.().catch(() => undefined);
             }, 3000);
@@ -666,6 +662,12 @@ function BillingPageContent() {
   );
 }
 
+// ─── Default Export — wrapped in Suspense (required for useSearchParams) ──────
+
 export default function BillingPage() {
-  return <BillingPageContent />;
+  return (
+    <Suspense>
+      <BillingPageContent />
+    </Suspense>
+  );
 }
