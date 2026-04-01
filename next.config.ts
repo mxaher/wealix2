@@ -5,12 +5,35 @@ import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 // Production-only Clerk domains
 const contentSecurityPolicy = `
   default-src 'self';
-  script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.clerk.com https://clerk.wealix.app https://accounts.wealix.app https://challenges.cloudflare.com;
+  script-src 'self' 'unsafe-inline' 'unsafe-eval'
+    https://*.clerk.com
+    https://clerk.wealix.app
+    https://accounts.wealix.app
+    https://challenges.cloudflare.com
+    https://www.googletagmanager.com
+    https://www.google-analytics.com;
   style-src 'self' 'unsafe-inline';
-  img-src 'self' data: blob: https:;
+  img-src 'self' data: blob: https: https://www.google-analytics.com;
   font-src 'self' data: https://clerk.wealix.app https://accounts.wealix.app;
-  connect-src 'self' https://*.clerk.com https://api.clerk.com https://clerk.wealix.app https://accounts.wealix.app https://*.wealix.app https://challenges.cloudflare.com https://www.datalab.to https://app.sahmk.sa https://api.twelvedata.com;
-  frame-src https://*.clerk.com https://clerk.wealix.app https://accounts.wealix.app https://challenges.cloudflare.com;
+  connect-src 'self'
+    https://*.clerk.com
+    https://api.clerk.com
+    https://clerk.wealix.app
+    https://accounts.wealix.app
+    https://*.wealix.app
+    https://challenges.cloudflare.com
+    https://www.datalab.to
+    https://app.sahmk.sa
+    https://api.twelvedata.com
+    https://www.google-analytics.com
+    https://analytics.google.com
+    https://region1.google-analytics.com
+    https://www.googletagmanager.com;
+  frame-src
+    https://*.clerk.com
+    https://clerk.wealix.app
+    https://accounts.wealix.app
+    https://challenges.cloudflare.com;
   object-src 'none';
   base-uri 'self';
   frame-ancestors 'none';
@@ -40,18 +63,31 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     return [
+      // Authenticated app routes — no caching, no indexing
       {
-        source: '/(app|advisor|budget|expenses|income|portfolio|reports|net-worth|fire|retirement|settings|onboarding|sign-in|sign-up)/:path*',
+        source: '/(app|settings|onboarding|sign-in|sign-up)/:path*',
         headers: [
           { key: 'Cache-Control', value: 'private, no-store, no-cache, max-age=0, must-revalidate' },
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
         ],
       },
+      // API routes — private, never indexed
       {
         source: '/api/:path*',
         headers: [
           { key: 'Cache-Control', value: 'private, no-store, no-cache, max-age=0, must-revalidate' },
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
         ],
       },
+      // Feature pages — public landing shells, indexable
+      // Authenticated users see live data; guests see demo data.
+      {
+        source: '/(advisor|budget|expenses|income|portfolio|reports|net-worth|fire|retirement)/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, s-maxage=60, stale-while-revalidate=300' },
+        ],
+      },
+      // Global security headers
       {
         source: '/:path*',
         headers: [
@@ -63,6 +99,7 @@ const nextConfig: NextConfig = {
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
         ],
       },
+      // Expenses page needs camera access for OCR
       {
         source: '/expenses',
         headers: [

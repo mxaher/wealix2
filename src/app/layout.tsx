@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import "@fontsource/tajawal/400.css";
 import "@fontsource/tajawal/500.css";
@@ -11,6 +11,15 @@ import { ClerkSync } from "@/components/layout/ClerkSync";
 import { RemoteProfileSync } from "@/components/layout/RemoteProfileSync";
 
 const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://wealix.app';
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)',  color: '#0f172a' },
+  ],
+  width: 'device-width',
+  initialScale: 1,
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -81,18 +90,38 @@ export const metadata: Metadata = {
       { url: "/brand/logo-fav-icon.png?v=20260331a", type: "image/png", sizes: "32x32" },
     ],
     shortcut: "/brand/logo-fav-icon.png?v=20260331a",
-    apple: "/brand/logo-fav-icon.png?v=20260331a",
+    apple: "/wealix-apple-icon.svg",
   },
+  // NOTE: hreflang alternates are intentionally pointing to the root
+  // until locale-prefixed routes (/en/*, /ar/*) are implemented.
+  // Do NOT add language alternates that resolve to 404 pages.
   alternates: {
     canonical: siteUrl,
-    languages: {
-      "en": `${siteUrl}/en`,
-      "ar": `${siteUrl}/ar`,
-    },
   },
   verification: {
     google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || "",
   },
+};
+
+// Global SoftwareApplication schema — injected once at root level.
+// Per-page schemas (FAQPage, BreadcrumbList) are injected in each page.tsx.
+const softwareAppSchema = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Wealix",
+  "url": siteUrl,
+  "applicationCategory": "FinanceApplication",
+  "operatingSystem": "Web, iOS, Android",
+  "description": "AI-powered personal wealth OS for MENA investors. Track net worth, portfolios, FIRE, and expenses in Arabic and English.",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD",
+    "description": "14-day free trial. Core and Pro plans available."
+  },
+  "inLanguage": ["en", "ar"],
+  "availableOnDevice": "Desktop, Mobile",
+  "screenshot": `${siteUrl}/og/og-default.png`
 };
 
 export default function RootLayout({
@@ -102,6 +131,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareAppSchema) }}
+        />
+      </head>
       <body className="antialiased bg-background text-foreground font-sans">
         <ClerkProvider
           publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
