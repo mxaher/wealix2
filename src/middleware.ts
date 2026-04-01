@@ -1,7 +1,14 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 
-const isPublicApiRoute = createRouteMatcher(['/api/webhooks/stripe(.*)']);
+const isPublicRoute = createRouteMatcher([
+  '/',
+  '/sign-in(.*)',
+  '/sign-up(.*)',
+  '/privacy(.*)',
+  '/terms(.*)',
+  '/api/webhooks/stripe(.*)',
+]);
 const isProtectedApiRoute = createRouteMatcher(['/api(.*)']);
 const isAppRoute = createRouteMatcher([
   '/app(.*)',
