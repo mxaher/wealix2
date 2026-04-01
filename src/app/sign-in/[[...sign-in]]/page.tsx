@@ -1,34 +1,14 @@
-'use client';
-
-import { useEffect } from 'react';
-import { SignIn, useAuth } from '@clerk/nextjs';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { SignIn } from '@clerk/nextjs';
 
 export default function SignInPage() {
-  const { isSignedIn } = useAuth();
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const redirectUrl = searchParams.get('redirect_url') ?? '/app';
-
-  useEffect(() => {
-    if (isSignedIn) {
-      router.replace(redirectUrl);
-    }
-  }, [isSignedIn, redirectUrl, router]);
-
-  if (isSignedIn) {
-    return null;
-  }
-
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
+    <main className="min-h-screen flex items-center justify-center bg-background">
       <SignIn
-        path="/sign-in"
         routing="path"
+        path="/sign-in"
         signUpUrl="/sign-up"
-        forceRedirectUrl={redirectUrl}
-        fallbackRedirectUrl={redirectUrl}
+        fallbackRedirectUrl="/app"
       />
-    </div>
+    </main>
   );
 }
