@@ -6,10 +6,9 @@ if (!process.env.STRIPE_SECRET_KEY) {
 
 // Module-level singleton — instantiated once at Worker startup, not per request
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2025-03-31.basil',
-  // Cloudflare Workers use the fetch API natively
+  apiVersion: '2025-02-24.acacia',
+  // Cloudflare Workers use the fetch API natively — do NOT use default Node.js http client
   httpClient: Stripe.createFetchHttpClient(),
-  // Shorter timeout — Stripe API calls should complete in <5s from Cloudflare edge
   timeout: 8000,
   maxNetworkRetries: 2,
 });

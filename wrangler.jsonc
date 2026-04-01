@@ -5,12 +5,9 @@
   "compatibility_date": "2026-03-26",
   "compatibility_flags": ["nodejs_compat"],
   "preview_urls": true,
-
-  // Force all requests through the Worker — never serve dynamic routes from edge cache
-  "smart_placement": {
-    "enabled": true
+  "placement": {
+    "mode": "smart"
   },
-
   "d1_databases": [
     {
       "binding": "WEALIX_DB",
@@ -18,15 +15,12 @@
       "database_id": "99beaa7e-d8d3-4718-b4ab-e880803515a5"
     }
   ],
-
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS",
-    // Only cache truly static assets — never HTML pages
     "html_handling": "none",
     "not_found_handling": "none"
   },
-
   "observability": {
     "enabled": true
   }
