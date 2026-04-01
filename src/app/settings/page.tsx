@@ -14,6 +14,7 @@ import {
   Download,
   Crown,
   LogOut,
+  Check,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -162,6 +163,15 @@ function SettingsPageContent() {
         ? 'تمت إعادة تعيين بيانات التطبيق المحلية.'
         : 'The app has been reset and local data was cleared.',
       variant: 'destructive',
+    });
+  };
+
+  const handleSubscribe = (plan: 'core' | 'pro') => {
+    toast({
+      title: isArabic ? 'قريباً' : 'Coming Soon',
+      description: isArabic
+        ? `سيتوفر الدفع لخطة ${plan === 'core' ? 'Core' : 'Pro'} قريباً.`
+        : `Payment for ${plan === 'core' ? 'Core' : 'Pro'} plan coming soon.`,
     });
   };
 
@@ -436,37 +446,143 @@ function SettingsPageContent() {
               {/* Current Plan */}
               <Card className="bg-gradient-to-br from-gold/10 to-gold/5 border-gold/30">
                 <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="p-3 rounded-full bg-gold/20">
-                        <Crown className="w-6 h-6 text-gold" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">{isArabic ? 'خطتك الحالية' : 'Current Plan'}</p>
-                        <p className="text-2xl font-bold">
-                          {activeTrial
-                            ? (isArabic ? 'تجربة 14 يوماً' : '14-Day Trial')
-                            : currentPlan === 'none'
-                            ? (isArabic ? 'لا توجد خطة مفعّلة' : 'No active plan')
-                            : currentPlan === 'core'
-                            ? 'Core'
-                            : 'Pro'}
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-full bg-gold/20">
+                      <Crown className="w-6 h-6 text-gold" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">{isArabic ? 'خطتك الحالية' : 'Current Plan'}</p>
+                      <p className="text-2xl font-bold">
+                        {activeTrial
+                          ? (isArabic ? 'تجربة 14 يوماً' : '14-Day Trial')
+                          : currentPlan === 'none'
+                          ? (isArabic ? 'لا توجد خطة مفعّلة' : 'No active plan')
+                          : currentPlan === 'core'
+                          ? 'Core'
+                          : 'Pro'}
+                      </p>
+                      {activeTrial && (
+                        <p className="text-sm text-muted-foreground">
+                          {isArabic ? 'الوصول القياسي مفعّل الآن. الذكاء الاصطناعي والتقارير بعد الدفع.' : 'Standard access is active now. AI and reports unlock after payment.'}
                         </p>
-                        {activeTrial && (
-                          <p className="text-sm text-muted-foreground">
-                            {isArabic ? 'الوصول القياسي مفعّل الآن. الذكاء الاصطناعي والتقارير بعد الدفع.' : 'Standard access is active now. AI and reports unlock after payment.'}
-                          </p>
-                        )}
-                        {!activeTrial && currentPlan !== 'none' && (
-                          <p className="text-sm text-muted-foreground">
-                            {isArabic ? 'الخطة المفعلة حالياً على حسابك.' : 'This is the plan currently active on your account.'}
-                          </p>
-                        )}
-                      </div>
+                      )}
+                      {!activeTrial && currentPlan !== 'none' && (
+                        <p className="text-sm text-muted-foreground">
+                          {isArabic ? 'الخطة المفعلة حالياً على حسابك.' : 'This is the plan currently active on your account.'}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Plan Cards */}
+              <div className="grid gap-4 md:grid-cols-2">
+                {/* Core Plan */}
+                <Card className={`relative border-2 transition-all ${
+                  currentPlan === 'core' ? 'border-gold' : 'border-border hover:border-gold/50'
+                }`}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">Core</CardTitle>
+                      {currentPlan === 'core' && (
+                        <Badge className="bg-gold text-black text-xs">
+                          {isArabic ? 'مفعّل' : 'Active'}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-3xl font-bold mt-2">
+                      $9{' '}
+                      <span className="text-sm font-normal text-muted-foreground">
+                        / {isArabic ? 'شهر' : 'month'}
+                      </span>
+                    </p>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <ul className="space-y-2 text-sm">
+                      {[
+                        isArabic ? 'تتبع المحفظة والأصول' : 'Portfolio & asset tracking',
+                        isArabic ? 'تتبع صافي الثروة' : 'Net worth tracking',
+                        isArabic ? 'إدارة الميزانية والمصروفات' : 'Budget & expense management',
+                        isArabic ? 'تتبع تقاعد FIRE' : 'FIRE retirement tracking',
+                        isArabic ? 'تقارير أساسية' : 'Basic reports',
+                      ].map((feature) => (
+                        <li key={feature} className="flex items-center gap-2">
+                          <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                          <span>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <Button
+                      className="w-full"
+                      variant={currentPlan === 'core' ? 'outline' : 'default'}
+                      disabled={currentPlan === 'core'}
+                      onClick={() => handleSubscribe('core')}
+                    >
+                      {currentPlan === 'core'
+                        ? (isArabic ? 'خطتك الحالية' : 'Current Plan')
+                        : activeTrial
+                        ? (isArabic ? 'اشترك في Core' : 'Subscribe to Core')
+                        : (isArabic ? 'ابدأ تجربة مجانية' : 'Start Free Trial')}
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* Pro Plan */}
+                <Card className={`relative border-2 transition-all ${
+                  currentPlan === 'pro' ? 'border-emerald-500' : 'border-border hover:border-emerald-500/50'
+                }`}>
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <Badge className="bg-emerald-500 text-white text-xs px-3">
+                      {isArabic ? 'الأكثر شيوعاً' : 'Most Popular'}
+                    </Badge>
+                  </div>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">Pro</CardTitle>
+                      {currentPlan === 'pro' && (
+                        <Badge className="bg-emerald-500 text-white text-xs">
+                          {isArabic ? 'مفعّل' : 'Active'}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-3xl font-bold mt-2">
+                      $19{' '}
+                      <span className="text-sm font-normal text-muted-foreground">
+                        / {isArabic ? 'شهر' : 'month'}
+                      </span>
+                    </p>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <ul className="space-y-2 text-sm">
+                      {[
+                        isArabic ? 'كل ميزات Core' : 'Everything in Core',
+                        isArabic ? 'مستشار مالي AI' : 'AI financial advisor',
+                        isArabic ? 'تحليل AI للمحفظة' : 'AI portfolio analysis',
+                        isArabic ? 'إعادة توازن AI تلقائي' : 'AI auto-rebalancing',
+                        isArabic ? 'تقارير متقدمة وتصدير' : 'Advanced reports & export',
+                        isArabic ? 'تنبيهات ذكية' : 'Smart alerts',
+                      ].map((feature) => (
+                        <li key={feature} className="flex items-center gap-2">
+                          <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                          <span>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <Button
+                      className="w-full bg-emerald-500 hover:bg-emerald-600 text-white"
+                      disabled={currentPlan === 'pro'}
+                      onClick={() => handleSubscribe('pro')}
+                    >
+                      {currentPlan === 'pro'
+                        ? (isArabic ? 'خطتك الحالية' : 'Current Plan')
+                        : activeTrial
+                        ? (isArabic ? 'اشترك في Pro' : 'Subscribe to Pro')
+                        : (isArabic ? 'ابدأ تجربة مجانية' : 'Start Free Trial')}
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
 
               <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
                 {isArabic
