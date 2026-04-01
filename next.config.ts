@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 import path from "path";
 import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 
-// Production-only Clerk domains — NO *.clerk.accounts.dev (that is the dev instance)
+// Production-only Clerk domains
 const contentSecurityPolicy = `
   default-src 'self';
   script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.clerk.com https://clerk.wealix.app https://accounts.wealix.app https://challenges.cloudflare.com;
@@ -19,15 +19,9 @@ const contentSecurityPolicy = `
 `.replace(/\s{2,}/g, " ").trim();
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  // NOTE: Do NOT set output: 'standalone' — it breaks @opennextjs/cloudflare
   images: {
     unoptimized: true,
-  },
-  turbopack: {
-    root: path.resolve(process.cwd()),
-    resolveAlias: {
-      sharp: './scripts/sharp-shim.js',
-    },
   },
   reactStrictMode: true,
   webpack(config: any, { isServer }: { isServer: boolean }) {
