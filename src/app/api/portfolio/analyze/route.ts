@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server';
-import ZAI from 'z-ai-web-dev-sdk';
 import { buildRateLimitHeaders, enforceRateLimit } from '@/lib/rate-limit';
 import { requirePaidTier } from '@/lib/server-auth';
 
@@ -320,16 +319,7 @@ async function createPortfolioAnalysisCompletion(systemPrompt: string, userPromp
     return json?.choices?.[0]?.message?.content || '';
   }
 
-  const zai = await ZAI.create();
-  const completion = await zai.chat.completions.create({
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt },
-    ],
-    thinking: { type: 'enabled' },
-  });
-
-  return completion.choices[0]?.message?.content || '';
+  throw new Error('NVIDIA_API_KEY is required for portfolio analysis.');
 }
 
 export async function POST(request: NextRequest) {
