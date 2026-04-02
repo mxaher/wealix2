@@ -83,7 +83,6 @@ async function getPortalConfigurationId(stripe: ReturnType<typeof getStripe>, ap
   }
 
   const created = await stripe.billingPortal.configurations.create({
-    name: 'Wealix Billing Portal',
     default_return_url: `${appUrl}/settings/billing`,
     features,
     metadata: { app: 'wealix' },
