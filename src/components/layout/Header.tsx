@@ -148,10 +148,11 @@ export function Header() {
               <UserButton
                 appearance={{
                   elements: {
-                    userButtonTrigger: 'flex h-9 w-9 items-center justify-center rounded-full',
+                    rootBox: 'flex h-9 w-9 items-center justify-center',
                     userButtonBox: 'flex h-9 w-9 items-center justify-center',
-                    avatarBox: 'h-9 w-9',
-                              avatarImage: 'object-cover object-center w-full h-full',
+                    userButtonTrigger: 'flex h-9 w-9 items-center justify-center rounded-full p-0',
+                    avatarBox: 'h-9 w-9 overflow-hidden rounded-full',
+                    avatarImage: 'h-full w-full object-cover object-center',
                   },
                 }}
               />

@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { UserButton, useUser } from '@clerk/nextjs';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -239,14 +239,11 @@ function SettingsPageContent() {
     });
   };
 
-  const handleSubscribe = (planId: string) => {
-    toast({
-      title: isArabic ? 'قريباً' : 'Coming Soon',
-      description: isArabic
-        ? `سيتوفر الدفع لخطة ${planId === 'core' ? 'Core' : 'Pro'} قريباً.`
-        : `Payment for the ${planId === 'core' ? 'Core' : 'Pro'} plan is coming soon.`,
-    });
-  };
+  useEffect(() => {
+    if (activeTab === 'subscription') {
+      router.replace('/settings/billing');
+    }
+  }, [activeTab, router]);
 
   return (
     <DashboardShell>
@@ -300,7 +297,17 @@ function SettingsPageContent() {
                 )}
                 <div className="flex items-center gap-4">
                   <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border bg-muted">
-                    <UserButton />
+                    <UserButton
+                      appearance={{
+                        elements: {
+                          rootBox: 'flex h-20 w-20 items-center justify-center',
+                          userButtonBox: 'flex h-20 w-20 items-center justify-center',
+                          userButtonTrigger: 'flex h-20 w-20 items-center justify-center rounded-full p-0',
+                          avatarBox: 'h-20 w-20 overflow-hidden rounded-full',
+                          avatarImage: 'h-full w-full object-cover object-center',
+                        },
+                      }}
+                    />
                   </div>
                   <div>
                     <p className="font-medium">
@@ -456,153 +463,25 @@ function SettingsPageContent() {
 
           {/* ── Subscription ── */}
           <TabsContent value="subscription">
-            <div className="space-y-6">
-              {/* Current plan banner */}
-              <Card className="bg-gradient-to-br from-gold/10 to-gold/5 border-gold/30">
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 rounded-full bg-gold/20">
-                      <Crown className="w-6 h-6 text-gold" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">{isArabic ? 'خطتك الحالية' : 'Current Plan'}</p>
-                      <p className="text-2xl font-bold">
-                        {activeTrial
-                          ? (isArabic ? 'تجربة 14 يوماً' : '14-Day Trial')
-                          : currentPlan === 'none'
-                          ? (isArabic ? 'لا توجد خطة مفعّلة' : 'No active plan')
-                          : currentPlan === 'core' ? 'Core' : 'Pro'}
-                      </p>
-                      {activeTrial && (
-                        <p className="text-sm text-muted-foreground">
-                          {isArabic
-                            ? 'الوصول القياسي مفعّل الآن. الذكاء الاصطناعي والتقارير بعد الدفع.'
-                            : 'Standard access is active now. AI and reports unlock after payment.'}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Billing cycle toggle */}
-              <div className="flex flex-col items-center gap-2">
-                <div className="inline-flex rounded-full border border-border bg-background p-1">
-                  <button
-                    type="button"
-                    onClick={() => setBillingCycle('monthly')}
-                    className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                      billingCycle === 'monthly' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
-                    }`}
-                  >
-                    {isArabic ? 'شهري' : 'Monthly'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setBillingCycle('annual')}
-                    className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                      billingCycle === 'annual' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
-                    }`}
-                  >
-                    {isArabic ? 'سنوي' : 'Annually'}
-                  </button>
+            <Card>
+              <CardContent className="flex items-center justify-between gap-4 p-6">
+                <div>
+                  <p className="font-semibold">
+                    {isArabic ? 'جارٍ فتح صفحة الفوترة الجديدة…' : 'Opening the new billing page…'}
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {isArabic
+                      ? 'تم نقل إدارة الاشتراك إلى صفحة فوترة مخصصة حتى تعمل التجربة وتغيير الخطة بشكل صحيح.'
+                      : 'Subscription management has moved to the dedicated billing page so trials and plan changes work correctly.'}
+                  </p>
                 </div>
-                {billingCycle === 'annual' && (
-                  <span className="text-xs font-medium text-accent">
-                    {isArabic ? '✦ وفّر حتى 20% مع الاشتراك السنوي' : '✦ Save up to 20% with annual billing'}
-                  </span>
-                )}
-              </div>
-
-              {/* Plan cards */}
-              <div className="grid gap-4 md:grid-cols-2">
-                {pricingByCycle[billingCycle].map((plan) => (
-                  <Card
-                    key={plan.id}
-                    className={`relative border-2 transition-all ${
-                      plan.id === 'pro'
-                        ? currentPlan === 'pro'
-                          ? 'border-emerald-500'
-                          : 'border-border hover:border-emerald-500/50'
-                        : currentPlan === 'core'
-                        ? 'border-gold'
-                        : 'border-border hover:border-gold/50'
-                    }`}
-                  >
-                    {plan.id === 'pro' && (
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                        <Badge className="bg-primary text-primary-foreground text-xs px-3">
-                          {isArabic ? 'الأكثر تقدماً' : 'Most Advanced'}
-                        </Badge>
-                      </div>
-                    )}
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-lg">{plan.name}</CardTitle>
-                        {((plan.id === 'core' && currentPlan === 'core') ||
-                          (plan.id === 'pro' && currentPlan === 'pro')) && (
-                          <Badge
-                            className={plan.id === 'pro' ? 'bg-emerald-500 text-white text-xs' : 'bg-gold text-black text-xs'}
-                          >
-                            {isArabic ? 'مفعّل' : 'Active'}
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-3xl font-bold mt-2">
-                        ${plan.price}
-                        <span className="text-sm font-normal text-muted-foreground ml-1">
-                          {plan.suffix[isArabic ? 'ar' : 'en']}
-                        </span>
-                      </p>
-                      {plan.savings && (
-                        <span className="inline-block rounded-full bg-accent/10 px-3 py-1 text-xs font-medium text-accent">
-                          {plan.savings[isArabic ? 'ar' : 'en']}
-                        </span>
-                      )}
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <ul className="space-y-2 text-sm">
-                        {plan.features[isArabic ? 'ar' : 'en'].map((feature) => (
-                          <li key={feature} className="flex items-center gap-2">
-                            <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                            <span>{feature}</span>
-                          </li>
-                        ))}
-                      </ul>
-                      <Button
-                        className="w-full"
-                        variant={
-                          (plan.id === 'core' && currentPlan === 'core') ||
-                          (plan.id === 'pro' && currentPlan === 'pro')
-                            ? 'outline'
-                            : plan.id === 'pro'
-                            ? 'default'
-                            : 'outline'
-                        }
-                        disabled={
-                          (plan.id === 'core' && currentPlan === 'core') ||
-                          (plan.id === 'pro' && currentPlan === 'pro')
-                        }
-                        onClick={() => handleSubscribe(plan.id)}
-                      >
-                        {(plan.id === 'core' && currentPlan === 'core') ||
-                        (plan.id === 'pro' && currentPlan === 'pro')
-                          ? (isArabic ? 'خطتك الحالية' : 'Current Plan')
-                          : activeTrial
-                          ? (isArabic ? `اشترك في ${plan.name}` : `Subscribe to ${plan.name}`)
-                          : (isArabic ? 'ابدأ تجربة مجانية' : 'Start Free Trial')}
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-
-              <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
-                {isArabic
-                  ? 'بعد إنشاء الحساب تختار Core أو Pro ثم تبدأ تجربة 14 يوماً. إذا لم يتم الدفع بعد انتهاء التجربة، يتوقف الوصول حتى تفعيل الاشتراك.'
-                  : 'After signup you choose Core or Pro and start a 14-day trial. If payment is not completed when the trial ends, access pauses until the subscription is activated.'}
-              </div>
-            </div>
+                <Button asChild className="rounded-xl">
+                  <Link href="/settings/billing">
+                    {isArabic ? 'فتح الفوترة' : 'Open billing'}
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ── Data ── */}
