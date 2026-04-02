@@ -23,5 +23,11 @@
   },
   "observability": {
     "enabled": true
+  },
+  "vars": {
+    "STRIPE_PRICE_CORE_MONTHLY": "price_1TFzrO9CJF0RWLt5m6LKb4bj",
+    "STRIPE_PRICE_CORE_ANNUAL": "price_1TFzrO9CJF0RWLt58onG3mnw",
+    "STRIPE_PRICE_PRO_MONTHLY": "price_1TFzz29CJF0RWLt5Of3wOWwc",
+    "STRIPE_PRICE_PRO_ANNUAL": "price_1TFzz29CJF0RWLt5Kt4UMf3L"
   }
 }
