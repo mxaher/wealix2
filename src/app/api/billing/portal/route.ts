@@ -71,7 +71,6 @@ async function getPortalConfigurationId(stripe: ReturnType<typeof getStripe>, ap
 
   if (existing) {
     const updated = await stripe.billingPortal.configurations.update(existing.id, {
-      name: 'Wealix Billing Portal',
       default_return_url: `${appUrl}/settings/billing`,
       features,
       metadata: { ...existing.metadata, app: 'wealix' },
