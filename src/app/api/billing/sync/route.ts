@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { getStripe } from '@/lib/stripe';
+import { getCycleFromPriceId, getPlanFromPriceId } from '@/lib/stripe-billing';
 
 export const dynamic = 'force-dynamic';
 
@@ -136,10 +137,18 @@ export async function POST(_req: NextRequest) {
       return NextResponse.json({ synced: false, message: 'No subscription found in Stripe' });
     }
 
+    const currentPriceId = subscription.items.data[0]?.price.id ?? null;
+
     // ── Resolve plan: metadata → price ID lookup → fallback 'core'
     const metaPlan = subscription.metadata?.plan;
     const plan: 'core' | 'pro' =
-      metaPlan === 'core' || metaPlan === 'pro' ? metaPlan : 'core';
+      metaPlan === 'core' || metaPlan === 'pro'
+        ? metaPlan
+        : (getPlanFromPriceId(currentPriceId) ?? 'core');
+    const cycle =
+      subscription.metadata?.cycle === 'annual' || subscription.metadata?.cycle === 'monthly'
+        ? subscription.metadata.cycle
+        : (getCycleFromPriceId(currentPriceId) ?? 'monthly');
 
     const trialEnd = subscription.trial_end
       ? new Date(subscription.trial_end * 1000).toISOString()
@@ -162,10 +171,10 @@ export async function POST(_req: NextRequest) {
     }
 
     // ── Patch subscription metadata if clerkUserId is missing (root cause fix)
-    if (!subscription.metadata?.clerkUserId) {
+    if (!subscription.metadata?.clerkUserId || subscription.metadata?.plan !== plan || subscription.metadata?.cycle !== cycle) {
       try {
         await stripe.subscriptions.update(subscription.id, {
-          metadata: { clerkUserId: userId, plan, cycle: subscription.metadata?.cycle ?? 'monthly' },
+          metadata: { ...subscription.metadata, clerkUserId: userId, plan, cycle },
         });
       } catch {
         // Non-fatal
@@ -181,6 +190,8 @@ export async function POST(_req: NextRequest) {
         subscriptionStatus: subscription.status,
         stripeSubscriptionId: subscription.id,
         stripeCustomerId: resolvedCustomerId,
+        cycle,
+        subscriptionCycle: cycle,
         paymentAdded,
         trialActive: subscription.status === 'trialing' && !paymentAdded ? true : false,
         trialStatus:
@@ -203,6 +214,7 @@ export async function POST(_req: NextRequest) {
       synced: true,
       status: subscription.status,
       plan,
+      cycle,
       paymentAdded,
     });
   } catch (error) {

@@ -255,6 +255,10 @@ function BillingPageContent() {
   const subscriptionTier = billingState.selectedPlan;
   const hasSelectedPlan = subscriptionTier === 'core' || subscriptionTier === 'pro';
   const subscriptionStatus = billingState.subscriptionStatus;
+  const subscriptionCycle =
+    metadata?.subscriptionCycle === 'annual' || metadata?.cycle === 'annual'
+      ? 'annual'
+      : 'monthly';
   const trialActive = billingState.trialActive;
   const trialDaysLeft = trialActive && billingState.trialEndsAt ? daysRemaining(billingState.trialEndsAt) : 0;
   const trialPlan = billingState.trialPlan === 'none' ? 'pro' : billingState.trialPlan;
@@ -370,10 +374,34 @@ function BillingPageContent() {
         signal: controller.signal,
       });
       clearTimeout(timeout);
-      const data = await res.json() as { url?: string; error?: string };
-      if (!res.ok || !data.url) {
+      const data = await res.json() as { url?: string; error?: string; updated?: boolean };
+      if (!res.ok) {
         throw new Error(data.error ?? 'Failed to create checkout');
       }
+
+      if (data.updated) {
+        const syncRes = await fetch('/api/billing/sync', { method: 'POST' });
+        const syncData = await syncRes.json().catch(() => null) as { synced?: boolean } | null;
+        if (!syncRes.ok || !syncData?.synced) {
+          throw new Error('Subscription updated in Stripe, but local sync failed.');
+        }
+
+        await clerkUser.reload?.().catch(() => undefined);
+        toast({
+          title: isArabic ? 'تم تحديث الاشتراك' : 'Subscription updated',
+          description: isArabic
+            ? 'تم تغيير خطتك بنجاح.'
+            : 'Your billing plan was changed successfully.',
+        });
+        setLoadingPlan(null);
+        router.refresh();
+        return;
+      }
+
+      if (!data.url) {
+        throw new Error(data.error ?? 'Failed to create checkout');
+      }
+
       window.location.href = data.url;
     } catch (err) {
       clearTimeout(timeout);
@@ -471,20 +499,22 @@ function BillingPageContent() {
           isManaging={isManaging}
         />
 
-        {/* ── Plan cards (hidden for active paid users — they use portal) ── */}
-        {!isPaid || subscriptionStatus === 'canceled' || subscriptionStatus === 'past_due' ? (
-          <div className="space-y-6">
-            <Separator />
-            <div>
-              <h2 className="text-lg font-semibold">
-                {isArabic ? 'اختر خطتك' : 'Choose a plan'}
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {isArabic
-                  ? 'ابدأ تجربة 14 يوماً للخطة المختارة. الذكاء الاصطناعي والتقارير لا تُفتح إلا بعد إتمام الدفع.'
-                  : 'Start a 14-day trial on your chosen plan. AI features and reports unlock only after payment is completed.'}
-              </p>
-            </div>
+        <div className="space-y-6">
+          <Separator />
+          <div>
+            <h2 className="text-lg font-semibold">
+              {isArabic ? 'اختر خطتك' : 'Choose a plan'}
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {isPaid
+                ? (isArabic
+                    ? 'يمكنك الترقية أو تبديل الفوترة من هنا. وتبقى بوابة Stripe لإدارة البطاقة والفواتير والإلغاء.'
+                    : 'You can upgrade or change billing cadence here. The Stripe portal remains available for cards, invoices, and cancellation.')
+                : (isArabic
+                    ? 'ابدأ تجربة 14 يوماً للخطة المختارة. الذكاء الاصطناعي والتقارير لا تُفتح إلا بعد إتمام الدفع.'
+                    : 'Start a 14-day trial on your chosen plan. AI features and reports unlock only after payment is completed.')}
+            </p>
+          </div>
 
             {/* Billing cycle toggle */}
             <div className="flex flex-col gap-2">
@@ -523,6 +553,7 @@ function BillingPageContent() {
                   ? (isArabic ? '/شهرياً' : '/mo')
                   : (isArabic ? '/سنوياً' : '/yr');
                 const isCurrentPlan = subscriptionTier === plan.id;
+                const isCurrentSelection = isCurrentPlan && subscriptionCycle === billingCycle;
                 const isCheckoutLoading = loadingPlan === `${plan.id}-${billingCycle}`;
                 const isTrialLoading = loadingPlan === `${plan.id}-trial`;
                 const isLoading = isCheckoutLoading || isTrialLoading;
@@ -565,7 +596,7 @@ function BillingPageContent() {
                             {isArabic ? `وفّر $${plan.annualSavings}` : `Save $${plan.annualSavings}`}
                           </Badge>
                         )}
-                        {isCurrentPlan && (subscriptionStatus === 'active' || subscriptionStatus === 'trialing') && (
+                        {isCurrentSelection && (subscriptionStatus === 'active' || subscriptionStatus === 'trialing') && (
                           <Badge variant="outline" className="border-accent/40 text-accent">
                             {isArabic ? 'خطتك الحالية' : 'Current plan'}
                           </Badge>
@@ -589,11 +620,15 @@ function BillingPageContent() {
                     <Button
                       className={`mt-8 w-full rounded-xl ${plan.highlight ? 'btn-primary' : ''}`}
                       variant={plan.highlight ? 'default' : 'outline'}
-                      disabled={isLoading || !clerkUser}
+                      disabled={isLoading || !clerkUser || isCurrentSelection}
                       onClick={() => (trialActive || hasSelectedPlan ? handleSubscribe(plan.id) : handleStartTrial(plan.id))}
                     >
                       {isLoading ? (
                         <RefreshCw className="h-4 w-4 animate-spin" />
+                      ) : isCurrentSelection ? (
+                        isArabic ? 'خطتك الحالية' : 'Current plan'
+                      ) : isPaid ? (
+                        isArabic ? `تغيير الخطة إلى ${plan.name}` : `Switch to ${plan.name}`
                       ) : shouldPromptForPayment ? (
                         isArabic ? `أضف وسيلة دفع — ${plan.name}` : `Add payment method — ${plan.name}`
                       ) : trialActive || hasSelectedPlan ? (
@@ -607,31 +642,29 @@ function BillingPageContent() {
               })}
             </div>
           </div>
-        ) : (
-          /* ── Upgrade section for paid users ── */
-          <div className="space-y-4">
-            <Separator />
-            <div className="rounded-[20px] border border-border bg-card p-6">
-              <h2 className="font-semibold">{isArabic ? 'تغيير الخطة أو إلغاؤها' : 'Change or cancel plan'}</h2>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                {isArabic
-                  ? 'لتغيير خطتك أو طريقة الدفع أو إلغاء الاشتراك، افتح بوابة الفوترة أدناه.'
-                  : 'To switch plans, update your payment method, or cancel your subscription, open the billing portal below.'}
-              </p>
-              <Button
-                variant="outline"
-                className="mt-4 rounded-xl gap-2"
-                onClick={handleManage}
-                disabled={isManaging}
-              >
-                {isManaging
-                  ? <RefreshCw className="h-4 w-4 animate-spin" />
-                  : <><ExternalLink className="h-4 w-4" />{isArabic ? 'فتح بوابة الفوترة' : 'Open billing portal'}</>
-                }
-              </Button>
-            </div>
+
+        <div className="space-y-4">
+          <Separator />
+          <div className="rounded-[20px] border border-border bg-card p-6">
+            <h2 className="font-semibold">{isArabic ? 'الدفع والفواتير والإلغاء' : 'Payments, invoices, and cancellation'}</h2>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              {isArabic
+                ? 'استخدم بوابة Stripe لإدارة البطاقة، الاطلاع على الفواتير، أو إلغاء الاشتراك. تغيير الخطة متاح أيضاً هناك.'
+                : 'Use the Stripe portal to manage cards, view invoices, or cancel your subscription. Plan switching is also enabled there.'}
+            </p>
+            <Button
+              variant="outline"
+              className="mt-4 rounded-xl gap-2"
+              onClick={handleManage}
+              disabled={isManaging}
+            >
+              {isManaging
+                ? <RefreshCw className="h-4 w-4 animate-spin" />
+                : <><ExternalLink className="h-4 w-4" />{isArabic ? 'فتح بوابة Stripe' : 'Open Stripe portal'}</>
+              }
+            </Button>
           </div>
-        )}
+        </div>
 
         {/* ── FAQ ── */}
         <div className="space-y-4">

@@ -144,7 +144,7 @@ export function Header() {
             </Button>
           </Show>
           <Show when="signed-in">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full">
+            <div className="wealix-avatar-frame flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full">
               <UserButton
                 appearance={{
                   elements: {

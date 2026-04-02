@@ -296,7 +296,7 @@ function SettingsPageContent() {
                   </div>
                 )}
                 <div className="flex items-center gap-4">
-                  <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border bg-muted">
+                  <div className="wealix-avatar-frame flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border bg-muted">
                     <UserButton
                       appearance={{
                         elements: {

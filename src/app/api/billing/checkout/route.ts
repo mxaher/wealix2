@@ -3,19 +3,9 @@ import { auth } from '@clerk/nextjs/server';
 import { getBillingState } from '@/lib/billing-state';
 import { getPublicAppEnv } from '@/lib/env';
 import { getStripe } from '@/lib/stripe';
+import { getPriceId } from '@/lib/stripe-billing';
 
 export const dynamic = 'force-dynamic';
-
-const PRICE_IDS: Record<'core' | 'pro', Record<'monthly' | 'annual', string | undefined>> = {
-  core: {
-    monthly: process.env.STRIPE_PRICE_CORE_MONTHLY,
-    annual:  process.env.STRIPE_PRICE_CORE_ANNUAL,
-  },
-  pro: {
-    monthly: process.env.STRIPE_PRICE_PRO_MONTHLY,
-    annual:  process.env.STRIPE_PRICE_PRO_ANNUAL,
-  },
-};
 
 export async function POST(req: NextRequest) {
   try {
@@ -38,7 +28,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid cycle. Must be "monthly" or "annual".' }, { status: 400 });
     }
 
-    const priceId = PRICE_IDS[plan][cycle];
+    const priceId = getPriceId(plan, cycle);
     if (!priceId) {
       return NextResponse.json(
         { error: `Missing Stripe price env var for ${plan} ${cycle}.` },
@@ -60,11 +50,52 @@ export async function POST(req: NextRequest) {
     // trial was started without a payment method and the user is now paying.
     if (existingSubId) {
       try {
-        const existingSub = await stripe.subscriptions.retrieve(existingSubId);
+        const existingSub = await stripe.subscriptions.retrieve(existingSubId, {
+          expand: ['default_payment_method'],
+        });
 
         if (existingSub.status === 'trialing' || existingSub.status === 'active') {
+          const currentItem = existingSub.items.data[0];
+          const currentPriceId = currentItem?.price.id ?? null;
+          const hasDefaultPaymentMethod = Boolean(existingSub.default_payment_method);
+
+          if (currentPriceId === priceId) {
+            return NextResponse.json({
+              updated: true,
+              plan,
+              cycle,
+              subscriptionId: existingSub.id,
+            });
+          }
+
+          if (currentItem && hasDefaultPaymentMethod) {
+            const updatedSubscription = await stripe.subscriptions.update(existingSub.id, {
+              items: [
+                {
+                  id: currentItem.id,
+                  price: priceId,
+                  quantity: currentItem.quantity ?? 1,
+                },
+              ],
+              proration_behavior: 'always_invoice',
+              metadata: {
+                ...existingSub.metadata,
+                clerkUserId: userId,
+                plan,
+                cycle,
+              },
+            });
+
+            return NextResponse.json({
+              updated: true,
+              plan,
+              cycle,
+              subscriptionId: updatedSubscription.id,
+            });
+          }
+
           // Create a SetupIntent checkout to collect payment method and
-          // attach it to the existing subscription as default_payment_method.
+          // attach it to the existing subscription before completing a plan switch.
           const setupSession = await stripe.checkout.sessions.create({
             mode: 'setup',
             ...(stripeCustomerId ? { customer: stripeCustomerId } : {}),

@@ -403,3 +403,29 @@
 .status-neutral {
   @apply text-muted-foreground;
 }
+
+.wealix-avatar-frame :where(.cl-rootBox, .cl-userButtonBox, .cl-userButtonTrigger) {
+  display: flex !important;
+  width: 100% !important;
+  height: 100% !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.wealix-avatar-frame :where(.cl-avatarBox, .cl-userButtonAvatarBox) {
+  display: flex !important;
+  width: 100% !important;
+  height: 100% !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+  border-radius: 9999px !important;
+}
+
+.wealix-avatar-frame :where(.cl-avatarImage) {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center !important;
+}

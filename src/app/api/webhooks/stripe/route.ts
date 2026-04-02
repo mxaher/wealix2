@@ -2,16 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { clerkClient } from '@clerk/nextjs/server';
 import type Stripe from 'stripe';
 import { getRequiredEnv } from '@/lib/env';
-
-const CORE_PRICE_IDS = new Set([
-  process.env.STRIPE_PRICE_CORE_MONTHLY,
-  process.env.STRIPE_PRICE_CORE_ANNUAL,
-].filter(Boolean));
-
-const PRO_PRICE_IDS = new Set([
-  process.env.STRIPE_PRICE_PRO_MONTHLY,
-  process.env.STRIPE_PRICE_PRO_ANNUAL,
-].filter(Boolean));
+import { getCycleFromPriceId, getPlanFromPriceId } from '@/lib/stripe-billing';
 
 function toIsoDate(unixSeconds: number | null | undefined) {
   if (!unixSeconds) return null;
@@ -28,8 +19,10 @@ function getPlanFromMetadata(
 function getPlanFromSubscription(subscription: Stripe.Subscription): 'core' | 'pro' | null {
   for (const item of subscription.items.data) {
     const priceId = item.price.id;
-    if (PRO_PRICE_IDS.has(priceId))  return 'pro';
-    if (CORE_PRICE_IDS.has(priceId)) return 'core';
+    const plan = getPlanFromPriceId(priceId);
+    if (plan) {
+      return plan;
+    }
   }
   return getPlanFromMetadata(subscription);
 }
@@ -41,6 +34,10 @@ async function updateUserFromSubscription(
 ) {
   const clerk  = await clerkClient();
   const plan   = getPlanFromSubscription(subscription) ?? 'core';
+  const cycle =
+    subscription.metadata?.cycle === 'annual' || subscription.metadata?.cycle === 'monthly'
+      ? subscription.metadata.cycle
+      : (getCycleFromPriceId(subscription.items.data[0]?.price.id ?? null) ?? 'monthly');
   const trialEnd = toIsoDate(subscription.trial_end);
 
   // paymentAdded: true when there is a default PM on the subscription
@@ -57,6 +54,8 @@ async function updateUserFromSubscription(
       subscriptionTier: plan,
       subscriptionStatus: subscription.status,
       stripeSubscriptionId: subscription.id,
+      cycle,
+      subscriptionCycle: cycle,
       stripeCustomerId:
         typeof subscription.customer === 'string'
           ? subscription.customer
@@ -224,6 +223,8 @@ export async function POST(req: NextRequest) {
               ...(plan ? { plan, subscriptionTier: plan, trialPlan: plan } : {}),
               subscriptionStatus: 'canceled',
               stripeSubscriptionId: null,
+              cycle: null,
+              subscriptionCycle: null,
               paymentAdded: false,
               trialActive: false,
               trialStatus: 'expired',
