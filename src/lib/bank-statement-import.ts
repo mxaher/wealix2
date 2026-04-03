@@ -1,43 +1,45 @@
+import 'server-only';
+
+import type { StatementAccountType, StatementImportPreview, StatementImportRow } from '@/lib/bank-statement-types';
 import type { ExpenseCategory, IncomeSource } from '@/store/useAppStore';
 
-export type StatementAccountType = 'current' | 'credit_card';
-export type StatementDirection = 'income' | 'expense';
-
-export type StatementImportRow = {
-  id: string;
-  date: string;
-  description: string;
-  amount: number;
-  currency: string;
-  direction: StatementDirection;
-  typeLabel: string;
-  expenseCategory: ExpenseCategory;
-  incomeSource: IncomeSource;
-  merchantName: string | null;
-  notes: string | null;
-};
-
-export type StatementImportPreview = {
-  rows: StatementImportRow[];
-  skippedRows: number;
-  incomeCount: number;
-  expenseCount: number;
-  incomeTotal: number;
-  expenseTotal: number;
-  currency: string;
-};
-
 const MAX_STATEMENT_FILE_SIZE = 5 * 1024 * 1024;
+const MAX_STATEMENT_ROWS = 2000;
+const MAX_TEXT_FIELD_LENGTH = 180;
+const MAX_PDF_PAGES = 20;
+const MAX_PDF_TEXT_LENGTH = 200_000;
+const MAX_PDF_LINE_COUNT = 2500;
 const ACCEPTED_STATEMENT_TYPES = new Set([
   'text/csv',
   'application/csv',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   'application/vnd.ms-excel',
+  'application/pdf',
 ]);
 const DEFAULT_CURRENCY = 'SAR';
 
+type ParsedStatementSource = {
+  rows: Record<string, unknown>[];
+  sourceFormat: 'csv' | 'xlsx' | 'pdf';
+};
+
+type PdfTextItem = {
+  str?: string;
+  transform?: number[];
+};
+
 function hasZipSignature(bytes: Uint8Array) {
   return bytes[0] === 0x50 && bytes[1] === 0x4b && bytes[2] === 0x03 && bytes[3] === 0x04;
+}
+
+function hasPdfSignature(bytes: Uint8Array) {
+  return (
+    bytes[0] === 0x25 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x44 &&
+    bytes[3] === 0x46 &&
+    bytes[4] === 0x2d
+  );
 }
 
 function normalizeEasternArabicDigits(value: string) {
@@ -50,6 +52,19 @@ function normalizeHeader(value: string) {
     .replace(/[^a-z0-9]/g, '');
 }
 
+function normalizeWhitespace(value: string) {
+  return value.replace(/\s+/g, ' ').trim();
+}
+
+function sanitizeText(value: string) {
+  const cleaned = value
+    .replace(/[\u0000-\u001f\u007f]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return cleaned.slice(0, MAX_TEXT_FIELD_LENGTH);
+}
+
 function assertStatementFile(file: File, bytes: Uint8Array) {
   if (file.size > MAX_STATEMENT_FILE_SIZE) {
     throw new Error('Statement file exceeds the 5MB upload limit.');
@@ -57,13 +72,18 @@ function assertStatementFile(file: File, bytes: Uint8Array) {
 
   const isCsv = /\.csv$/i.test(file.name) || file.type === 'text/csv' || file.type === 'application/csv';
   const isXlsx = /\.xlsx$/i.test(file.name) || file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  const isPdf = /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
 
-  if (!ACCEPTED_STATEMENT_TYPES.has(file.type) && !isCsv && !isXlsx) {
-    throw new Error('Only CSV and XLSX bank statement files are supported.');
+  if (!ACCEPTED_STATEMENT_TYPES.has(file.type) && !isCsv && !isXlsx && !isPdf) {
+    throw new Error('Only CSV, XLSX, and PDF bank statement files are supported.');
   }
 
   if (isXlsx && !hasZipSignature(bytes)) {
     throw new Error('The uploaded spreadsheet does not match a valid XLSX file signature.');
+  }
+
+  if (isPdf && !hasPdfSignature(bytes)) {
+    throw new Error('The uploaded PDF does not match a valid PDF file signature.');
   }
 }
 
@@ -120,7 +140,11 @@ async function parseCsvRows(bytes: Uint8Array) {
   const delimiter = detectCsvDelimiter(lines[0]);
   const headers = splitCsvRow(lines[0], delimiter);
 
-  return lines.slice(1).map((line) => {
+  if (headers.length < 3) {
+    throw new Error('The statement CSV file does not contain the required columns.');
+  }
+
+  const rows = lines.slice(1, MAX_STATEMENT_ROWS + 1).map((line) => {
     const values = splitCsvRow(line, delimiter);
     const row: Record<string, unknown> = {};
     headers.forEach((header, index) => {
@@ -128,6 +152,12 @@ async function parseCsvRows(bytes: Uint8Array) {
     });
     return row;
   });
+
+  if (lines.length - 1 > MAX_STATEMENT_ROWS) {
+    throw new Error(`Statement file contains more than ${MAX_STATEMENT_ROWS} rows.`);
+  }
+
+  return rows;
 }
 
 async function parseXlsxRows(buffer: ArrayBuffer, fileName: string) {
@@ -142,6 +172,10 @@ async function parseXlsxRows(buffer: ArrayBuffer, fileName: string) {
   const sheet = workbook.worksheets[0];
   if (!sheet) {
     throw new Error('The spreadsheet file contains no data.');
+  }
+
+  if (sheet.rowCount > MAX_STATEMENT_ROWS + 1) {
+    throw new Error(`Statement file contains more than ${MAX_STATEMENT_ROWS} rows.`);
   }
 
   let sheetHasFormulas = false;
@@ -175,6 +209,177 @@ async function parseXlsxRows(buffer: ArrayBuffer, fileName: string) {
     });
     return output;
   }).filter(Boolean) ?? [];
+}
+
+function groupPdfItemsIntoLines(items: PdfTextItem[]) {
+  const lines = new Map<string, Array<{ text: string; x: number }>>();
+
+  for (const item of items) {
+    const text = normalizeWhitespace(String(item.str ?? ''));
+    const transform = Array.isArray(item.transform) ? item.transform : [];
+    const x = Number(transform[4] ?? 0);
+    const y = Number(transform[5] ?? 0);
+
+    if (!text) {
+      continue;
+    }
+
+    const lineKey = String(Math.round(y));
+    const existing = lines.get(lineKey) ?? [];
+    existing.push({ text, x });
+    lines.set(lineKey, existing);
+  }
+
+  return Array.from(lines.entries())
+    .sort((left, right) => Number(right[0]) - Number(left[0]))
+    .map(([, lineItems]) => lineItems.sort((left, right) => left.x - right.x));
+}
+
+function parsePdfDateCandidate(value: string) {
+  const match = value.match(/(\d{4}[\/.\-]\d{1,2}[\/.\-]\d{1,2}|\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4})/);
+  return match?.[0] ?? '';
+}
+
+function findFirstAmountToken(values: string[]) {
+  return values.find((value) => /-?\(?[\d.,]+(?:\)?)$/.test(value.trim())) ?? '';
+}
+
+function isPdfNoiseLine(line: string) {
+  const normalized = normalizeHeader(line);
+
+  return (
+    !normalized ||
+    normalized.startsWith('page') ||
+    normalized.includes('statementperiod') ||
+    normalized.includes('openingbalance') ||
+    normalized.includes('closingbalance') ||
+    normalized.includes('availablebalance') ||
+    normalized.includes('accountnumber') ||
+    normalized.includes('cardnumber')
+  );
+}
+
+function mapPdfLineToRow(lineItems: Array<{ text: string; x: number }>) {
+  const joinedLine = normalizeWhitespace(lineItems.map((item) => item.text).join(' '));
+  if (isPdfNoiseLine(joinedLine)) {
+    return null;
+  }
+
+  const dateToken = parsePdfDateCandidate(joinedLine);
+  if (!dateToken) {
+    return null;
+  }
+
+  const amountCandidates = lineItems
+    .map((item) => item.text)
+    .filter((text) => /-?\(?[\d.,]+(?:\)?)$/.test(text.trim()));
+  const amountToken = amountCandidates.at(-2) ?? amountCandidates.at(-1) ?? findFirstAmountToken(joinedLine.split(' '));
+
+  if (!amountToken) {
+    return null;
+  }
+
+  const dateIndex = joinedLine.indexOf(dateToken);
+  const amountIndex = joinedLine.lastIndexOf(amountToken);
+  const between = joinedLine.slice(dateIndex + dateToken.length, amountIndex > -1 ? amountIndex : undefined);
+  const description = sanitizeText(between || joinedLine.replace(dateToken, '').replace(amountToken, ''));
+
+  if (!description) {
+    return null;
+  }
+
+  return {
+    Date: dateToken,
+    Description: description,
+    Amount: amountToken,
+  } satisfies Record<string, unknown>;
+}
+
+async function parsePdfRows(bytes: Uint8Array) {
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  const loadingTask = pdfjs.getDocument({
+    data: bytes,
+    isEvalSupported: false,
+    useWorkerFetch: false,
+    useSystemFonts: false,
+    stopAtErrors: true,
+    enableXfa: false,
+    isOffscreenCanvasSupported: false,
+    verbosity: 0,
+  });
+
+  try {
+    const document = await loadingTask.promise;
+
+    if (document.numPages > MAX_PDF_PAGES) {
+      throw new Error(`PDF statements are limited to ${MAX_PDF_PAGES} pages.`);
+    }
+
+    const rows: Record<string, unknown>[] = [];
+    let totalTextLength = 0;
+
+    for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
+      const page = await document.getPage(pageNumber);
+      const textContent = await page.getTextContent();
+      const items = Array.isArray(textContent.items) ? (textContent.items as PdfTextItem[]) : [];
+      const pageText = items.map((item) => String(item.str ?? '')).join(' ');
+      totalTextLength += pageText.length;
+
+      if (totalTextLength > MAX_PDF_TEXT_LENGTH) {
+        throw new Error('PDF statement contains too much text to import safely.');
+      }
+
+      for (const line of groupPdfItemsIntoLines(items)) {
+        if (rows.length >= MAX_PDF_LINE_COUNT) {
+          throw new Error('PDF statement contains too many text lines to import safely.');
+        }
+
+        const row = mapPdfLineToRow(line);
+        if (row) {
+          rows.push(row);
+        }
+      }
+    }
+
+    await loadingTask.destroy();
+
+    if (rows.length === 0) {
+      throw new Error('This PDF does not appear to contain extractable statement rows. Try a CSV/XLSX export or a text-based PDF.');
+    }
+
+    return rows.slice(0, MAX_STATEMENT_ROWS);
+  } catch (error) {
+    await loadingTask.destroy();
+    if (error instanceof Error && /password/i.test(error.message)) {
+      throw new Error('Password-protected PDF statements are not supported.');
+    }
+
+    throw error;
+  }
+}
+
+async function parseStatementRows(file: File, bytes: Uint8Array, buffer: ArrayBuffer): Promise<ParsedStatementSource> {
+  const isCsv = /\.csv$/i.test(file.name) || file.type === 'text/csv' || file.type === 'application/csv';
+  const isPdf = /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
+
+  if (isCsv) {
+    return {
+      rows: await parseCsvRows(bytes),
+      sourceFormat: 'csv',
+    };
+  }
+
+  if (isPdf) {
+    return {
+      rows: await parsePdfRows(bytes),
+      sourceFormat: 'pdf',
+    };
+  }
+
+  return {
+    rows: await parseXlsxRows(buffer, file.name),
+    sourceFormat: 'xlsx',
+  };
 }
 
 function getFieldValue(row: Record<string, unknown>, aliases: string[]) {
@@ -281,7 +486,7 @@ function inferMerchantName(description: string) {
     return null;
   }
 
-  return cleaned.slice(0, 80);
+  return sanitizeText(cleaned.slice(0, 80));
 }
 
 function looksLikeInternalTransfer(descriptionText: string) {
@@ -351,100 +556,104 @@ function validateStatementColumns(rows: Record<string, unknown>[]) {
 export async function buildStatementImportPreview(file: File, accountType: StatementAccountType): Promise<StatementImportPreview> {
   const buffer = await file.arrayBuffer();
   const bytes = new Uint8Array(buffer);
-  assertStatementFile(file, bytes);
+  try {
+    assertStatementFile(file, bytes);
 
-  const isCsv = /\.csv$/i.test(file.name) || file.type === 'text/csv' || file.type === 'application/csv';
-  const rows = isCsv ? await parseCsvRows(bytes) : await parseXlsxRows(buffer, file.name);
+    const { rows, sourceFormat } = await parseStatementRows(file, bytes, buffer);
 
-  if (rows.length === 0) {
-    throw new Error('No statement rows were found in the uploaded file.');
-  }
-
-  validateStatementColumns(rows);
-
-  let skippedRows = 0;
-  let incomeCount = 0;
-  let expenseCount = 0;
-  let incomeTotal = 0;
-  let expenseTotal = 0;
-
-  const previewRows = rows.flatMap((row, index) => {
-    const date = parseDateValue(
-      getFieldValue(row, ['Date', 'Transaction Date', 'Posting Date', 'Value Date', 'Booked Date'])
-    );
-    const description = String(
-      getFieldValue(row, ['Description', 'Details', 'Transaction Description', 'Narration', 'Memo', 'Merchant', 'Reference']) ?? ''
-    ).trim();
-    const currency = String(getFieldValue(row, ['Currency', 'Curr', 'CCY']) ?? DEFAULT_CURRENCY).trim().toUpperCase() || DEFAULT_CURRENCY;
-    const rawType = String(getFieldValue(row, ['Type', 'Category', 'Transaction Type', 'Classification']) ?? '').trim();
-    const amountValue = parseAmount(getFieldValue(row, ['Amount', 'Transaction Amount', 'Amt', 'Value', 'Net Amount', 'Total']));
-    const debit = Math.abs(parseAmount(getFieldValue(row, ['Debit', 'Withdrawal', 'Outflow', 'Money Out', 'DR', 'Debit Amount'])));
-    const credit = Math.abs(parseAmount(getFieldValue(row, ['Credit', 'Deposit', 'Inflow', 'Money In', 'CR', 'Credit Amount'])));
-    const absoluteAmount = debit > 0 || credit > 0 ? Math.max(debit, credit) : Math.abs(amountValue);
-
-    if (!date || !description || absoluteAmount <= 0) {
-      skippedRows += 1;
-      return [];
+    if (rows.length === 0) {
+      throw new Error('No statement rows were found in the uploaded file.');
     }
 
-    const direction = resolveTransactionDirection({
-      accountType,
-      amount: amountValue,
-      debit,
-      credit,
-      description,
-      typeText: rawType,
+    validateStatementColumns(rows);
+
+    let skippedRows = 0;
+    let incomeCount = 0;
+    let expenseCount = 0;
+    let incomeTotal = 0;
+    let expenseTotal = 0;
+
+    const previewRows = rows.flatMap((row, index) => {
+      const date = parseDateValue(
+        getFieldValue(row, ['Date', 'Transaction Date', 'Posting Date', 'Value Date', 'Booked Date'])
+      );
+      const description = sanitizeText(String(
+        getFieldValue(row, ['Description', 'Details', 'Transaction Description', 'Narration', 'Memo', 'Merchant', 'Reference']) ?? ''
+      ));
+      const currency = sanitizeText(String(getFieldValue(row, ['Currency', 'Curr', 'CCY']) ?? DEFAULT_CURRENCY).toUpperCase()) || DEFAULT_CURRENCY;
+      const rawType = sanitizeText(String(getFieldValue(row, ['Type', 'Category', 'Transaction Type', 'Classification']) ?? ''));
+      const amountValue = parseAmount(getFieldValue(row, ['Amount', 'Transaction Amount', 'Amt', 'Value', 'Net Amount', 'Total']));
+      const debit = Math.abs(parseAmount(getFieldValue(row, ['Debit', 'Withdrawal', 'Outflow', 'Money Out', 'DR', 'Debit Amount'])));
+      const credit = Math.abs(parseAmount(getFieldValue(row, ['Credit', 'Deposit', 'Inflow', 'Money In', 'CR', 'Credit Amount'])));
+      const absoluteAmount = debit > 0 || credit > 0 ? Math.max(debit, credit) : Math.abs(amountValue);
+
+      if (!date || !description || absoluteAmount <= 0) {
+        skippedRows += 1;
+        return [];
+      }
+
+      const direction = resolveTransactionDirection({
+        accountType,
+        amount: amountValue,
+        debit,
+        credit,
+        description,
+        typeText: rawType,
+      });
+
+      if (direction === 'skip') {
+        skippedRows += 1;
+        return [];
+      }
+
+      const expenseCategory = inferExpenseCategory(rawType, description);
+      const incomeSource = inferIncomeSource(rawType, description);
+      const typeLabel = rawType
+        ? formatTypeLabel(rawType)
+        : direction === 'income'
+          ? formatTypeLabel(incomeSource)
+          : formatTypeLabel(expenseCategory);
+
+      if (direction === 'income') {
+        incomeCount += 1;
+        incomeTotal += absoluteAmount;
+      } else {
+        expenseCount += 1;
+        expenseTotal += absoluteAmount;
+      }
+
+      return [{
+        id: `statement-row-${index + 1}`,
+        date,
+        description,
+        amount: absoluteAmount,
+        currency,
+        direction,
+        typeLabel,
+        expenseCategory,
+        incomeSource,
+        merchantName: inferMerchantName(description),
+        notes: rawType ? `Statement type: ${rawType}` : null,
+      }] satisfies StatementImportRow[];
     });
 
-    if (direction === 'skip') {
-      skippedRows += 1;
-      return [];
+    if (previewRows.length === 0) {
+      throw new Error('No valid transactions could be extracted from this statement.');
     }
 
-    const expenseCategory = inferExpenseCategory(rawType, description);
-    const incomeSource = inferIncomeSource(rawType, description);
-    const typeLabel = rawType
-      ? formatTypeLabel(rawType)
-      : direction === 'income'
-        ? formatTypeLabel(incomeSource)
-        : formatTypeLabel(expenseCategory);
+    const dominantCurrency = previewRows[0]?.currency ?? DEFAULT_CURRENCY;
 
-    if (direction === 'income') {
-      incomeCount += 1;
-      incomeTotal += absoluteAmount;
-    } else {
-      expenseCount += 1;
-      expenseTotal += absoluteAmount;
-    }
-
-    return [{
-      id: `statement-row-${index + 1}`,
-      date,
-      description,
-      amount: absoluteAmount,
-      currency,
-      direction,
-      typeLabel,
-      expenseCategory,
-      incomeSource,
-      merchantName: inferMerchantName(description),
-      notes: rawType ? `Statement type: ${rawType}` : null,
-    }] satisfies StatementImportRow[];
-  });
-
-  if (previewRows.length === 0) {
-    throw new Error('No valid transactions could be extracted from this statement.');
+    return {
+      rows: previewRows.sort((left, right) => right.date.localeCompare(left.date)),
+      skippedRows,
+      incomeCount,
+      expenseCount,
+      incomeTotal,
+      expenseTotal,
+      currency: dominantCurrency,
+      sourceFormat,
+    };
+  } finally {
+    bytes.fill(0);
   }
-
-  const dominantCurrency = previewRows[0]?.currency ?? DEFAULT_CURRENCY;
-
-  return {
-    rows: previewRows.sort((left, right) => right.date.localeCompare(left.date)),
-    skippedRows,
-    incomeCount,
-    expenseCount,
-    incomeTotal,
-    expenseTotal,
-    currency: dominantCurrency,
-  };
 }

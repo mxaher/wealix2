@@ -1107,6 +1107,8 @@ export const useSubscription = () => {
         'portfolio.ai_analysis': 'pro-paid',
         'fire.scenarios': 'standard',
         'budget.history': 'standard',
+        'expenses.receipt_scan': 'standard',
+        'expenses.statement_import': 'pro-paid',
         'ai.advisor': 'pro-paid',
         'ai.portfolio_analysis': 'pro-paid',
         'reports.basic': 'paid',

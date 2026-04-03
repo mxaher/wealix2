@@ -1,11 +1,15 @@
 import { NextRequest } from 'next/server';
 import { buildRateLimitHeaders, enforceRateLimit } from '@/lib/rate-limit';
-import { requireAuthenticatedUser } from '@/lib/server-auth';
+import { requireTier } from '@/lib/server-auth';
 
 const MAX_RECEIPT_FILE_SIZE = 10 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const SUPPORTED_CURRENCIES = new Set(['SAR', 'USD', 'EUR', 'EGP']);
 const MAX_RECEIPT_AMOUNT = 1_000_000;
+const RECEIPT_SCAN_LIMITS = {
+  core: 10,
+  pro: 40,
+} as const;
 const PROMPT_INJECTION_PATTERNS = [
   /\bsystem\s*:/i,
   /\bdeveloper\s*:/i,
@@ -28,6 +32,24 @@ type ReceiptExtraction = {
   suggestedCategory: string;
   rawText: string;
 };
+
+function startOfNextMonth() {
+  const next = new Date();
+  next.setUTCDate(1);
+  next.setUTCHours(0, 0, 0, 0);
+  next.setUTCMonth(next.getUTCMonth() + 1);
+  return next.getTime();
+}
+
+function getReceiptQuotaWindowMs() {
+  return Math.max(60_000, startOfNextMonth() - Date.now());
+}
+
+function getReceiptQuotaKey(userId: string) {
+  const now = new Date();
+  const monthKey = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+  return `ocr:${userId}:${monthKey}`;
+}
 
 function hasJpegSignature(bytes: Uint8Array) {
   return bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
@@ -398,8 +420,8 @@ async function runNvidiaReceiptOcr(file: File) {
     throw new Error('NVIDIA OCR is not configured. Add NVIDIA_API_KEY.');
   }
 
-  const bytes = await file.arrayBuffer();
-  const base64 = Buffer.from(bytes).toString('base64');
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  let base64 = Buffer.from(bytes).toString('base64');
   const imageUrl = `data:${file.type};base64,${base64}`;
 
   const prompt = `You are a receipt OCR and expense extraction engine for bilingual Arabic and English receipts.\n\nRead the entire receipt image carefully, including merchant name, grand total, VAT lines, currency markers, and visible date fields.\n\nReturn JSON only in this exact shape:\n{\n  "merchantName": "string",\n  "amount": number,\n  "date": "YYYY-MM-DD",\n  "currency": "SAR|USD|EUR|EGP",\n  "confidence": number,\n  "suggestedCategory": "Food|Transport|Utilities|Entertainment|Healthcare|Education|Shopping|Housing|Other",\n  "rawText": "full important text visible on the receipt"\n}\n\nRules:\n- prefer the grand total or total due, not line item subtotals\n- preserve Arabic text inside rawText when visible\n- if the exact date is unclear, infer the most likely receipt date from the image\n- confidence must be an integer from 0 to 100\n- return valid JSON only, with no markdown`;
@@ -444,33 +466,56 @@ async function runNvidiaReceiptOcr(file: File) {
   const parsedDate = String(parsed?.date || '').trim();
   const parsedCurrency = String(parsed?.currency || '').toUpperCase().trim();
 
-  return validateReceiptExtraction({
-    merchantName: parsedMerchant || structuredFromRawText.merchantName || fallback.merchantName,
-    amount: recoveredAmount,
-    date: parsedDate || structuredFromRawText.date || fallback.date,
-    currency: parsedCurrency || structuredFromRawText.currency || fallback.currency,
-    confidence: Math.max(0, Math.min(100, Number(parsed?.confidence || fallback.confidence))),
-    suggestedCategory: normalizeCategory(parsed?.suggestedCategory || nvidiaRawText),
-    rawText: nvidiaRawText,
-  }, file.name);
+  try {
+    return validateReceiptExtraction({
+      merchantName: parsedMerchant || structuredFromRawText.merchantName || fallback.merchantName,
+      amount: recoveredAmount,
+      date: parsedDate || structuredFromRawText.date || fallback.date,
+      currency: parsedCurrency || structuredFromRawText.currency || fallback.currency,
+      confidence: Math.max(0, Math.min(100, Number(parsed?.confidence || fallback.confidence))),
+      suggestedCategory: normalizeCategory(parsed?.suggestedCategory || nvidiaRawText),
+      rawText: nvidiaRawText,
+    }, file.name);
+  } finally {
+    bytes.fill(0);
+    base64 = '';
+  }
 }
 
 export async function POST(request: NextRequest) {
+  let formData: FormData | null = null;
+  let normalizedBytes: Uint8Array | null = null;
+
   try {
-    const authResult = await requireAuthenticatedUser();
+    const authResult = await requireTier('core');
     if (authResult.error) {
       return authResult.error;
     }
 
-    const rateLimit = await enforceRateLimit(`ocr:${authResult.userId}`, 30, 60 * 60 * 1000);
+    if (!authResult.userId) {
+      return Response.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
+    }
+
+    const userId = authResult.userId;
+    const plan = authResult.tier === 'pro' ? 'pro' : 'core';
+    const rateLimit = await enforceRateLimit(
+      getReceiptQuotaKey(userId),
+      RECEIPT_SCAN_LIMITS[plan],
+      getReceiptQuotaWindowMs()
+    );
     if (!rateLimit.allowed) {
       return Response.json(
-        { error: 'Rate limit exceeded', code: 'RATE_LIMITED' },
+        {
+          error: `Monthly receipt scan limit reached for the ${plan} plan.`,
+          code: 'MONTHLY_RECEIPT_LIMIT_REACHED',
+          plan,
+          limit: RECEIPT_SCAN_LIMITS[plan],
+        },
         { status: 429, headers: buildRateLimitHeaders(rateLimit) }
       );
     }
 
-    const formData = await request.formData();
+    formData = await request.formData();
     const file = formData.get('file');
 
     if (!(file instanceof File)) {
@@ -480,8 +525,9 @@ export async function POST(request: NextRequest) {
     const sanitizedImage = await sanitizeReceiptImage(file);
     // Copy the exact bytes into a standalone Uint8Array so we avoid both
     // Buffer pool over-read issues and the stricter BlobPart typing mismatch.
-    const normalizedBytes = new Uint8Array(sanitizedImage.buffer);
-    const normalizedFile = new File([normalizedBytes], sanitizedImage.name, {
+    const normalizedBuffer = Uint8Array.from(sanitizedImage.buffer).buffer as ArrayBuffer;
+    normalizedBytes = new Uint8Array(normalizedBuffer);
+    const normalizedFile = new File([normalizedBuffer], sanitizedImage.name, {
       type: sanitizedImage.type,
     });
 
@@ -495,5 +541,12 @@ export async function POST(request: NextRequest) {
       { error: message },
       { status }
     );
+  } finally {
+    if (normalizedBytes) {
+      normalizedBytes.fill(0);
+    }
+    if (formData) {
+      formData.delete('file');
+    }
   }
 }

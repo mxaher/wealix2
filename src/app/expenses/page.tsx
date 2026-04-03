@@ -15,13 +15,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
-  buildStatementImportPreview,
   type StatementAccountType,
   type StatementImportPreview,
-} from '@/lib/bank-statement-import';
+} from '@/lib/bank-statement-types';
 import {
   useAppStore,
   formatCurrency,
+  useSubscription,
   type ExpenseCategory,
   type ExpenseEntry,
   type IncomeEntry,
@@ -67,8 +67,11 @@ export default function ExpensesPage() {
   const addIncomeEntries = useAppStore((state) => state.addIncomeEntries);
   const deleteExpenseEntry = useAppStore((state) => state.deleteExpenseEntry);
   const addReceiptScan = useAppStore((state) => state.addReceiptScan);
+  const { canAccess, tier } = useSubscription();
   const isArabic = locale === 'ar';
   const { isSignedIn } = useUser();
+  const canScanReceipts = canAccess('expenses.receipt_scan');
+  const canImportStatements = canAccess('expenses.statement_import');
   const uploadInputId = useId();
   const cameraInputId = useId();
   const statementInputId = useId();
@@ -190,9 +193,34 @@ export default function ExpensesPage() {
       return;
     }
 
+    if (!canImportStatements) {
+      toast({
+        title: isArabic ? 'يتطلب Pro مدفوع' : 'Paid Pro required',
+        description: isArabic
+          ? 'استيراد كشف الحساب متاح فقط لاشتراك Pro المدفوع.'
+          : 'Bank statement import is available only on the paid Pro plan.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setImportingStatement(true);
     try {
-      const preview = await buildStatementImportPreview(statementFile, statementAccountType);
+      const formData = new FormData();
+      formData.append('file', statementFile);
+      formData.append('accountType', statementAccountType);
+
+      const response = await fetch('/api/statements/import', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Could not parse the statement file.');
+      }
+
+      const preview = data as StatementImportPreview;
       setStatementPreview(preview);
       toast({
         title: isArabic ? 'تم تحليل كشف الحساب' : 'Statement parsed',
@@ -284,6 +312,17 @@ export default function ExpensesPage() {
     }
 
     if (!selectedFile) {
+      return;
+    }
+
+    if (!canScanReceipts) {
+      toast({
+        title: isArabic ? 'يتطلب Core أو Pro' : 'Core or Pro required',
+        description: isArabic
+          ? 'مسح الإيصالات متاح فقط لمشتركي Core وPro، مع حد شهري حسب الخطة.'
+          : 'Receipt scanning is available only on Core and Pro, with a monthly limit based on plan.',
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -403,6 +442,23 @@ export default function ExpensesPage() {
             </CardContent>
           </Card>
         )}
+        {isSignedIn && (
+          <Card className="border-dashed">
+            <CardContent className="p-4 text-sm text-muted-foreground">
+              {isArabic
+                ? tier === 'pro'
+                  ? 'خطة Pro: مسح حتى 40 إيصالاً شهرياً واستيراد كشف الحساب البنكي متاح.'
+                  : tier === 'core'
+                    ? 'خطة Core: مسح حتى 10 إيصالات شهرياً. استيراد كشف الحساب متاح فقط في Pro المدفوع.'
+                    : 'استيراد كشف الحساب متاح فقط في Pro المدفوع، ومسح الإيصالات يبدأ من Core.'
+                : tier === 'pro'
+                  ? 'Pro plan: scan up to 40 receipts per month, and bank statement import is enabled.'
+                  : tier === 'core'
+                    ? 'Core plan: scan up to 10 receipts per month. Bank statement import is available only on paid Pro.'
+                    : 'Bank statement import is available only on paid Pro, and receipt scanning starts on Core.'}
+            </CardContent>
+          </Card>
+        )}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-2xl font-bold">{isArabic ? 'المصروفات' : 'Expenses'}</h1>
@@ -423,7 +479,7 @@ export default function ExpensesPage() {
               }}
             >
               <DialogTrigger asChild>
-                <Button variant="outline" className="gap-2" disabled={!isSignedIn}>
+                <Button variant="outline" className="gap-2" disabled={!isSignedIn || !canImportStatements}>
                   <FileSpreadsheet className="h-4 w-4" />
                   {isArabic ? 'استيراد كشف حساب' : 'Import Statement'}
                 </Button>
@@ -433,8 +489,8 @@ export default function ExpensesPage() {
                   <DialogTitle>{isArabic ? 'استيراد كشف الحساب البنكي' : 'Import Bank Statement'}</DialogTitle>
                   <DialogDescription>
                     {isArabic
-                      ? 'ارفع ملف CSV أو XLSX لحساب جاري أو بطاقة ائتمان لاستخراج التاريخ والدخل والمصروفات والنوع قبل الحفظ.'
-                      : 'Upload a CSV or XLSX export from a current account or credit card to extract dates, income, expenses, and transaction type before saving.'}
+                      ? 'ارفع ملف CSV أو XLSX أو PDF نصي لحساب جاري أو بطاقة ائتمان لاستخراج التاريخ والدخل والمصروفات والنوع قبل الحفظ.'
+                      : 'Upload a CSV, XLSX, or text-based PDF export from a current account or credit card to extract dates, income, expenses, and transaction type before saving.'}
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
@@ -467,12 +523,12 @@ export default function ExpensesPage() {
                         className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-border bg-background px-4 py-3 text-sm font-medium transition-colors hover:bg-secondary"
                       >
                         {statementAccountType === 'credit_card' ? <CreditCard className="h-4 w-4" /> : <Landmark className="h-4 w-4" />}
-                        {isArabic ? 'اختر ملف CSV أو XLSX' : 'Choose CSV or XLSX file'}
+                        {isArabic ? 'اختر ملف CSV أو XLSX أو PDF' : 'Choose CSV, XLSX, or PDF file'}
                       </label>
                       <input
                         id={statementInputId}
                         type="file"
-                        accept=".csv,.xlsx"
+                        accept=".csv,.xlsx,.pdf,application/pdf,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                         disabled={!isSignedIn}
                         className="sr-only"
                         onChange={(e) => {
@@ -483,7 +539,7 @@ export default function ExpensesPage() {
                       <p className="text-xs text-muted-foreground">
                         {statementFile
                           ? (isArabic ? `الملف المحدد: ${statementFile.name}` : `Selected file: ${statementFile.name}`)
-                          : (isArabic ? 'يفضل استخدام ملف التصدير من البنك مباشرة.' : 'Use the statement export file directly from your bank when possible.')}
+                          : (isArabic ? 'يفضل استخدام ملف التصدير من البنك مباشرة. يدعم CSV وXLSX وPDF النصي.' : 'Use the statement export file directly from your bank when possible. Supports CSV, XLSX, and text-based PDF.')}
                       </p>
                     </div>
                   </div>
@@ -537,6 +593,11 @@ export default function ExpensesPage() {
                               ? 'سيتم حفظ الحركات الدائنة كدخل والحركات المدينة كمصروفات، مع تصنيف النوع تلقائياً.'
                               : 'Credits will be saved as income and debits as expenses, with type inferred automatically.'}
                           </CardDescription>
+                          <div className="text-xs text-muted-foreground">
+                            {isArabic
+                              ? `مصدر الملف: ${statementPreview.sourceFormat.toUpperCase()}`
+                              : `Source format: ${statementPreview.sourceFormat.toUpperCase()}`}
+                          </div>
                         </CardHeader>
                         <CardContent className="space-y-3">
                           {statementPreview.rows.slice(0, 12).map((row) => (
@@ -583,7 +644,7 @@ export default function ExpensesPage() {
 
             <Dialog open={scannerOpen} onOpenChange={setScannerOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline" className="gap-2" disabled={!isSignedIn}>
+                <Button variant="outline" className="gap-2" disabled={!isSignedIn || !canScanReceipts}>
                   <ScanSearch className="h-4 w-4" />
                   {isArabic ? 'مسح إيصال' : 'Scan Receipt'}
                 </Button>
