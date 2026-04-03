@@ -230,14 +230,16 @@ export default function AdvisorPage() {
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       let fullContent = '';
+      let bufferedChunk = '';
 
       if (reader) {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
 
-          const chunk = decoder.decode(value);
-          const lines = chunk.split('\n').filter(Boolean);
+          bufferedChunk += decoder.decode(value, { stream: true });
+          const lines = bufferedChunk.split('\n');
+          bufferedChunk = lines.pop() ?? '';
 
           for (const line of lines) {
             try {
@@ -249,13 +251,30 @@ export default function AdvisorPage() {
             }
           }
         }
+
+        bufferedChunk += decoder.decode();
+        const trailingLine = bufferedChunk.trim();
+        if (trailingLine) {
+          try {
+            const data = JSON.parse(trailingLine);
+            fullContent += data.content;
+            setStreamingContent(fullContent);
+          } catch {
+            // Ignore a malformed trailing chunk and fall back to the error below if needed.
+          }
+        }
+      }
+
+      const finalContent = fullContent.trim();
+      if (!finalContent) {
+        throw new Error('The advisor returned an empty response.');
       }
 
       // Add assistant message
       const assistantMessage: Message = {
         id: createOpaqueId('chat-message'),
         role: 'assistant',
-        content: fullContent,
+        content: finalContent,
         timestamp: new Date(),
       };
 

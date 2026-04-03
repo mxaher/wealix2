@@ -8,9 +8,9 @@ import { StatCard } from '@/components/shared';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ResponsiveModal } from '@/components/ui/responsive-modal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -469,7 +469,7 @@ export default function ExpensesPage() {
             </p>
           </div>
           <div className="flex gap-2">
-            <Dialog
+            <ResponsiveModal
               open={statementOpen}
               onOpenChange={(nextOpen) => {
                 setStatementOpen(nextOpen);
@@ -477,188 +477,190 @@ export default function ExpensesPage() {
                   resetStatementImport();
                 }
               }}
-            >
-              <DialogTrigger asChild>
+              trigger={(
                 <Button variant="outline" className="gap-2" disabled={!isSignedIn || !canImportStatements}>
                   <FileSpreadsheet className="h-4 w-4" />
                   {isArabic ? 'استيراد كشف حساب' : 'Import Statement'}
                 </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-4xl">
-                <DialogHeader>
-                  <DialogTitle>{isArabic ? 'استيراد كشف الحساب البنكي' : 'Import Bank Statement'}</DialogTitle>
-                  <DialogDescription>
-                    {isArabic
-                      ? 'ارفع ملف CSV أو XLSX أو PDF نصي لحساب جاري أو بطاقة ائتمان لاستخراج التاريخ والدخل والمصروفات والنوع قبل الحفظ.'
-                      : 'Upload a CSV, XLSX, or text-based PDF export from a current account or credit card to extract dates, income, expenses, and transaction type before saving.'}
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>{isArabic ? 'نوع الحساب' : 'Account type'}</Label>
-                      <Select
-                        value={statementAccountType}
-                        onValueChange={(value: StatementAccountType) => {
-                          setStatementAccountType(value);
-                          setStatementPreview(null);
-                        }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {statementAccountTypes.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {isArabic ? option.ar : option.en}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>{isArabic ? 'ملف كشف الحساب' : 'Statement file'}</Label>
-                      <label
-                        htmlFor={statementInputId}
-                        className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-border bg-background px-4 py-3 text-sm font-medium transition-colors hover:bg-secondary"
-                      >
-                        {statementAccountType === 'credit_card' ? <CreditCard className="h-4 w-4" /> : <Landmark className="h-4 w-4" />}
-                        {isArabic ? 'اختر ملف CSV أو XLSX أو PDF' : 'Choose CSV, XLSX, or PDF file'}
-                      </label>
-                      <input
-                        id={statementInputId}
-                        type="file"
-                        accept=".csv,.xlsx,.pdf,application/pdf,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                        disabled={!isSignedIn}
-                        className="sr-only"
-                        onChange={(e) => {
-                          setStatementFile(e.target.files?.[0] ?? null);
-                          setStatementPreview(null);
-                        }}
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        {statementFile
-                          ? (isArabic ? `الملف المحدد: ${statementFile.name}` : `Selected file: ${statementFile.name}`)
-                          : (isArabic ? 'يفضل استخدام ملف التصدير من البنك مباشرة. يدعم CSV وXLSX وPDF النصي.' : 'Use the statement export file directly from your bank when possible. Supports CSV, XLSX, and text-based PDF.')}
-                      </p>
-                    </div>
+              )}
+              title={isArabic ? 'استيراد كشف الحساب البنكي' : 'Import Bank Statement'}
+              description={
+                isArabic
+                  ? 'ارفع ملف CSV أو XLSX أو PDF نصي لحساب جاري أو بطاقة ائتمان لاستخراج التاريخ والدخل والمصروفات والنوع قبل الحفظ.'
+                  : 'Upload a CSV, XLSX, or text-based PDF export from a current account or credit card to extract dates, income, expenses, and transaction type before saving.'
+              }
+              desktopContentClassName="max-w-4xl"
+              mobileContentClassName="max-h-[85dvh]"
+            >
+              <div className="space-y-4 overflow-y-auto px-4 pb-6 md:px-0">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>{isArabic ? 'نوع الحساب' : 'Account type'}</Label>
+                    <Select
+                      value={statementAccountType}
+                      onValueChange={(value: StatementAccountType) => {
+                        setStatementAccountType(value);
+                        setStatementPreview(null);
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {statementAccountTypes.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {isArabic ? option.ar : option.en}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <Button className="w-full" onClick={handleRunStatementImport} disabled={!statementFile || importingStatement}>
-                    <FileSpreadsheet className="mr-2 h-4 w-4" />
-                    {importingStatement
-                      ? (isArabic ? 'جارٍ تحليل كشف الحساب...' : 'Parsing statement...')
-                      : (isArabic ? 'تحليل كشف الحساب' : 'Analyze Statement')}
-                  </Button>
+                  <div className="space-y-2">
+                    <Label>{isArabic ? 'ملف كشف الحساب' : 'Statement file'}</Label>
+                    <label
+                      htmlFor={statementInputId}
+                      className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-border bg-background px-4 py-3 text-sm font-medium transition-colors hover:bg-secondary"
+                    >
+                      {statementAccountType === 'credit_card' ? <CreditCard className="h-4 w-4" /> : <Landmark className="h-4 w-4" />}
+                      {isArabic ? 'اختر ملف CSV أو XLSX أو PDF' : 'Choose CSV, XLSX, or PDF file'}
+                    </label>
+                    <input
+                      id={statementInputId}
+                      type="file"
+                      accept=".csv,.xlsx,.pdf,application/pdf,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                      disabled={!isSignedIn}
+                      className="sr-only"
+                      onChange={(e) => {
+                        setStatementFile(e.target.files?.[0] ?? null);
+                        setStatementPreview(null);
+                      }}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {statementFile
+                        ? (isArabic ? `الملف المحدد: ${statementFile.name}` : `Selected file: ${statementFile.name}`)
+                        : (isArabic ? 'يفضل استخدام ملف التصدير من البنك مباشرة. يدعم CSV وXLSX وPDF النصي.' : 'Use the statement export file directly from your bank when possible. Supports CSV, XLSX, and text-based PDF.')}
+                    </p>
+                  </div>
+                </div>
+                <Button className="w-full" onClick={handleRunStatementImport} disabled={!statementFile || importingStatement}>
+                  <FileSpreadsheet className="mr-2 h-4 w-4" />
+                  {importingStatement
+                    ? (isArabic ? 'جارٍ تحليل كشف الحساب...' : 'Parsing statement...')
+                    : (isArabic ? 'تحليل كشف الحساب' : 'Analyze Statement')}
+                </Button>
 
-                  {statementPreview && (
-                    <div className="space-y-4">
-                      <div className="grid gap-3 md:grid-cols-4">
-                        <Card>
-                          <CardContent className="p-4">
-                            <div className="text-xs text-muted-foreground">{isArabic ? 'الدخل المستخرج' : 'Extracted income'}</div>
-                            <div className="mt-1 font-semibold">{formatCurrency(statementPreview.incomeTotal, statementPreview.currency, locale)}</div>
-                            <div className="text-xs text-muted-foreground">{statementPreview.incomeCount} {isArabic ? 'عملية' : 'rows'}</div>
-                          </CardContent>
-                        </Card>
-                        <Card>
-                          <CardContent className="p-4">
-                            <div className="text-xs text-muted-foreground">{isArabic ? 'المصروفات المستخرجة' : 'Extracted expenses'}</div>
-                            <div className="mt-1 font-semibold">{formatCurrency(statementPreview.expenseTotal, statementPreview.currency, locale)}</div>
-                            <div className="text-xs text-muted-foreground">{statementPreview.expenseCount} {isArabic ? 'عملية' : 'rows'}</div>
-                          </CardContent>
-                        </Card>
-                        <Card>
-                          <CardContent className="p-4">
-                            <div className="text-xs text-muted-foreground">{isArabic ? 'الإجمالي القابل للاستيراد' : 'Ready to import'}</div>
-                            <div className="mt-1 font-semibold">{statementPreview.rows.length}</div>
-                            <div className="text-xs text-muted-foreground">{isArabic ? 'صف صالح' : 'valid rows'}</div>
-                          </CardContent>
-                        </Card>
-                        <Card>
-                          <CardContent className="p-4">
-                            <div className="text-xs text-muted-foreground">{isArabic ? 'صفوف متخطاة' : 'Skipped rows'}</div>
-                            <div className="mt-1 font-semibold">{statementPreview.skippedRows}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {isArabic ? 'تحويلات داخلية أو بيانات ناقصة' : 'internal transfers or incomplete rows'}
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </div>
-
-                      <Card className="border-gold/30 bg-gold/5">
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-base">{isArabic ? 'معاينة المعاملات' : 'Transaction Preview'}</CardTitle>
-                          <CardDescription>
-                            {isArabic
-                              ? 'سيتم حفظ الحركات الدائنة كدخل والحركات المدينة كمصروفات، مع تصنيف النوع تلقائياً.'
-                              : 'Credits will be saved as income and debits as expenses, with type inferred automatically.'}
-                          </CardDescription>
+                {statementPreview && (
+                  <div className="space-y-4">
+                    <div className="grid gap-3 md:grid-cols-4">
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="text-xs text-muted-foreground">{isArabic ? 'الدخل المستخرج' : 'Extracted income'}</div>
+                          <div className="mt-1 font-semibold">{formatCurrency(statementPreview.incomeTotal, statementPreview.currency, locale)}</div>
+                          <div className="text-xs text-muted-foreground">{statementPreview.incomeCount} {isArabic ? 'عملية' : 'rows'}</div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="text-xs text-muted-foreground">{isArabic ? 'المصروفات المستخرجة' : 'Extracted expenses'}</div>
+                          <div className="mt-1 font-semibold">{formatCurrency(statementPreview.expenseTotal, statementPreview.currency, locale)}</div>
+                          <div className="text-xs text-muted-foreground">{statementPreview.expenseCount} {isArabic ? 'عملية' : 'rows'}</div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="text-xs text-muted-foreground">{isArabic ? 'الإجمالي القابل للاستيراد' : 'Ready to import'}</div>
+                          <div className="mt-1 font-semibold">{statementPreview.rows.length}</div>
+                          <div className="text-xs text-muted-foreground">{isArabic ? 'صف صالح' : 'valid rows'}</div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="text-xs text-muted-foreground">{isArabic ? 'صفوف متخطاة' : 'Skipped rows'}</div>
+                          <div className="mt-1 font-semibold">{statementPreview.skippedRows}</div>
                           <div className="text-xs text-muted-foreground">
-                            {isArabic
-                              ? `مصدر الملف: ${statementPreview.sourceFormat.toUpperCase()}`
-                              : `Source format: ${statementPreview.sourceFormat.toUpperCase()}`}
+                            {isArabic ? 'تحويلات داخلية أو بيانات ناقصة' : 'internal transfers or incomplete rows'}
                           </div>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                          {statementPreview.rows.slice(0, 12).map((row) => (
-                            <div key={row.id} className="flex flex-col gap-3 rounded-xl border bg-background/80 p-4 md:flex-row md:items-center md:justify-between">
-                              <div className="space-y-1">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <span className="font-medium">{row.description}</span>
-                                  <Badge variant="secondary">{row.typeLabel}</Badge>
-                                  <Badge variant={row.direction === 'income' ? 'default' : 'outline'}>
-                                    {row.direction === 'income'
-                                      ? (isArabic ? 'دخل' : 'Income')
-                                      : (isArabic ? 'مصروف' : 'Expense')}
-                                  </Badge>
-                                </div>
-                                <div className="text-sm text-muted-foreground">
-                                  {row.date}
-                                  {' • '}
-                                  {row.merchantName || (isArabic ? 'بدون تاجر' : 'No merchant')}
-                                </div>
-                              </div>
-                              <div className={`flex items-center gap-2 text-right font-semibold ${row.direction === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                {row.direction === 'income' ? <ArrowUpCircle className="h-4 w-4" /> : <ArrowDownCircle className="h-4 w-4" />}
-                                {formatCurrency(row.amount, row.currency, locale)}
-                              </div>
-                            </div>
-                          ))}
-                          {statementPreview.rows.length > 12 && (
-                            <p className="text-xs text-muted-foreground">
-                              {isArabic
-                                ? `يتم عرض أول 12 حركة فقط من أصل ${statementPreview.rows.length} حركة جاهزة للاستيراد.`
-                                : `Showing the first 12 rows out of ${statementPreview.rows.length} transactions ready to import.`}
-                            </p>
-                          )}
-                          <Button className="w-full" onClick={handleSaveStatementImport}>
-                            {isArabic ? 'استيراد إلى النظام' : 'Import to System'}
-                          </Button>
                         </CardContent>
                       </Card>
                     </div>
-                  )}
-                </div>
-              </DialogContent>
-            </Dialog>
 
-            <Dialog open={scannerOpen} onOpenChange={setScannerOpen}>
-              <DialogTrigger asChild>
+                    <Card className="border-gold/30 bg-gold/5">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base">{isArabic ? 'معاينة المعاملات' : 'Transaction Preview'}</CardTitle>
+                        <CardDescription>
+                          {isArabic
+                            ? 'سيتم حفظ الحركات الدائنة كدخل والحركات المدينة كمصروفات، مع تصنيف النوع تلقائياً.'
+                            : 'Credits will be saved as income and debits as expenses, with type inferred automatically.'}
+                        </CardDescription>
+                        <div className="text-xs text-muted-foreground">
+                          {isArabic
+                            ? `مصدر الملف: ${statementPreview.sourceFormat.toUpperCase()}`
+                            : `Source format: ${statementPreview.sourceFormat.toUpperCase()}`}
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {statementPreview.rows.slice(0, 12).map((row) => (
+                          <div key={row.id} className="flex flex-col gap-3 rounded-xl border bg-background/80 p-4 md:flex-row md:items-center md:justify-between">
+                            <div className="space-y-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="font-medium">{row.description}</span>
+                                <Badge variant="secondary">{row.typeLabel}</Badge>
+                                <Badge variant={row.direction === 'income' ? 'default' : 'outline'}>
+                                  {row.direction === 'income'
+                                    ? (isArabic ? 'دخل' : 'Income')
+                                    : (isArabic ? 'مصروف' : 'Expense')}
+                                </Badge>
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                {row.date}
+                                {' • '}
+                                {row.merchantName || (isArabic ? 'بدون تاجر' : 'No merchant')}
+                              </div>
+                            </div>
+                            <div className={`flex items-center gap-2 text-right font-semibold ${row.direction === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                              {row.direction === 'income' ? <ArrowUpCircle className="h-4 w-4" /> : <ArrowDownCircle className="h-4 w-4" />}
+                              {formatCurrency(row.amount, row.currency, locale)}
+                            </div>
+                          </div>
+                        ))}
+                        {statementPreview.rows.length > 12 && (
+                          <p className="text-xs text-muted-foreground">
+                            {isArabic
+                              ? `يتم عرض أول 12 حركة فقط من أصل ${statementPreview.rows.length} حركة جاهزة للاستيراد.`
+                              : `Showing the first 12 rows out of ${statementPreview.rows.length} transactions ready to import.`}
+                          </p>
+                        )}
+                        <Button className="w-full" onClick={handleSaveStatementImport}>
+                          {isArabic ? 'استيراد إلى النظام' : 'Import to System'}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+              </div>
+            </ResponsiveModal>
+
+            <ResponsiveModal
+              open={scannerOpen}
+              onOpenChange={setScannerOpen}
+              trigger={(
                 <Button variant="outline" className="gap-2" disabled={!isSignedIn || !canScanReceipts}>
                   <ScanSearch className="h-4 w-4" />
                   {isArabic ? 'مسح إيصال' : 'Scan Receipt'}
                 </Button>
-              </DialogTrigger>
-              <DialogContent className="flex max-h-[calc(100dvh-1.5rem)] max-w-2xl flex-col overflow-hidden p-0 sm:max-h-[calc(100dvh-4rem)]">
-                <DialogHeader className="px-6 pt-6 pb-0">
-                  <DialogTitle>{isArabic ? 'ماسح الإيصالات' : 'Receipt Scanner'}</DialogTitle>
-                  <DialogDescription>
-                    {isArabic
-                      ? 'ارفع صورة إيصال وسيتم استخراج التاجر والمبلغ والتاريخ تلقائياً.'
-                      : 'Upload a receipt image to extract merchant, amount, and date automatically.'}
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 overflow-y-auto px-6 pb-6">
+              )}
+              title={isArabic ? 'ماسح الإيصالات' : 'Receipt Scanner'}
+              description={
+                isArabic
+                  ? 'ارفع صورة إيصال وسيتم استخراج التاجر والمبلغ والتاريخ تلقائياً.'
+                  : 'Upload a receipt image to extract merchant, amount, and date automatically.'
+              }
+              desktopContentClassName="flex max-h-[calc(100dvh-1.5rem)] max-w-2xl flex-col overflow-hidden p-0 sm:max-h-[calc(100dvh-4rem)]"
+              desktopHeaderClassName="px-6 pt-6 pb-0"
+              mobileContentClassName="max-h-[85dvh]"
+              hideDesktopCloseButton
+            >
+              <div className="space-y-4 overflow-y-auto px-4 pb-6 md:px-6 md:pt-0">
                   <div className="space-y-2">
                     <Label>{isArabic ? 'مصدر الإيصال' : 'Receipt source'}</Label>
                     <div className="grid gap-3 md:grid-cols-2">
@@ -827,118 +829,117 @@ export default function ExpensesPage() {
                             </div>
                           </div>
                         )}
-                        <div className="sticky bottom-0 -mx-4 border-t bg-background/95 px-4 pt-4 pb-1 backdrop-blur">
+                        <div className="sticky bottom-0 -mx-4 border-t bg-background/95 px-4 pt-4 pb-1 backdrop-blur md:-mx-0 md:px-0">
                           <Button className="w-full" onClick={handleSaveScannedExpense} disabled={!isSignedIn}>
-                          {isArabic ? 'حفظ كمصروف' : 'Save as Expense'}
+                            {isArabic ? 'حفظ كمصروف' : 'Save as Expense'}
                           </Button>
                         </div>
                       </CardContent>
                     </Card>
                   )}
-                </div>
-              </DialogContent>
-            </Dialog>
+              </div>
+            </ResponsiveModal>
 
-            <Dialog open={open} onOpenChange={setOpen}>
-              <DialogTrigger asChild>
+            <ResponsiveModal
+              open={open}
+              onOpenChange={setOpen}
+              trigger={(
                 <Button className="gap-2" disabled={!isSignedIn}>
                   <Plus className="h-4 w-4" />
                   {isArabic ? 'إضافة مصروف' : 'Add Expense'}
                 </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>{isArabic ? 'إضافة مصروف' : 'Add Expense'}</DialogTitle>
-                  <DialogDescription>
-                    {isArabic
-                      ? 'أضف المصروفات يدوياً أو استخدم OCR للإيصالات.'
-                      : 'Add expenses manually or use the receipt OCR flow.'}
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>{isArabic ? 'المبلغ' : 'Amount'}</Label>
-                    <Input
-                      type="number"
-                      value={form.amount}
-                      onChange={(e) => setForm((current) => ({ ...current, amount: e.target.value }))}
-                    />
-                  </div>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>{isArabic ? 'الفئة' : 'Category'}</Label>
-                      <Select
-                        value={form.category}
-                        onValueChange={(value: ExpenseCategory) => setForm((current) => ({ ...current, category: value }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {expenseCategories.map((category) => (
-                            <SelectItem key={category} value={category}>
-                              {category}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>{isArabic ? 'طريقة الدفع' : 'Payment Method'}</Label>
-                      <Select
-                        value={form.paymentMethod}
-                        onValueChange={(value: PaymentMethod) => setForm((current) => ({ ...current, paymentMethod: value }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {paymentMethods.map((method) => (
-                            <SelectItem key={method} value={method}>
-                              {method}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>{isArabic ? 'الوصف' : 'Description'}</Label>
-                      <Input
-                        value={form.description}
-                        onChange={(e) => setForm((current) => ({ ...current, description: e.target.value }))}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>{isArabic ? 'التاجر' : 'Merchant'}</Label>
-                      <Input
-                        value={form.merchantName}
-                        onChange={(e) => setForm((current) => ({ ...current, merchantName: e.target.value }))}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>{isArabic ? 'التاريخ' : 'Date'}</Label>
-                    <Input
-                      type="date"
-                      value={form.date}
-                      onChange={(e) => setForm((current) => ({ ...current, date: e.target.value }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>{isArabic ? 'ملاحظات' : 'Notes'}</Label>
-                    <Textarea
-                      value={form.notes}
-                      onChange={(e) => setForm((current) => ({ ...current, notes: e.target.value }))}
-                    />
-                  </div>
-                  <Button className="w-full" onClick={handleAddExpense} disabled={!isSignedIn}>
-                    {isArabic ? 'حفظ المصروف' : 'Save Expense'}
-                  </Button>
+              )}
+              title={isArabic ? 'إضافة مصروف' : 'Add Expense'}
+              description={
+                isArabic
+                  ? 'أضف المصروفات يدوياً أو استخدم OCR للإيصالات.'
+                  : 'Add expenses manually or use the receipt OCR flow.'
+              }
+              mobileContentClassName="max-h-[85dvh]"
+            >
+              <div className="space-y-4 overflow-y-auto px-4 pb-6 md:px-0">
+                <div className="space-y-2">
+                  <Label>{isArabic ? 'المبلغ' : 'Amount'}</Label>
+                  <Input
+                    type="number"
+                    value={form.amount}
+                    onChange={(e) => setForm((current) => ({ ...current, amount: e.target.value }))}
+                  />
                 </div>
-              </DialogContent>
-            </Dialog>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>{isArabic ? 'الفئة' : 'Category'}</Label>
+                    <Select
+                      value={form.category}
+                      onValueChange={(value: ExpenseCategory) => setForm((current) => ({ ...current, category: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {expenseCategories.map((category) => (
+                          <SelectItem key={category} value={category}>
+                            {category}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{isArabic ? 'طريقة الدفع' : 'Payment Method'}</Label>
+                    <Select
+                      value={form.paymentMethod}
+                      onValueChange={(value: PaymentMethod) => setForm((current) => ({ ...current, paymentMethod: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {paymentMethods.map((method) => (
+                          <SelectItem key={method} value={method}>
+                            {method}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>{isArabic ? 'الوصف' : 'Description'}</Label>
+                    <Input
+                      value={form.description}
+                      onChange={(e) => setForm((current) => ({ ...current, description: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{isArabic ? 'التاجر' : 'Merchant'}</Label>
+                    <Input
+                      value={form.merchantName}
+                      onChange={(e) => setForm((current) => ({ ...current, merchantName: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>{isArabic ? 'التاريخ' : 'Date'}</Label>
+                  <Input
+                    type="date"
+                    value={form.date}
+                    onChange={(e) => setForm((current) => ({ ...current, date: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>{isArabic ? 'ملاحظات' : 'Notes'}</Label>
+                  <Textarea
+                    value={form.notes}
+                    onChange={(e) => setForm((current) => ({ ...current, notes: e.target.value }))}
+                  />
+                </div>
+                <Button className="w-full" onClick={handleAddExpense} disabled={!isSignedIn}>
+                  {isArabic ? 'حفظ المصروف' : 'Save Expense'}
+                </Button>
+              </div>
+            </ResponsiveModal>
           </div>
         </div>
 

@@ -121,7 +121,12 @@ async function createAdvisorCompletion(messages: ChatMessage[]) {
     throw new Error(json?.error?.message || `NVIDIA API request failed with status ${response.status}`);
   }
 
-  return json?.choices?.[0]?.message?.content || '';
+  const content = json?.choices?.[0]?.message?.content?.trim();
+  if (!content) {
+    throw new Error('The advisor returned an empty response.');
+  }
+
+  return content;
 }
 
 export async function POST(request: NextRequest) {

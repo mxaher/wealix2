@@ -2,6 +2,7 @@ import 'server-only';
 
 import type { StatementAccountType, StatementImportPreview, StatementImportRow } from '@/lib/bank-statement-types';
 import type { ExpenseCategory, IncomeSource } from '@/store/useAppStore';
+import { ensurePdfJsNodePolyfills } from '@/lib/pdfjs-node-polyfills';
 
 const MAX_STATEMENT_FILE_SIZE = 5 * 1024 * 1024;
 const MAX_STATEMENT_ROWS = 2000;
@@ -296,6 +297,7 @@ function mapPdfLineToRow(lineItems: Array<{ text: string; x: number }>) {
 }
 
 async function parsePdfRows(bytes: Uint8Array) {
+  ensurePdfJsNodePolyfills();
   const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
   const loadingTask = pdfjs.getDocument({
     data: bytes,

@@ -430,7 +430,15 @@ export default function NetWorthPage() {
                       {isArabic ? 'لا توجد بيانات تاريخية بعد.' : 'No history available yet.'}
                     </div>
                   ) : (
-                    <div className="h-64">
+                    <div className="space-y-3">
+                      {historyData.length === 1 && (
+                        <p className="text-xs text-muted-foreground">
+                          {isArabic
+                            ? 'توجد نقطة بيانات واحدة فقط حالياً، لذلك يظهر الرسم كملخص للحالة الحالية.'
+                            : 'There is only one saved snapshot right now, so this chart shows the current point only.'}
+                        </p>
+                      )}
+                      <div className="h-64">
                       <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={historyData}>
                           <defs>
@@ -443,9 +451,18 @@ export default function NetWorthPage() {
                           <XAxis dataKey="month" stroke="var(--muted-foreground)" fontSize={12} />
                           <YAxis stroke="var(--muted-foreground)" fontSize={12} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
                           <Tooltip formatter={(value: number) => [formatCurrency(value, 'SAR', locale), '']} />
-                          <Area type="monotone" dataKey="netWorth" stroke="var(--gold)" strokeWidth={2} fill="url(#netWorthGradientFill)" />
+                          <Area
+                            type="monotone"
+                            dataKey="netWorth"
+                            stroke="var(--gold)"
+                            strokeWidth={2}
+                            fill="url(#netWorthGradientFill)"
+                            dot={historyData.length === 1 ? { r: 5, fill: 'var(--gold)', strokeWidth: 0 } : false}
+                            activeDot={{ r: 6 }}
+                          />
                         </AreaChart>
                       </ResponsiveContainer>
+                    </div>
                     </div>
                   )}
                 </CardContent>
