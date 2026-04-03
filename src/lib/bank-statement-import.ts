@@ -421,15 +421,6 @@ async function parsePdfRows(bytes: Uint8Array) {
     }
 
     throw error;
-  } finally {
-    try {
-      if (bytes.byteLength > 0 && bytes.buffer.byteLength > 0) {
-        bytes.fill(0);
-      }
-    } catch {
-      // pdfjs may transfer the underlying buffer during parsing, which leaves
-      // this Uint8Array detached by the time cleanup runs.
-    }
   }
 }
 
@@ -705,160 +696,149 @@ function validateStatementColumns(rows: Record<string, unknown>[]) {
 export async function buildStatementImportPreview(file: File, accountType: StatementAccountType): Promise<StatementImportPreview> {
   const buffer = await file.arrayBuffer();
   const bytes = new Uint8Array(buffer);
-  try {
-    assertStatementFile(file, bytes);
+  assertStatementFile(file, bytes);
 
-    const { rows, sourceFormat } = await parseStatementRows(file, bytes, buffer);
+  const { rows, sourceFormat } = await parseStatementRows(file, bytes, buffer);
 
-    if (rows.length === 0) {
-      throw new Error('No statement rows were found in the uploaded file.');
+  if (rows.length === 0) {
+    throw new Error('No statement rows were found in the uploaded file.');
+  }
+
+  validateStatementColumns(rows);
+
+  let skippedRows = 0;
+  let readyCount = 0;
+  let needsReviewCount = 0;
+  let duplicateCount = 0;
+  let incomeCount = 0;
+  let expenseCount = 0;
+  let incomeTotal = 0;
+  let expenseTotal = 0;
+  const seenFingerprints = new Set<string>();
+
+  const previewRows = rows.flatMap((row, index): StatementImportRow[] => {
+    const date = parseDateValue(
+      getFieldValue(row, ['Date', 'Transaction Date', 'Posting Date', 'Value Date', 'Booked Date'])
+    );
+    const description = sanitizeText(String(
+      getFieldValue(row, ['Description', 'Details', 'Transaction Description', 'Narration', 'Memo', 'Merchant', 'Reference']) ?? ''
+    ));
+    const currency = sanitizeText(String(getFieldValue(row, ['Currency', 'Curr', 'CCY']) ?? DEFAULT_CURRENCY).toUpperCase()) || DEFAULT_CURRENCY;
+    const rawType = sanitizeText(String(getFieldValue(row, ['Type', 'Category', 'Transaction Type', 'Classification']) ?? ''));
+    const reference = sanitizeText(String(
+      getFieldValue(row, ['Reference', 'Reference Number', 'Ref', 'Transaction Reference', 'ID', 'Trace Number']) ?? ''
+    )) || null;
+    const rowNotes = sanitizeText(String(
+      getFieldValue(row, ['Notes', 'Note', 'Comment', 'Remarks', 'Additional Details']) ?? ''
+    )) || null;
+    const amountValue = parseAmount(getFieldValue(row, ['Amount', 'Transaction Amount', 'Amt', 'Value', 'Net Amount', 'Total']));
+    const debit = Math.abs(parseAmount(getFieldValue(row, ['Debit', 'Withdrawal', 'Outflow', 'Money Out', 'DR', 'Debit Amount'])));
+    const credit = Math.abs(parseAmount(getFieldValue(row, ['Credit', 'Deposit', 'Inflow', 'Money In', 'CR', 'Credit Amount'])));
+    const absoluteAmount = debit > 0 || credit > 0 ? Math.max(debit, credit) : Math.abs(amountValue);
+    const sourceRowId = `statement-row-${index + 1}`;
+    const rawData = buildRawStatementData(row);
+
+    if (!date || !description || absoluteAmount <= 0) {
+      skippedRows += 1;
+      return [];
     }
 
-    validateStatementColumns(rows);
-
-    let skippedRows = 0;
-    let readyCount = 0;
-    let needsReviewCount = 0;
-    let duplicateCount = 0;
-    let incomeCount = 0;
-    let expenseCount = 0;
-    let incomeTotal = 0;
-    let expenseTotal = 0;
-    const seenFingerprints = new Set<string>();
-
-    const previewRows = rows.flatMap((row, index): StatementImportRow[] => {
-      const date = parseDateValue(
-        getFieldValue(row, ['Date', 'Transaction Date', 'Posting Date', 'Value Date', 'Booked Date'])
-      );
-      const description = sanitizeText(String(
-        getFieldValue(row, ['Description', 'Details', 'Transaction Description', 'Narration', 'Memo', 'Merchant', 'Reference']) ?? ''
-      ));
-      const currency = sanitizeText(String(getFieldValue(row, ['Currency', 'Curr', 'CCY']) ?? DEFAULT_CURRENCY).toUpperCase()) || DEFAULT_CURRENCY;
-      const rawType = sanitizeText(String(getFieldValue(row, ['Type', 'Category', 'Transaction Type', 'Classification']) ?? ''));
-      const reference = sanitizeText(String(
-        getFieldValue(row, ['Reference', 'Reference Number', 'Ref', 'Transaction Reference', 'ID', 'Trace Number']) ?? ''
-      )) || null;
-      const rowNotes = sanitizeText(String(
-        getFieldValue(row, ['Notes', 'Note', 'Comment', 'Remarks', 'Additional Details']) ?? ''
-      )) || null;
-      const amountValue = parseAmount(getFieldValue(row, ['Amount', 'Transaction Amount', 'Amt', 'Value', 'Net Amount', 'Total']));
-      const debit = Math.abs(parseAmount(getFieldValue(row, ['Debit', 'Withdrawal', 'Outflow', 'Money Out', 'DR', 'Debit Amount'])));
-      const credit = Math.abs(parseAmount(getFieldValue(row, ['Credit', 'Deposit', 'Inflow', 'Money In', 'CR', 'Credit Amount'])));
-      const absoluteAmount = debit > 0 || credit > 0 ? Math.max(debit, credit) : Math.abs(amountValue);
-      const sourceRowId = `statement-row-${index + 1}`;
-      const rawData = buildRawStatementData(row);
-
-      if (!date || !description || absoluteAmount <= 0) {
-        skippedRows += 1;
-        return [];
-      }
-
-      const classification = classifyTransactionDirection({
-        amount: amountValue,
-        debit,
-        credit,
-        description,
-        typeText: rawType,
-      });
-      const expenseCategory = inferExpenseCategory(rawType, description);
-      const incomeSource = inferIncomeSource(rawType, description);
-      const typeLabel = rawType
-        ? formatTypeLabel(rawType)
-        : classification.direction === 'income'
-          ? formatTypeLabel(incomeSource)
-          : classification.direction === 'expense'
-            ? formatTypeLabel(expenseCategory)
-            : formatTypeLabel(accountType === 'credit_card' ? 'card transaction' : 'bank transaction');
-      const fingerprint = buildTransactionFingerprint({
-        date,
-        amount: absoluteAmount,
-        currency,
-        direction: classification.direction,
-        description,
-        reference,
-      });
-
-      let importStatus = classification.importStatus;
-      let reviewReason = classification.reviewReason;
-
-      if (seenFingerprints.has(fingerprint)) {
-        importStatus = 'duplicate';
-        reviewReason = 'Duplicate row detected inside the uploaded statement.';
-      } else {
-        seenFingerprints.add(fingerprint);
-      }
-
-      if (importStatus === 'ready' && classification.direction === 'income') {
-        incomeCount += 1;
-        incomeTotal += absoluteAmount;
-      } else if (importStatus === 'ready' && classification.direction === 'expense') {
-        expenseCount += 1;
-        expenseTotal += absoluteAmount;
-      }
-
-      if (importStatus === 'ready') {
-        readyCount += 1;
-      } else if (importStatus === 'duplicate') {
-        duplicateCount += 1;
-      } else {
-        needsReviewCount += 1;
-      }
-
-      return [{
-        id: sourceRowId,
-        sourceRowId,
-        date,
-        description,
-        details: description,
-        amount: absoluteAmount,
-        currency,
-        direction: classification.direction,
-        debitAmount: debit > 0 ? debit : null,
-        creditAmount: credit > 0 ? credit : null,
-        reference,
-        typeLabel,
-        expenseCategory,
-        incomeSource,
-        merchantName: inferMerchantName(description),
-        notes: buildStatementRowNotes([
-          rawType ? `Statement type: ${rawType}` : null,
-          rowNotes,
-        ]),
-        rawData,
-        fingerprint,
-        classificationSource: classification.classificationSource,
-        importStatus,
-        reviewReason,
-      }] satisfies StatementImportRow[];
+    const classification = classifyTransactionDirection({
+      amount: amountValue,
+      debit,
+      credit,
+      description,
+      typeText: rawType,
+    });
+    const expenseCategory = inferExpenseCategory(rawType, description);
+    const incomeSource = inferIncomeSource(rawType, description);
+    const typeLabel = rawType
+      ? formatTypeLabel(rawType)
+      : classification.direction === 'income'
+        ? formatTypeLabel(incomeSource)
+        : classification.direction === 'expense'
+          ? formatTypeLabel(expenseCategory)
+          : formatTypeLabel(accountType === 'credit_card' ? 'card transaction' : 'bank transaction');
+    const fingerprint = buildTransactionFingerprint({
+      date,
+      amount: absoluteAmount,
+      currency,
+      direction: classification.direction,
+      description,
+      reference,
     });
 
-    if (previewRows.length === 0) {
-      throw new Error('No valid transactions could be extracted from this statement.');
+    let importStatus = classification.importStatus;
+    let reviewReason = classification.reviewReason;
+
+    if (seenFingerprints.has(fingerprint)) {
+      importStatus = 'duplicate';
+      reviewReason = 'Duplicate row detected inside the uploaded statement.';
+    } else {
+      seenFingerprints.add(fingerprint);
     }
 
-    const dominantCurrency = previewRows[0]?.currency ?? DEFAULT_CURRENCY;
-
-    return {
-      rows: previewRows.sort((left, right) => right.date.localeCompare(left.date)),
-      skippedRows,
-      readyCount,
-      needsReviewCount,
-      duplicateCount,
-      incomeCount,
-      expenseCount,
-      incomeTotal,
-      expenseTotal,
-      currency: dominantCurrency,
-      sourceFormat,
-    };
-  } finally {
-    try {
-      if (bytes.byteLength > 0 && bytes.buffer.byteLength > 0) {
-        bytes.fill(0);
-      }
-    } catch {
-      // pdfjs may transfer the underlying buffer during parsing, which leaves
-      // this Uint8Array detached by the time cleanup runs.
+    if (importStatus === 'ready' && classification.direction === 'income') {
+      incomeCount += 1;
+      incomeTotal += absoluteAmount;
+    } else if (importStatus === 'ready' && classification.direction === 'expense') {
+      expenseCount += 1;
+      expenseTotal += absoluteAmount;
     }
+
+    if (importStatus === 'ready') {
+      readyCount += 1;
+    } else if (importStatus === 'duplicate') {
+      duplicateCount += 1;
+    } else {
+      needsReviewCount += 1;
+    }
+
+    return [{
+      id: sourceRowId,
+      sourceRowId,
+      date,
+      description,
+      details: description,
+      amount: absoluteAmount,
+      currency,
+      direction: classification.direction,
+      debitAmount: debit > 0 ? debit : null,
+      creditAmount: credit > 0 ? credit : null,
+      reference,
+      typeLabel,
+      expenseCategory,
+      incomeSource,
+      merchantName: inferMerchantName(description),
+      notes: buildStatementRowNotes([
+        rawType ? `Statement type: ${rawType}` : null,
+        rowNotes,
+      ]),
+      rawData,
+      fingerprint,
+      classificationSource: classification.classificationSource,
+      importStatus,
+      reviewReason,
+    }] satisfies StatementImportRow[];
+  });
+
+  if (previewRows.length === 0) {
+    throw new Error('No valid transactions could be extracted from this statement.');
   }
+
+  const dominantCurrency = previewRows[0]?.currency ?? DEFAULT_CURRENCY;
+
+  return {
+    rows: previewRows.sort((left, right) => right.date.localeCompare(left.date)),
+    skippedRows,
+    readyCount,
+    needsReviewCount,
+    duplicateCount,
+    incomeCount,
+    expenseCount,
+    incomeTotal,
+    expenseTotal,
+    currency: dominantCurrency,
+    sourceFormat,
+  };
 }
