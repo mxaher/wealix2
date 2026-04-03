@@ -664,6 +664,13 @@ export async function buildStatementImportPreview(file: File, accountType: State
       sourceFormat,
     };
   } finally {
-    bytes.fill(0);
+    try {
+      if (bytes.byteLength > 0 && bytes.buffer.byteLength > 0) {
+        bytes.fill(0);
+      }
+    } catch {
+      // pdfjs may transfer the underlying buffer during parsing, which leaves
+      // this Uint8Array detached by the time cleanup runs.
+    }
   }
 }
