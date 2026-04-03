@@ -2,35 +2,6 @@ import { NextRequest } from 'next/server';
 import { buildRateLimitHeaders, enforceRateLimit } from '@/lib/rate-limit';
 import { requireAuthenticatedUser } from '@/lib/server-auth';
 
-type DatalabOcrResponse = {
-  success?: boolean;
-  request_id?: string;
-  request_check_url?: string;
-  error?: string | null;
-};
-
-type DatalabOcrResult = {
-  status?: string;
-  success?: boolean | null;
-  error?: string | null;
-  pages?: unknown[];
-};
-
-type DatalabMarkerResponse = {
-  success?: boolean;
-  request_id?: string;
-  request_check_url?: string;
-  error?: string | null;
-};
-
-type DatalabMarkerResult = {
-  status?: string;
-  success?: boolean | null;
-  error?: string | null;
-  markdown?: string | null;
-  html?: string | null;
-};
-
 const MAX_RECEIPT_FILE_SIZE = 10 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const SUPPORTED_CURRENCIES = new Set(['SAR', 'USD', 'EUR', 'EGP']);
@@ -183,14 +154,6 @@ function normalizeWhitespace(value: string) {
   return value.replace(/\s+/g, ' ').trim();
 }
 
-function resolveProviderUrl(url: string, apiBase: string) {
-  try {
-    return new URL(url, apiBase).toString();
-  } catch {
-    throw new Error('OCR provider returned an invalid status URL.');
-  }
-}
-
 function detectPromptInjection(text: string) {
   const normalized = normalizeWhitespace(text);
   const matches = PROMPT_INJECTION_PATTERNS.filter((pattern) => pattern.test(normalized)).map((pattern) => pattern.source);
@@ -198,52 +161,6 @@ function detectPromptInjection(text: string) {
     suspicious: matches.length > 0,
     matches,
   };
-}
-
-function collectText(value: unknown): string[] {
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-    return trimmed ? [trimmed] : [];
-  }
-
-  if (Array.isArray(value)) {
-    return value.flatMap(collectText);
-  }
-
-  if (value && typeof value === 'object') {
-    const objectValue = value as Record<string, unknown>;
-    const directTextKeys = ['text', 'raw_text', 'content', 'line_text', 'value'];
-    const results: string[] = [];
-
-    for (const key of directTextKeys) {
-      if (typeof objectValue[key] === 'string') {
-        const trimmed = String(objectValue[key]).trim();
-        if (trimmed) {
-          results.push(trimmed);
-        }
-      }
-    }
-
-    for (const nested of Object.values(objectValue)) {
-      results.push(...collectText(nested));
-    }
-
-    return results;
-  }
-
-  return [];
-}
-
-function dedupeLines(lines: string[]) {
-  const seen = new Set<string>();
-  return lines.filter((line) => {
-    const normalized = line.replace(/\s+/g, ' ').trim();
-    if (!normalized || seen.has(normalized)) {
-      return false;
-    }
-    seen.add(normalized);
-    return true;
-  });
 }
 
 function parseDateFromText(rawText: string): string {
@@ -437,130 +354,6 @@ function validateReceiptExtraction(extraction: ReceiptExtraction, fileName: stri
   };
 }
 
-async function runDatalabOcr(file: File) {
-  const apiKey = process.env.DATALAB_API_KEY || process.env.CHANDRA_API_KEY;
-  const apiBase = process.env.DATALAB_API_BASE || 'https://www.datalab.to';
-
-  if (!apiKey) {
-    throw new Error('Datalab OCR is not configured. Add DATALAB_API_KEY.');
-  }
-
-  const formData = new FormData();
-  formData.append('file.0', new Blob([file]), file.name);
-  formData.append('langs', 'ar,en');
-  formData.append('skip_cache', 'false');
-
-  const submitResponse = await fetch(`${apiBase}/api/v1/ocr`, {
-    method: 'POST',
-    headers: {
-      'X-API-Key': apiKey,
-    },
-    body: formData,
-  });
-
-  const submitData = (await submitResponse.json()) as DatalabOcrResponse;
-  if (!submitResponse.ok || !submitData.request_check_url) {
-    throw new Error(submitData.error || 'Failed to submit receipt to Datalab OCR.');
-  }
-
-  const pollUrl = resolveProviderUrl(submitData.request_check_url, apiBase);
-
-  for (let attempt = 0; attempt < 20; attempt += 1) {
-    const pollResponse = await fetch(pollUrl, {
-      headers: {
-        'X-API-Key': apiKey,
-      },
-      cache: 'no-store',
-    });
-
-    const pollData = (await pollResponse.json()) as DatalabOcrResult;
-    if (!pollResponse.ok) {
-      throw new Error(pollData.error || 'Failed to poll Datalab OCR.');
-    }
-
-    if (pollData.status === 'complete') {
-      if (pollData.success === false) {
-        throw new Error(pollData.error || 'Datalab OCR did not complete successfully.');
-      }
-
-      const rawLines = dedupeLines(collectText(pollData.pages ?? []));
-      return rawLines.join('\n');
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 1200));
-  }
-
-  throw new Error('Datalab OCR timed out while processing the receipt.');
-}
-
-async function runDatalabMarker(file: File) {
-  const apiKey = process.env.DATALAB_API_KEY || process.env.CHANDRA_API_KEY;
-  const apiBase = process.env.DATALAB_API_BASE || 'https://www.datalab.to';
-
-  if (!apiKey) {
-    throw new Error('Datalab Marker is not configured. Add DATALAB_API_KEY.');
-  }
-
-  const formData = new FormData();
-  formData.append('file', new Blob([file]), file.name);
-  formData.append('output_format', 'markdown');
-  formData.append('force_ocr', 'true');
-  formData.append('use_llm', 'true');
-  formData.append('langs', 'ar,en');
-
-  const submitResponse = await fetch(`${apiBase}/api/v1/marker`, {
-    method: 'POST',
-    headers: {
-      'X-API-Key': apiKey,
-    },
-    body: formData,
-  });
-
-  const submitData = (await submitResponse.json()) as DatalabMarkerResponse;
-  if (!submitResponse.ok || !submitData.request_check_url) {
-    throw new Error(submitData.error || 'Failed to submit receipt to Datalab Marker.');
-  }
-
-  const pollUrl = resolveProviderUrl(submitData.request_check_url, apiBase);
-
-  for (let attempt = 0; attempt < 20; attempt += 1) {
-    const pollResponse = await fetch(pollUrl, {
-      headers: {
-        'X-API-Key': apiKey,
-      },
-      cache: 'no-store',
-    });
-
-    const pollData = (await pollResponse.json()) as DatalabMarkerResult;
-    if (!pollResponse.ok) {
-      throw new Error(pollData.error || 'Failed to poll Datalab Marker.');
-    }
-
-    if (pollData.status === 'complete') {
-      if (pollData.success === false) {
-        throw new Error(pollData.error || 'Datalab Marker did not complete successfully.');
-      }
-
-      const rawText = [pollData.markdown, pollData.html]
-        .filter((value): value is string => Boolean(value && value.trim()))
-        .join('\n')
-        .replace(/<[^>]+>/g, ' ')
-        .replace(/\n{2,}/g, '\n')
-        .trim();
-
-      if (!rawText) {
-        throw new Error('Datalab Marker returned an empty result.');
-      }
-
-      return rawText;
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 1200));
-  }
-
-  throw new Error('Datalab Marker timed out while processing the receipt.');
-}
-
 type NvidiaVisionResponse = {
   choices?: Array<{
     message?: {
@@ -619,15 +412,22 @@ async function runNvidiaReceiptOcr(file: File) {
   const content = json?.choices?.[0]?.message?.content || '';
   const parsed = parseJsonObject(content);
   const fallback = fallbackFromFilename(file.name);
+  const nvidiaRawText = String(parsed?.rawText || fallback.rawText);
+  const structuredFromRawText = buildStructuredReceipt(nvidiaRawText, file.name);
+  const parsedAmount = parseAmount(parsed?.amount);
+  const recoveredAmount = parsedAmount > 0 ? parsedAmount : structuredFromRawText.amount;
+  const parsedMerchant = normalizeWhitespace(String(parsed?.merchantName || ''));
+  const parsedDate = String(parsed?.date || '').trim();
+  const parsedCurrency = String(parsed?.currency || '').toUpperCase().trim();
 
   return validateReceiptExtraction({
-    merchantName: String(parsed?.merchantName || fallback.merchantName),
-    amount: parseAmount(parsed?.amount || fallback.amount),
-    date: String(parsed?.date || fallback.date),
-    currency: String(parsed?.currency || fallback.currency).toUpperCase(),
+    merchantName: parsedMerchant || structuredFromRawText.merchantName || fallback.merchantName,
+    amount: recoveredAmount,
+    date: parsedDate || structuredFromRawText.date || fallback.date,
+    currency: parsedCurrency || structuredFromRawText.currency || fallback.currency,
     confidence: Math.max(0, Math.min(100, Number(parsed?.confidence || fallback.confidence))),
-    suggestedCategory: normalizeCategory(parsed?.suggestedCategory || parsed?.rawText),
-    rawText: String(parsed?.rawText || fallback.rawText),
+    suggestedCategory: normalizeCategory(parsed?.suggestedCategory || nvidiaRawText),
+    rawText: nvidiaRawText,
   }, file.name);
 }
 
@@ -661,36 +461,8 @@ export async function POST(request: NextRequest) {
       type: sanitizedImage.type,
     });
 
-    try {
-      const nvidiaResult = await runNvidiaReceiptOcr(normalizedFile);
-      return Response.json(nvidiaResult, { headers: buildRateLimitHeaders(rateLimit) });
-    } catch (nvidiaError) {
-      console.error('NVIDIA OCR Error:', nvidiaError);
-
-      try {
-        const rawText = await runDatalabOcr(normalizedFile);
-        return Response.json(validateReceiptExtraction(buildStructuredReceipt(rawText, file.name), file.name), { headers: buildRateLimitHeaders(rateLimit) });
-      } catch (primaryError) {
-        console.error('Datalab OCR Error:', primaryError);
-
-        try {
-          const rawText = await runDatalabMarker(normalizedFile);
-          return Response.json(validateReceiptExtraction(buildStructuredReceipt(rawText, file.name), file.name), { headers: buildRateLimitHeaders(rateLimit) });
-        } catch (secondaryError) {
-          console.error('Datalab Marker Error:', secondaryError);
-          const message = [
-            nvidiaError instanceof Error ? nvidiaError.message : 'NVIDIA OCR failed.',
-            primaryError instanceof Error ? primaryError.message : 'Primary OCR failed.',
-            secondaryError instanceof Error ? secondaryError.message : 'Secondary OCR failed.',
-          ].join(' ');
-
-          return Response.json(
-            { error: message },
-            { status: 500, headers: buildRateLimitHeaders(rateLimit) }
-          );
-        }
-      }
-    }
+    const nvidiaResult = await runNvidiaReceiptOcr(normalizedFile);
+    return Response.json(nvidiaResult, { headers: buildRateLimitHeaders(rateLimit) });
   } catch (error) {
     console.error('Receipt OCR Error:', error);
     const message = error instanceof Error ? error.message : 'Failed to process the receipt image.';
