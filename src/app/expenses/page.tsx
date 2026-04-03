@@ -588,8 +588,8 @@ export default function ExpensesPage() {
                   {isArabic ? 'مسح إيصال' : 'Scan Receipt'}
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl">
-                <DialogHeader>
+              <DialogContent className="flex max-h-[calc(100dvh-1.5rem)] max-w-2xl flex-col overflow-hidden p-0 sm:max-h-[calc(100dvh-4rem)]">
+                <DialogHeader className="px-6 pt-6 pb-0">
                   <DialogTitle>{isArabic ? 'ماسح الإيصالات' : 'Receipt Scanner'}</DialogTitle>
                   <DialogDescription>
                     {isArabic
@@ -597,7 +597,7 @@ export default function ExpensesPage() {
                       : 'Upload a receipt image to extract merchant, amount, and date automatically.'}
                   </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4">
+                <div className="space-y-4 overflow-y-auto px-6 pb-6">
                   <div className="space-y-2">
                     <Label>{isArabic ? 'مصدر الإيصال' : 'Receipt source'}</Label>
                     <div className="grid gap-3 md:grid-cols-2">
@@ -766,9 +766,11 @@ export default function ExpensesPage() {
                             </div>
                           </div>
                         )}
-                        <Button className="w-full" onClick={handleSaveScannedExpense} disabled={!isSignedIn}>
+                        <div className="sticky bottom-0 -mx-4 border-t bg-background/95 px-4 pt-4 pb-1 backdrop-blur">
+                          <Button className="w-full" onClick={handleSaveScannedExpense} disabled={!isSignedIn}>
                           {isArabic ? 'حفظ كمصروف' : 'Save as Expense'}
-                        </Button>
+                          </Button>
+                        </div>
                       </CardContent>
                     </Card>
                   )}
