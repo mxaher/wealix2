@@ -92,13 +92,13 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: "/brand/logo-fav-icon.png?v=20260331a",
-        type: "image/png",
-        sizes: "32x32",
+        url: "/favicon.svg?v=20260403a",
+        type: "image/svg+xml",
+        sizes: "any",
       },
     ],
-    shortcut: "/brand/logo-fav-icon.png?v=20260331a",
-    apple: "/wealix-apple-icon.svg",
+    shortcut: "/favicon.svg?v=20260403a",
+    apple: "/wealix-apple-icon.svg?v=20260403a",
   },
   alternates: {
     canonical: siteUrl,

@@ -13,12 +13,12 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: 'portrait',
     icons: [
       {
-        src: '/brand/logo-fav-icon.png',
-        sizes: '32x32',
-        type: 'image/png',
+        src: '/favicon.svg?v=20260403a',
+        sizes: 'any',
+        type: 'image/svg+xml',
       },
       {
-        src: '/wealix-apple-icon.svg',
+        src: '/wealix-apple-icon.svg?v=20260403a',
         sizes: 'any',
         type: 'image/svg+xml',
         purpose: 'maskable',
