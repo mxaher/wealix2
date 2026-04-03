@@ -7,6 +7,7 @@ import {
   ArrowUpRight,
   Briefcase,
   Bot,
+  BrainCircuit,
   CalendarDays,
   ChevronDown,
   Coins,
@@ -64,6 +65,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { InvestmentDecisionCheck } from '@/components/investment/InvestmentDecisionCheck';
 import { toast } from '@/hooks/use-toast';
 import { createOpaqueId } from '@/lib/ids';
 import {
@@ -910,16 +912,40 @@ export default function PortfolioPage() {
           </div>
 
           <FeatureGate feature="portfolio.ai_analysis">
-            <Button
-              className="gap-2 bg-primary hover:bg-primary/90 lg:self-end"
-              onClick={handleAnalyzePortfolio}
-              disabled={!isSignedIn || isAnalyzing}
-            >
-              <Sparkles className={`w-4 h-4 ${isAnalyzing ? 'animate-pulse' : ''}`} />
-              {isAnalyzing
-                ? (isArabic ? 'جاري التحليل...' : 'Analyzing...')
-                : (isArabic ? 'تحليل المحفظة' : 'Analyze Portfolio')}
-            </Button>
+            <div className="flex flex-wrap gap-2 lg:self-end">
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <BrainCircuit className="w-4 h-4" />
+                    {isArabic ? 'Decision Check' : 'Decision Check'}
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-h-[90vh] overflow-hidden sm:max-w-4xl">
+                  <DialogHeader>
+                    <DialogTitle>{isArabic ? 'محرك قرار الاستثمار' : 'Investment Decision Engine'}</DialogTitle>
+                    <DialogDescription>
+                      {isArabic
+                        ? 'أدخل الأصل وتكلفته لنقارن القرار مع المحفظة، السيولة، والأهداف الحالية.'
+                        : 'Enter the asset and price to compare the decision against your portfolio, liquidity, and current goals.'}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <ScrollArea className="max-h-[72vh] pr-2">
+                    <InvestmentDecisionCheck />
+                  </ScrollArea>
+                </DialogContent>
+              </Dialog>
+
+              <Button
+                className="gap-2 bg-primary hover:bg-primary/90"
+                onClick={handleAnalyzePortfolio}
+                disabled={!isSignedIn || isAnalyzing}
+              >
+                <Sparkles className={`w-4 h-4 ${isAnalyzing ? 'animate-pulse' : ''}`} />
+                {isAnalyzing
+                  ? (isArabic ? 'جاري التحليل...' : 'Analyzing...')
+                  : (isArabic ? 'تحليل المحفظة' : 'Analyze Portfolio')}
+              </Button>
+            </div>
           </FeatureGate>
         </div>
 
@@ -1235,10 +1261,33 @@ export default function PortfolioPage() {
                                     </div>
                                   ) : null}
 
-                                  <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
-                                    <p className={`text-sm leading-7 text-foreground ${isArabic ? 'text-right' : ''}`}>{record.summary}</p>
+                                  <div className="space-y-3">
+                                    <div className={`space-y-1 ${isArabic ? 'text-right' : ''}`}>
+                                      <p className="text-sm font-semibold text-foreground">
+                                        {isArabic ? 'التحليل الكامل' : 'Full Analysis'}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground">
+                                        {isArabic
+                                          ? 'الجدول أعلاه مجرد ملخص تنفيذي سريع. التفاصيل الكاملة الأصلية تبقى هنا كما هي.'
+                                          : 'The table above is only a quick execution summary. The original full analysis remains here unchanged.'}
+                                      </p>
+                                    </div>
+                                    <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
+                                      <p className={`text-sm leading-7 text-foreground ${isArabic ? 'text-right' : ''}`}>{record.summary}</p>
+                                    </div>
                                   </div>
 
+                                  <div className="space-y-3">
+                                    <div className={`space-y-1 ${isArabic ? 'text-right' : ''}`}>
+                                      <p className="text-sm font-semibold text-foreground">
+                                        {isArabic ? 'التوصيات التفصيلية' : 'Detailed Recommendations'}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground">
+                                        {isArabic
+                                          ? 'هذه هي نفس بطاقات التحليل التفصيلية مع الشرح الكامل لكل توصية.'
+                                          : 'These are the original detailed recommendation cards with the full rationale for each action.'}
+                                      </p>
+                                    </div>
                                   <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                                     {record.actions.map((action, actionIndex) => {
                                       const actionMeta = getAnalysisActionMeta(action.type, isArabic);
@@ -1263,6 +1312,7 @@ export default function PortfolioPage() {
                                         </div>
                                       );
                                     })}
+                                  </div>
                                   </div>
                                 </div>
                               </CollapsibleContent>

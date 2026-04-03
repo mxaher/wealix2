@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Bot,
+  BrainCircuit,
   Send,
   Plus,
   Trash2,
@@ -33,8 +34,17 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { DashboardShell } from '@/components/layout';
 import { FeatureGate } from '@/components/shared';
+import { InvestmentDecisionCheck } from '@/components/investment/InvestmentDecisionCheck';
 import { useAppStore } from '@/store/useAppStore';
 import ReactMarkdown from 'react-markdown';
 import { createOpaqueId } from '@/lib/ids';
@@ -60,6 +70,7 @@ const suggestedPrompts = [
   { en: 'Where am I overspending this month?', ar: 'أين أنفق أكثر هذا الشهر؟' },
   { en: 'Give me your analysis of my top 3 holdings', ar: 'حلل أفضل 3 ممتلكات لدي' },
   { en: 'What should I rebalance in my portfolio?', ar: 'ماذا يجب أن أعيد توازنه في محفظتي؟' },
+  { en: 'Should I buy this investment now?', ar: 'هل أشتري هذا الاستثمار الآن؟' },
 ];
 
 export default function AdvisorPage() {
@@ -391,6 +402,27 @@ export default function AdvisorPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="gap-2">
+                        <BrainCircuit className="w-4 h-4" />
+                        {isArabic ? 'Decision Check' : 'Decision Check'}
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-h-[90vh] overflow-hidden sm:max-w-4xl">
+                      <DialogHeader>
+                        <DialogTitle>{isArabic ? 'محرك قرار الاستثمار' : 'Investment Decision Engine'}</DialogTitle>
+                        <DialogDescription>
+                          {isArabic
+                            ? 'افحص أي فكرة استثمارية جديدة مقارنة بمحفظتك، السيولة، وصافي الثروة والأهداف.'
+                            : 'Check any new investment idea against your portfolio, liquidity, net worth, and goals.'}
+                        </DialogDescription>
+                      </DialogHeader>
+                      <ScrollArea className="max-h-[72vh] pr-2">
+                        <InvestmentDecisionCheck />
+                      </ScrollArea>
+                    </DialogContent>
+                  </Dialog>
                   <Button variant="outline" size="sm" onClick={() => inputRef.current?.focus()}>
                     <RefreshCw className="w-4 h-4" />
                   </Button>
