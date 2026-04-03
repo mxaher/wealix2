@@ -299,6 +299,14 @@ function mapPdfLineToRow(lineItems: Array<{ text: string; x: number }>) {
 async function parsePdfRows(bytes: Uint8Array) {
   ensurePdfJsNodePolyfills();
   const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  const workerModule = await import('pdfjs-dist/legacy/build/pdf.worker.mjs');
+
+  if (!globalThis.pdfjsWorker) {
+    Object.assign(globalThis, {
+      pdfjsWorker: workerModule,
+    });
+  }
+
   const loadingTask = pdfjs.getDocument({
     data: bytes,
     isEvalSupported: false,

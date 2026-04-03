@@ -91,6 +91,146 @@ type NvidiaChatResponse = {
   };
 };
 
+type AdvisorUserContext = {
+  netWorth?: number;
+  portfolioValue?: number;
+  monthlyIncome?: number;
+  monthlyExpenses?: number;
+  monthlySavings?: number;
+  savingsRate?: number;
+  holdings?: Array<{
+    ticker?: string;
+    name?: string;
+    sector?: string;
+    exchange?: string;
+    totalValue?: number;
+    profitLossPercent?: number;
+    isShariah?: boolean;
+  }>;
+};
+
+function formatSarAmount(value: number | undefined, locale: string) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return null;
+  }
+
+  return new Intl.NumberFormat(locale === 'ar' ? 'ar-SA' : 'en-US', {
+    style: 'currency',
+    currency: 'SAR',
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function generateFallbackAdvisorResponse(params: {
+  locale: string;
+  userContext?: AdvisorUserContext;
+  messages: ChatMessage[];
+}) {
+  const { locale, userContext, messages } = params;
+  const isArabic = locale === 'ar';
+  const latestUserMessage =
+    [...messages].reverse().find((message) => message.role === 'user')?.content.toLowerCase() ?? '';
+  const holdings = Array.isArray(userContext?.holdings) ? userContext!.holdings : [];
+  const portfolioValue =
+    typeof userContext?.portfolioValue === 'number'
+      ? userContext.portfolioValue
+      : holdings.reduce((sum, holding) => sum + (holding.totalValue ?? 0), 0);
+  const topHoldings = [...holdings]
+    .filter((holding) => typeof holding.totalValue === 'number' && Number.isFinite(holding.totalValue))
+    .sort((left, right) => (right.totalValue ?? 0) - (left.totalValue ?? 0))
+    .slice(0, 3);
+  const concentrationLines = topHoldings.map((holding) => {
+    const weight = portfolioValue > 0 ? (((holding.totalValue ?? 0) / portfolioValue) * 100) : 0;
+    const shariahLabel = holding.isShariah
+      ? (isArabic ? '، متوافق شرعياً' : ', Shariah-compliant')
+      : '';
+    return isArabic
+      ? `- ${holding.ticker || holding.name || 'Holding'} يشكل ${weight.toFixed(1)}% من المحفظة${shariahLabel}`
+      : `- ${holding.ticker || holding.name || 'Holding'} is ${weight.toFixed(1)}% of the portfolio${shariahLabel}`;
+  });
+  const highestConcentration = topHoldings[0] && portfolioValue > 0
+    ? ((topHoldings[0].totalValue ?? 0) / portfolioValue) * 100
+    : 0;
+  const savingsRate = typeof userContext?.savingsRate === 'number' ? userContext.savingsRate : null;
+  const netWorth = formatSarAmount(userContext?.netWorth, locale);
+  const monthlySavings = formatSarAmount(userContext?.monthlySavings, locale);
+
+  const wantsRebalance =
+    /rebalance|portfolio|holding|allocation|محفظ|توازن|توزيع/.test(latestUserMessage);
+
+  if (isArabic) {
+    const lines = [
+      `بناءً على بياناتك الحالية في Wealix${netWorth ? `، صافي ثروتك حوالي ${netWorth}` : ''}${monthlySavings ? ` وادخارك الشهري حوالي ${monthlySavings}` : ''}.`,
+    ];
+
+    if (wantsRebalance && topHoldings.length > 0) {
+      lines.push('');
+      lines.push('أولوية إعادة التوازن الآن:');
+      lines.push(...concentrationLines);
+      lines.push('');
+      lines.push(
+        highestConcentration >= 35
+          ? `التركيز الأعلى يبدو مرتفعاً. إذا كان ${topHoldings[0]?.ticker || topHoldings[0]?.name} يتجاوز 35% من المحفظة، فابدأ بتخفيفه تدريجياً وتحويل جزء منه إلى مراكز أو قطاعات أقل تمركزاً.`
+          : 'التمركز لا يبدو مفرطاً جداً، لذلك ركز أكثر على ضبط التوزيع بين القطاعات والاحتفاظ بنسبة سيولة مناسبة.'
+      );
+      lines.push(
+        'استهدف وجود 3 إلى 6 أشهر من المصروفات الأساسية كسيولة أو أدوات منخفضة المخاطر قبل زيادة التعرض للأسهم عالية التذبذب.'
+      );
+    } else if (topHoldings.length === 0) {
+      lines.push('');
+      lines.push('لا توجد مراكز استثمارية كافية في البيانات الحالية لإعطاء اقتراح إعادة توازن دقيق.');
+    }
+
+    if (savingsRate !== null) {
+      lines.push('');
+      lines.push(
+        savingsRate >= 20
+          ? `معدل الادخار الحالي ${savingsRate.toFixed(1)}% وهو جيد.`
+          : `معدل الادخار الحالي ${savingsRate.toFixed(1)}% ويستحق التحسين إذا كان هدفك تسريع التراكم أو FIRE.`
+      );
+    }
+
+    lines.push('');
+    lines.push('هذه إجابة احتياطية محلية لأن خدمة الذكاء الخارجي غير مهيأة حالياً. أضف `NVIDIA_API_KEY` لتفعيل التحليل الكامل.');
+    return lines.join('\n');
+  }
+
+  const lines = [
+    `Based on your current Wealix data${netWorth ? `, your net worth is about ${netWorth}` : ''}${monthlySavings ? ` and monthly savings are about ${monthlySavings}` : ''}.`,
+  ];
+
+  if (wantsRebalance && topHoldings.length > 0) {
+    lines.push('');
+    lines.push('Rebalancing priorities right now:');
+    lines.push(...concentrationLines);
+    lines.push('');
+    lines.push(
+      highestConcentration >= 35
+        ? `Your top position looks concentrated. If ${topHoldings[0]?.ticker || topHoldings[0]?.name} is above 35% of the portfolio, start by trimming it gradually and reallocating into less concentrated positions or sectors.`
+        : 'Your concentration does not look extreme, so the bigger opportunity is balancing sector exposure and keeping an appropriate cash buffer.'
+    );
+    lines.push(
+      'Keep roughly 3 to 6 months of core expenses in cash or low-volatility holdings before increasing risk exposure.'
+    );
+  } else if (topHoldings.length === 0) {
+    lines.push('');
+    lines.push('There are not enough portfolio holdings in the current data to give a precise rebalance call.');
+  }
+
+  if (savingsRate !== null) {
+    lines.push('');
+    lines.push(
+      savingsRate >= 20
+        ? `Your current savings rate is ${savingsRate.toFixed(1)}%, which is a healthy base.`
+        : `Your current savings rate is ${savingsRate.toFixed(1)}%, which is worth improving if your goal is faster wealth accumulation or FIRE progress.`
+    );
+  }
+
+  lines.push('');
+  lines.push('This is a local fallback response because the external AI service is not configured right now. Add `NVIDIA_API_KEY` to enable the full advisor.');
+  return lines.join('\n');
+}
+
 async function createAdvisorCompletion(messages: ChatMessage[]) {
   const nvidiaApiKey = process.env.NVIDIA_API_KEY;
   const nvidiaModel = process.env.NVIDIA_ADVISOR_MODEL || process.env.NVIDIA_MODEL || 'meta/llama-3.3-70b-instruct';
@@ -239,7 +379,17 @@ export async function POST(request: NextRequest) {
       }),
     ];
 
-    const response = await createAdvisorCompletion(apiMessages);
+    let response: string;
+    try {
+      response = await createAdvisorCompletion(apiMessages);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      if (/NVIDIA_API_KEY|NVIDIA API request failed|empty response/i.test(message)) {
+        response = generateFallbackAdvisorResponse({ locale, userContext, messages: apiMessages });
+      } else {
+        throw error;
+      }
+    }
 
     // Return as a stream-like response
     const encoder = new TextEncoder();
