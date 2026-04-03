@@ -12,7 +12,7 @@ export type SubscriptionTier = 'none' | 'core' | 'pro';
 export type AppMode = 'demo' | 'live';
 export type IncomeSource = 'salary' | 'freelance' | 'business' | 'investment' | 'rental' | 'other';
 export type IncomeFrequency = 'one_time' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
-export type PortfolioExchange = 'TASI' | 'EGX' | 'NASDAQ' | 'NYSE';
+export type PortfolioExchange = 'TASI' | 'EGX' | 'NASDAQ' | 'NYSE' | 'GOLD';
 export type AssetCategory = 'cash' | 'investment' | 'real_estate' | 'vehicle' | 'other';
 export type LiabilityCategory = 'loan' | 'mortgage' | 'credit_card' | 'other';
 export type ExpenseCategory =
@@ -150,11 +150,23 @@ export interface PortfolioAnalysisAction {
   description: string;
 }
 
+export interface PortfolioTradeRecommendation {
+  side: 'buy' | 'sell';
+  ticker: string;
+  name: string;
+  exchange: PortfolioExchange;
+  shares: number;
+  targetPrice: number;
+  timing: 'now' | 'next_week';
+  note: string;
+}
+
 export interface PortfolioAnalysisRecord {
   id: string;
   createdAt: string;
   summary: string;
   actions: PortfolioAnalysisAction[];
+  tradePlan: PortfolioTradeRecommendation[];
 }
 
 export interface AssetEntry {
@@ -265,6 +277,31 @@ function normalizeAssetEntries(entries: unknown): AssetEntry[] {
       category: (['cash', 'investment', 'real_estate', 'vehicle', 'other'].includes(category) ? category : 'other') as AssetCategory,
       value,
       currency: String(asset.currency ?? 'SAR').toUpperCase() || 'SAR',
+    }];
+  });
+}
+
+function normalizePortfolioAnalysisHistory(entries: unknown): PortfolioAnalysisRecord[] {
+  if (!Array.isArray(entries)) {
+    return [];
+  }
+
+  return entries.flatMap((entry) => {
+    if (!entry || typeof entry !== 'object') {
+      return [];
+    }
+
+    const record = entry as Partial<PortfolioAnalysisRecord>;
+    if (typeof record.id !== 'string' || typeof record.createdAt !== 'string' || typeof record.summary !== 'string') {
+      return [];
+    }
+
+    return [{
+      id: record.id,
+      createdAt: record.createdAt,
+      summary: record.summary,
+      actions: Array.isArray(record.actions) ? record.actions : [],
+      tradePlan: Array.isArray(record.tradePlan) ? record.tradePlan : [],
     }];
   });
 }
@@ -442,6 +479,7 @@ const defaultPortfolioHoldings: PortfolioHolding[] = [
   { id: '4', ticker: 'COMI.CA', name: 'CIB Egypt', exchange: 'EGX', shares: 200, avgCost: 45, currentPrice: 52.3, sector: 'Banking', isShariah: false },
   { id: '5', ticker: 'AAPL', name: 'Apple Inc.', exchange: 'NASDAQ', shares: 25, avgCost: 175, currentPrice: 182.5, sector: 'Technology', isShariah: false },
   { id: '6', ticker: '1050.SR', name: 'SABIC', exchange: 'TASI', shares: 30, avgCost: 85, currentPrice: 92.4, sector: 'Materials', isShariah: true },
+  { id: '7', ticker: 'XAUUSD', name: 'Gold', exchange: 'GOLD', shares: 8, avgCost: 2295, currentPrice: 2368, sector: 'Precious Metals', isShariah: true },
 ];
 
 const defaultAssets: AssetEntry[] = [
@@ -529,7 +567,7 @@ function sanitizeRemoteWorkspace(workspace: Partial<RemoteWorkspaceSnapshot> | u
     expenseEntries: Array.isArray(workspace?.expenseEntries) ? workspace.expenseEntries : live.expenseEntries,
     receiptScans: Array.isArray(workspace?.receiptScans) ? workspace.receiptScans : live.receiptScans,
     portfolioHoldings: Array.isArray(workspace?.portfolioHoldings) ? workspace.portfolioHoldings : live.portfolioHoldings,
-    portfolioAnalysisHistory: Array.isArray(workspace?.portfolioAnalysisHistory) ? workspace.portfolioAnalysisHistory : live.portfolioAnalysisHistory,
+    portfolioAnalysisHistory: normalizePortfolioAnalysisHistory(workspace?.portfolioAnalysisHistory),
     assets: normalizeAssetEntries(workspace?.assets),
     liabilities: normalizeLiabilityEntries(workspace?.liabilities),
     budgetLimits: Array.isArray(workspace?.budgetLimits) ? workspace.budgetLimits : live.budgetLimits,
@@ -949,7 +987,7 @@ export const useAppStore = create<AppState>()(
           expenseEntries: sanitizedWorkspace.expenseEntries,
           receiptScans: sanitizedWorkspace.receiptScans,
           portfolioHoldings: mergePortfolioHoldingEntries(sanitizedWorkspace.portfolioHoldings),
-          portfolioAnalysisHistory: sanitizedWorkspace.portfolioAnalysisHistory,
+          portfolioAnalysisHistory: normalizePortfolioAnalysisHistory(sanitizedWorkspace.portfolioAnalysisHistory),
           assets: sanitizedWorkspace.assets,
           liabilities: sanitizedWorkspace.liabilities,
           budgetLimits: sanitizedWorkspace.budgetLimits,

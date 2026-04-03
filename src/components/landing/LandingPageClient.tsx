@@ -117,10 +117,10 @@ const featureCards = [
   },
   {
     icon: ShieldCheck,
-    title: { en: 'Secure User Accounts', ar: 'حسابات مستخدمين آمنة' },
+    title: { en: 'Private & Secure Data Vault', ar: 'خزنة بيانات خاصة وآمنة' },
     description: {
-      en: 'Each signed-in user gets an isolated workspace with clean live data and a safe demo experience for guests.',
-      ar: 'كل مستخدم مسجل يحصل على مساحة خاصة ببياناته، مع تجربة تجريبية آمنة للزوار.',
+      en: 'Each signed-in user gets an isolated workspace where financial data is stored securely and is not exposed to other users or public viewers.',
+      ar: 'كل مستخدم مسجل يحصل على مساحة خاصة تُحفظ فيها البيانات المالية بشكل آمن ولا يمكن عرضها لمستخدمين آخرين أو لأي جهة عامة.',
     },
   },
 ];
@@ -414,6 +414,12 @@ export function LandingPageClient() {
                   : 'Every new user chooses Core or Pro first, then the selected 14-day trial starts immediately.'}
               </p>
               <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/70 px-3 py-1.5">
+                  <ShieldCheck className="h-4 w-4 text-primary" />
+                  {isArabic
+                    ? 'بياناتك تُخزن بشكل آمن داخل مساحة خاصة بك فقط'
+                    : 'Your data is stored securely inside your private workspace only'}
+                </span>
                 <Link
                   href="/privacy"
                   className="transition-colors hover:text-foreground"

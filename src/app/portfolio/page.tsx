@@ -8,6 +8,8 @@ import {
   Briefcase,
   Bot,
   CalendarDays,
+  ChevronDown,
+  Coins,
   FileSpreadsheet,
   Filter,
   Lightbulb,
@@ -61,6 +63,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { toast } from '@/hooks/use-toast';
 import { createOpaqueId } from '@/lib/ids';
 import {
@@ -69,6 +72,7 @@ import {
   type PortfolioExchange,
   type PortfolioHolding,
   type PortfolioAnalysisAction,
+  type PortfolioTradeRecommendation,
 } from '@/store/useAppStore';
 
 type FxRateMap = Partial<Record<'USD_SAR' | 'EGP_SAR', {
@@ -84,11 +88,18 @@ type MarketRefreshMeta = {
   fxRates: FxRateMap;
 };
 
+type AnalysisApiError = {
+  error?: string;
+  code?: string;
+  resetAt?: number;
+};
+
 const exchangeColors: Record<string, string> = {
   TASI: '#D4A843',
   EGX: '#10B981',
   NASDAQ: '#3B82F6',
   NYSE: '#8B5CF6',
+  GOLD: '#F59E0B',
 };
 
 const MAX_IMPORT_FILE_SIZE = 2 * 1024 * 1024;
@@ -98,6 +109,7 @@ const ACCEPTED_SPREADSHEET_TYPES = new Set([
   'text/csv',
 ]);
 const REQUIRED_IMPORT_COLUMNS = ['ticker', 'shares', 'avgcost'];
+const SUPPORTED_EXCHANGES: PortfolioExchange[] = ['TASI', 'EGX', 'NASDAQ', 'NYSE', 'GOLD'];
 
 function getAnalysisActionMeta(actionType: string, isArabic: boolean) {
   switch (actionType) {
@@ -133,6 +145,20 @@ function getAnalysisActionMeta(actionType: string, isArabic: boolean) {
         wrapperClass: 'bg-slate-500/10 text-slate-600 border-slate-500/20',
       };
   }
+}
+
+function getTradeRecommendationMeta(side: PortfolioTradeRecommendation['side'], isArabic: boolean) {
+  if (side === 'buy') {
+    return {
+      label: isArabic ? 'شراء' : 'Buy',
+      badgeClass: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600',
+    };
+  }
+
+  return {
+    label: isArabic ? 'بيع' : 'Sell',
+    badgeClass: 'border-rose-500/30 bg-rose-500/10 text-rose-600',
+  };
 }
 
 function assertSpreadsheetFile(file: File, bytes: Uint8Array) {
@@ -218,12 +244,13 @@ export default function PortfolioPage() {
   const getHoldingCurrency = (exchange: PortfolioExchange) => {
     if (exchange === 'TASI') return 'SAR';
     if (exchange === 'EGX') return 'EGP';
+    if (exchange === 'GOLD') return 'USD';
     return 'USD';
   };
 
   const getFxPairForHolding = (exchange: PortfolioExchange) => {
     if (exchange === 'EGX') return 'EGP_SAR';
-    if (exchange === 'NASDAQ' || exchange === 'NYSE') return 'USD_SAR';
+    if (exchange === 'NASDAQ' || exchange === 'NYSE' || exchange === 'GOLD') return 'USD_SAR';
     return null;
   };
 
@@ -249,6 +276,14 @@ export default function PortfolioPage() {
       timestamp: fxRate.datetime,
       status: exchange === 'EGX' ? 'EOD FX' : 'LIVE FX',
     };
+  };
+
+  const formatTradeTiming = (timing: PortfolioTradeRecommendation['timing']) => {
+    if (timing === 'next_week') {
+      return isArabic ? 'الأسبوع القادم' : 'Next Week';
+    }
+
+    return isArabic ? 'الآن' : 'Now';
   };
 
   const filteredHoldings = holdings.filter((holding) => {
@@ -313,8 +348,8 @@ export default function PortfolioPage() {
       exchange: newHolding.exchange as PortfolioExchange,
       shares: parseFloat(newHolding.shares),
       avgCost: parseFloat(newHolding.avgCost),
-      currentPrice: parseFloat(newHolding.avgCost) * 1.05,
-      sector: 'Other',
+      currentPrice: parseFloat(newHolding.avgCost) * (newHolding.exchange === 'GOLD' ? 1.02 : 1.05),
+      sector: newHolding.exchange === 'GOLD' ? 'Precious Metals' : 'Other',
       isShariah: newHolding.isShariah,
     });
 
@@ -466,11 +501,11 @@ export default function PortfolioPage() {
             id: createOpaqueId(`import-${index}`),
             ticker,
             name,
-            exchange: ['TASI', 'EGX', 'NASDAQ', 'NYSE'].includes(exchange) ? exchange : 'TASI',
+            exchange: SUPPORTED_EXCHANGES.includes(exchange) ? exchange : 'TASI',
             shares,
             avgCost,
             currentPrice: currentPrice || avgCost,
-            sector: sector || 'Other',
+            sector: sector || (exchange === 'GOLD' ? 'Precious Metals' : 'Other'),
             isShariah: ['true', 'yes', '1'].includes(shariah),
           } satisfies PortfolioHolding;
         })
@@ -524,7 +559,11 @@ export default function PortfolioPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ holdings, locale }),
       });
-      const data = await response.json();
+      const data = await response.json() as {
+        summary?: string;
+        actions?: PortfolioAnalysisAction[];
+        tradePlan?: PortfolioTradeRecommendation[];
+      } & AnalysisApiError;
       if (!response.ok) {
         throw new Error(data.error || 'Failed to analyze portfolio.');
       }
@@ -533,6 +572,7 @@ export default function PortfolioPage() {
         createdAt: new Date().toISOString(),
         summary: data.summary || '',
         actions: Array.isArray(data.actions) ? data.actions as PortfolioAnalysisAction[] : [],
+        tradePlan: Array.isArray(data.tradePlan) ? data.tradePlan as PortfolioTradeRecommendation[] : [],
       });
       toast({
         title: isArabic ? 'اكتمل تحليل المحفظة' : 'Portfolio analysis ready',
@@ -561,7 +601,7 @@ export default function PortfolioPage() {
     }
 
     const saudiHoldings = holdings.filter((holding) => holding.exchange === 'TASI');
-    const nonSaudiHoldings = holdings.filter((holding) => ['EGX', 'NASDAQ', 'NYSE'].includes(holding.exchange));
+    const nonSaudiHoldings = holdings.filter((holding) => ['EGX', 'NASDAQ', 'NYSE', 'GOLD'].includes(holding.exchange));
 
     if (saudiHoldings.length === 0) {
       toast({
@@ -647,8 +687,8 @@ export default function PortfolioPage() {
             <h1 className="text-2xl font-bold">{isArabic ? 'المحفظة الاستثمارية' : 'Investment Portfolio'}</h1>
             <p className="text-muted-foreground">
               {isArabic
-                ? 'استيراد ملف إكسل وتحليل المحفظة الحالية وتوصيات شراء أو تقليل أو احتفاظ.'
-                : 'Import an Excel file, analyze the current portfolio, and get buy, trim, or hold guidance.'}
+                ? 'استيراد ملف إكسل، وإضافة الأسهم أو الذهب، وتحليل المحفظة مع توصيات منظمة للشراء أو البيع أو الاحتفاظ.'
+                : 'Import a spreadsheet, add stocks or gold, and analyze the portfolio with organized buy, sell, and hold guidance.'}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -695,10 +735,9 @@ export default function PortfolioPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="TASI">TASI</SelectItem>
-                          <SelectItem value="EGX">EGX</SelectItem>
-                          <SelectItem value="NASDAQ">NASDAQ</SelectItem>
-                          <SelectItem value="NYSE">NYSE</SelectItem>
+                          {SUPPORTED_EXCHANGES.map((exchange) => (
+                            <SelectItem key={exchange} value={exchange}>{exchange}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -859,10 +898,9 @@ export default function PortfolioPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{isArabic ? 'جميع البورصات' : 'All Exchanges'}</SelectItem>
-              <SelectItem value="TASI">TASI</SelectItem>
-              <SelectItem value="EGX">EGX</SelectItem>
-              <SelectItem value="NASDAQ">NASDAQ</SelectItem>
-              <SelectItem value="NYSE">NYSE</SelectItem>
+              {SUPPORTED_EXCHANGES.map((exchange) => (
+                <SelectItem key={exchange} value={exchange}>{exchange}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <div className="flex items-center gap-2 rounded-lg bg-muted px-4 py-2">
@@ -999,8 +1037,8 @@ export default function PortfolioPage() {
                       </CardTitle>
                       <CardDescription>
                         {isArabic
-                          ? 'تحليل محفوظ يمكن الرجوع إليه لاحقاً مع توصيات قابلة للمراجعة والحذف.'
-                          : 'Saved analysis snapshots you can revisit, keep as reference, or remove later.'}
+                          ? 'لوحة تحليل قابلة للطي مع ملخص تنفيذي وتوصيات شراء وبيع منظمة.'
+                          : 'An expandable analysis desk with executive summaries and organized buy/sell recommendations.'}
                       </CardDescription>
                     </div>
                     <FeatureGate feature="portfolio.ai_analysis">
@@ -1062,65 +1100,177 @@ export default function PortfolioPage() {
                     </div>
                   ) : null}
 
-                  <div className="space-y-4">
-                    {portfolioAnalysisHistory.map((record, index) => (
-                      <motion.div
-                        key={record.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.04 }}
-                        className="rounded-2xl border border-border bg-background/80 p-5 shadow-sm"
-                      >
-                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                          <div className={`space-y-2 ${isArabic ? 'text-right' : ''}`}>
-                            <div className={`flex flex-wrap items-center gap-2 text-xs text-muted-foreground ${isArabic ? 'justify-end' : ''}`}>
-                              <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1">
-                                <CalendarDays className="h-3.5 w-3.5" />
-                                {new Date(record.createdAt).toLocaleString(isArabic ? 'ar-SA-u-nu-latn' : 'en-US')}
-                              </span>
-                              {index === 0 ? (
-                                <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
-                                  {isArabic ? 'الأحدث' : 'Latest'}
-                                </Badge>
-                              ) : null}
-                            </div>
-                            <p className="text-sm leading-7 text-foreground">{record.summary}</p>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className={`text-rose-500 hover:text-rose-600 ${isArabic ? 'self-start md:self-auto' : ''}`}
-                            onClick={() => deletePortfolioAnalysisRecord(record.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
-                          {record.actions.map((action, actionIndex) => {
-                            const actionMeta = getAnalysisActionMeta(action.type, isArabic);
-                            const ActionIcon = actionMeta.icon;
+                  <div className="grid gap-4">
+                    {portfolioAnalysisHistory.map((record, index) => {
+                      const buyCount = record.tradePlan.filter((item) => item.side === 'buy').length;
+                      const sellCount = record.tradePlan.filter((item) => item.side === 'sell').length;
 
-                            return (
-                            <div key={`${record.id}-${action.title}-${actionIndex}`} className="rounded-xl border border-border/80 bg-card p-4">
-                              <div className={`flex items-start gap-3 ${isArabic ? 'flex-row-reverse text-right' : ''}`}>
-                                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${actionMeta.wrapperClass}`}>
-                                  <ActionIcon className="h-4 w-4" />
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <div className={`flex flex-wrap items-center gap-2 ${isArabic ? 'justify-end' : ''}`}>
-                                    <Badge variant="outline" className={actionMeta.wrapperClass}>
-                                      {actionMeta.label}
-                                    </Badge>
-                                    <div className="font-medium">{action.title}</div>
-                                  </div>
-                                  <div className="mt-2 text-sm leading-6 text-muted-foreground">{action.description}</div>
-                                </div>
+                      return (
+                        <motion.div
+                          key={record.id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.04 }}
+                        >
+                          <Collapsible defaultOpen={index === 0}>
+                            <div className="overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-br from-background via-background to-secondary/20 shadow-sm">
+                              <div className="flex items-start justify-between gap-3 border-b border-border/70 px-4 py-4 md:px-5">
+                                <CollapsibleTrigger asChild>
+                                  <button
+                                    type="button"
+                                    className={`group flex min-w-0 flex-1 flex-col gap-3 text-left ${isArabic ? 'text-right' : ''}`}
+                                  >
+                                    <div className={`flex flex-wrap items-center gap-2 text-xs text-muted-foreground ${isArabic ? 'justify-end' : ''}`}>
+                                      <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1">
+                                        <CalendarDays className="h-3.5 w-3.5" />
+                                        {new Date(record.createdAt).toLocaleString(isArabic ? 'ar-SA-u-nu-latn' : 'en-US')}
+                                      </span>
+                                      {index === 0 ? (
+                                        <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
+                                          {isArabic ? 'الأحدث' : 'Latest'}
+                                        </Badge>
+                                      ) : null}
+                                      {record.id === latestAnalysis?.id ? (
+                                        <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-600">
+                                          {isArabic ? 'نشط' : 'Active'}
+                                        </Badge>
+                                      ) : null}
+                                    </div>
+                                    <div className="flex items-start gap-3">
+                                      <div className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
+                                        <Bot className="h-5 w-5" />
+                                      </div>
+                                      <div className="min-w-0 flex-1 space-y-2">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                          <p className="text-sm font-semibold text-foreground">
+                                            {isArabic ? 'ملخص تنفيذي للمحفظة' : 'Portfolio Executive Note'}
+                                          </p>
+                                          <Badge variant="outline" className="border-border bg-background/80 text-muted-foreground">
+                                            {record.actions.length} {isArabic ? 'توصيات' : 'actions'}
+                                          </Badge>
+                                          <Badge variant="outline" className="border-border bg-background/80 text-muted-foreground">
+                                            {record.tradePlan.length} {isArabic ? 'صفوف تنفيذ' : 'trade rows'}
+                                          </Badge>
+                                        </div>
+                                        <p className="line-clamp-3 text-sm leading-7 text-foreground/90">{record.summary}</p>
+                                        <div className={`flex flex-wrap items-center gap-2 ${isArabic ? 'justify-end' : ''}`}>
+                                          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-600">
+                                            <ArrowUpRight className="h-3.5 w-3.5" />
+                                            {buyCount} {isArabic ? 'شراء' : 'buy'}
+                                          </span>
+                                          <span className="inline-flex items-center gap-1 rounded-full border border-rose-500/20 bg-rose-500/10 px-2.5 py-1 text-xs font-medium text-rose-600">
+                                            <ArrowDownRight className="h-3.5 w-3.5" />
+                                            {sellCount} {isArabic ? 'بيع' : 'sell'}
+                                          </span>
+                                          <span className="inline-flex items-center gap-1 rounded-full border border-border bg-background/70 px-2.5 py-1 text-xs text-muted-foreground">
+                                            <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                                            {isArabic ? 'اضغط للتوسيع' : 'Tap to expand'}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </button>
+                                </CollapsibleTrigger>
+
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className={`shrink-0 text-rose-500 hover:text-rose-600 ${isArabic ? 'self-start' : ''}`}
+                                  onClick={() => deletePortfolioAnalysisRecord(record.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
                               </div>
+
+                              <CollapsibleContent className="data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                                <div className="space-y-5 px-4 py-5 md:px-5">
+                                  {record.tradePlan.length > 0 ? (
+                                    <div className="overflow-hidden rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-background to-background">
+                                      <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
+                                        <Coins className="h-4 w-4 text-amber-600" />
+                                        <p className="text-sm font-semibold text-foreground">
+                                          {isArabic ? 'ملخص التنفيذ المقترح' : 'Suggested Trade Summary'}
+                                        </p>
+                                      </div>
+                                      <ScrollArea className="w-full">
+                                        <Table>
+                                          <TableHeader>
+                                            <TableRow>
+                                              <TableHead>{isArabic ? 'النوع' : 'Side'}</TableHead>
+                                              <TableHead>{isArabic ? 'الأصل' : 'Asset'}</TableHead>
+                                              <TableHead>{isArabic ? 'التوقيت' : 'When'}</TableHead>
+                                              <TableHead className="text-right">{isArabic ? 'الكمية' : 'Shares'}</TableHead>
+                                              <TableHead className="text-right">{isArabic ? 'السعر المستهدف' : 'Target Price'}</TableHead>
+                                              <TableHead>{isArabic ? 'ملاحظة' : 'Note'}</TableHead>
+                                            </TableRow>
+                                          </TableHeader>
+                                          <TableBody>
+                                            {record.tradePlan.map((trade, tradeIndex) => {
+                                              const tradeMeta = getTradeRecommendationMeta(trade.side, isArabic);
+                                              const tradeCurrency = getHoldingCurrency(trade.exchange);
+
+                                              return (
+                                                <TableRow key={`${record.id}-${trade.ticker}-${tradeIndex}`}>
+                                                  <TableCell>
+                                                    <Badge variant="outline" className={tradeMeta.badgeClass}>
+                                                      {tradeMeta.label}
+                                                    </Badge>
+                                                  </TableCell>
+                                                  <TableCell>
+                                                    <div className="space-y-1">
+                                                      <div className="font-medium">{trade.ticker}</div>
+                                                      <div className="text-xs text-muted-foreground">{trade.name}</div>
+                                                    </div>
+                                                  </TableCell>
+                                                  <TableCell>{formatTradeTiming(trade.timing)}</TableCell>
+                                                  <TableCell className="text-right">{formatNumber(trade.shares, locale)}</TableCell>
+                                                  <TableCell className="text-right">{formatCurrency(trade.targetPrice, tradeCurrency, locale)}</TableCell>
+                                                  <TableCell className="max-w-[320px] text-sm text-muted-foreground">{trade.note}</TableCell>
+                                                </TableRow>
+                                              );
+                                            })}
+                                          </TableBody>
+                                        </Table>
+                                      </ScrollArea>
+                                    </div>
+                                  ) : null}
+
+                                  <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
+                                    <p className={`text-sm leading-7 text-foreground ${isArabic ? 'text-right' : ''}`}>{record.summary}</p>
+                                  </div>
+
+                                  <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                                    {record.actions.map((action, actionIndex) => {
+                                      const actionMeta = getAnalysisActionMeta(action.type, isArabic);
+                                      const ActionIcon = actionMeta.icon;
+
+                                      return (
+                                        <div key={`${record.id}-${action.title}-${actionIndex}`} className="rounded-xl border border-border/80 bg-card p-4">
+                                          <div className={`flex items-start gap-3 ${isArabic ? 'flex-row-reverse text-right' : ''}`}>
+                                            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${actionMeta.wrapperClass}`}>
+                                              <ActionIcon className="h-4 w-4" />
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                              <div className={`flex flex-wrap items-center gap-2 ${isArabic ? 'justify-end' : ''}`}>
+                                                <Badge variant="outline" className={actionMeta.wrapperClass}>
+                                                  {actionMeta.label}
+                                                </Badge>
+                                                <div className="font-medium">{action.title}</div>
+                                              </div>
+                                              <div className="mt-2 text-sm leading-6 text-muted-foreground">{action.description}</div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              </CollapsibleContent>
                             </div>
-                          )})}
-                        </div>
-                      </motion.div>
-                    ))}
+                          </Collapsible>
+                        </motion.div>
+                      );
+                    })}
                   </div>
                 </CardContent>
               </Card>
