@@ -343,6 +343,253 @@ function mapPdfLineToRow(lineItems: Array<{ text: string; x: number }>) {
   } satisfies Record<string, unknown>;
 }
 
+async function inflatePdfStream(bytes: Uint8Array) {
+  const formats = ['deflate', 'deflate-raw'] as const;
+
+  for (const format of formats) {
+    try {
+      const ownedBuffer = Uint8Array.from(bytes).buffer as ArrayBuffer;
+      const stream = new Response(new Blob([ownedBuffer])).body?.pipeThrough(new DecompressionStream(format as CompressionFormat));
+      if (!stream) {
+        continue;
+      }
+
+      const buffer = await new Response(stream).arrayBuffer();
+      return new Uint8Array(buffer);
+    } catch {
+      // Try the next supported deflate format.
+    }
+  }
+
+  throw new Error('Unable to decompress the PDF text stream.');
+}
+
+function trimPdfStreamBoundary(bytes: Uint8Array) {
+  let start = 0;
+  let end = bytes.length;
+
+  if (bytes[start] === 0x0d && bytes[start + 1] === 0x0a) {
+    start += 2;
+  } else if (bytes[start] === 0x0a || bytes[start] === 0x0d) {
+    start += 1;
+  }
+
+  if (end > start && bytes[end - 1] === 0x0a) {
+    end -= 1;
+  }
+  if (end > start && bytes[end - 1] === 0x0d) {
+    end -= 1;
+  }
+
+  return bytes.subarray(start, end);
+}
+
+function decodePdfHexString(value: string) {
+  const normalized = value.replace(/\s+/g, '');
+  const evenHex = normalized.length % 2 === 0 ? normalized : `${normalized}0`;
+  const bytes = new Uint8Array(evenHex.length / 2);
+
+  for (let index = 0; index < evenHex.length; index += 2) {
+    bytes[index / 2] = Number.parseInt(evenHex.slice(index, index + 2), 16);
+  }
+
+  if (bytes[0] === 0xfe && bytes[1] === 0xff) {
+    return new TextDecoder('utf-16be').decode(bytes.subarray(2));
+  }
+
+  return new TextDecoder('latin1').decode(bytes);
+}
+
+function decodePdfLiteralString(value: string) {
+  let output = '';
+
+  for (let index = 0; index < value.length; index += 1) {
+    const char = value[index];
+
+    if (char !== '\\') {
+      output += char;
+      continue;
+    }
+
+    const next = value[index + 1];
+    if (!next) {
+      break;
+    }
+
+    if (/[0-7]/.test(next)) {
+      let octal = next;
+      let cursor = index + 2;
+      while (cursor < value.length && octal.length < 3 && /[0-7]/.test(value[cursor])) {
+        octal += value[cursor];
+        cursor += 1;
+      }
+      output += String.fromCharCode(Number.parseInt(octal, 8));
+      index = cursor - 1;
+      continue;
+    }
+
+    const escaped = {
+      n: '\n',
+      r: '\r',
+      t: '\t',
+      b: '\b',
+      f: '\f',
+      '(': '(',
+      ')': ')',
+      '\\': '\\',
+    }[next];
+
+    if (escaped) {
+      output += escaped;
+      index += 1;
+      continue;
+    }
+
+    if (next === '\n' || next === '\r') {
+      index += 1;
+      if (next === '\r' && value[index + 1] === '\n') {
+        index += 1;
+      }
+      continue;
+    }
+
+    output += next;
+    index += 1;
+  }
+
+  return output;
+}
+
+function extractPdfStringTokens(content: string) {
+  const tokens: string[] = [];
+  let index = 0;
+
+  while (index < content.length) {
+    const char = content[index];
+
+    if (char === '(') {
+      let depth = 1;
+      let cursor = index + 1;
+      let value = '';
+
+      while (cursor < content.length && depth > 0) {
+        const current = content[cursor];
+        if (current === '\\') {
+          value += current;
+          cursor += 1;
+          if (cursor < content.length) {
+            value += content[cursor];
+          }
+        } else if (current === '(') {
+          depth += 1;
+          value += current;
+        } else if (current === ')') {
+          depth -= 1;
+          if (depth > 0) {
+            value += current;
+          }
+        } else {
+          value += current;
+        }
+        cursor += 1;
+      }
+
+      if (depth === 0) {
+        const decoded = normalizeWhitespace(decodePdfLiteralString(value));
+        if (decoded) {
+          tokens.push(decoded);
+        }
+      }
+
+      index = cursor;
+      continue;
+    }
+
+    if (char === '<' && content[index + 1] !== '<') {
+      const end = content.indexOf('>', index + 1);
+      if (end > index) {
+        const decoded = normalizeWhitespace(decodePdfHexString(content.slice(index + 1, end)));
+        if (decoded) {
+          tokens.push(decoded);
+        }
+        index = end + 1;
+        continue;
+      }
+    }
+
+    index += 1;
+  }
+
+  return tokens;
+}
+
+async function extractPdfTextFallback(bytes: Uint8Array) {
+  const binary = new TextDecoder('latin1').decode(bytes);
+  const streamPattern = /<<([\s\S]*?)>>\s*stream\r?\n/g;
+  const collectedLines: string[] = [];
+
+  for (const match of binary.matchAll(streamPattern)) {
+    const dict = match[1] ?? '';
+    const streamStart = (match.index ?? 0) + match[0].length;
+    const streamEnd = binary.indexOf('endstream', streamStart);
+
+    if (streamEnd <= streamStart) {
+      continue;
+    }
+
+    const rawStream = trimPdfStreamBoundary(bytes.subarray(streamStart, streamEnd));
+    let decodedStream = rawStream;
+
+    try {
+      if (/\/Filter\s*(?:\[\s*)?\/FlateDecode\b/.test(dict)) {
+        decodedStream = await inflatePdfStream(rawStream);
+      } else if (/\/Filter\b/.test(dict)) {
+        continue;
+      }
+    } catch {
+      continue;
+    }
+
+    const content = new TextDecoder('latin1').decode(decodedStream);
+    const tokens = extractPdfStringTokens(content);
+
+    if (tokens.length === 0) {
+      continue;
+    }
+
+    for (const token of tokens) {
+      if (collectedLines.length >= MAX_PDF_LINE_COUNT) {
+        throw new Error('PDF statement contains too many text lines to import safely.');
+      }
+
+      collectedLines.push(token);
+    }
+  }
+
+  if (collectedLines.length === 0) {
+    throw new Error('This PDF does not appear to contain extractable statement rows. Try a CSV/XLSX export or a text-based PDF.');
+  }
+
+  const rows = collectedLines.flatMap((line) => {
+    const row = mapPdfLineToRow([{ text: line, x: 0 }]);
+    return row ? [row] : [];
+  });
+
+  if (rows.length === 0) {
+    throw new Error('This PDF does not appear to contain extractable statement rows. Try a CSV/XLSX export or a text-based PDF.');
+  }
+
+  return rows.slice(0, MAX_STATEMENT_ROWS);
+}
+
+function shouldUsePdfFallback(error: unknown) {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return /detached|out-of-bounds ArrayBuffer|Cannot perform %TypedArray%\.prototype\.fill/i.test(error.message);
+}
+
 async function parsePdfRows(bytes: Uint8Array) {
   ensurePdfJsNodePolyfills();
   const originalConsoleWarn = console.warn;
@@ -415,7 +662,15 @@ async function parsePdfRows(bytes: Uint8Array) {
 
     return rows.slice(0, MAX_STATEMENT_ROWS);
   } catch (error) {
-    await loadingTask.destroy();
+    try {
+      await loadingTask.destroy();
+    } catch {
+      // Ignore worker teardown errors and continue with fallback/error handling.
+    }
+
+    if (shouldUsePdfFallback(error)) {
+      return extractPdfTextFallback(Uint8Array.from(bytes));
+    }
     if (error instanceof Error && /password/i.test(error.message)) {
       throw new Error('Password-protected PDF statements are not supported.');
     }
