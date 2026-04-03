@@ -1,6 +1,14 @@
 import 'server-only';
 
-import type { StatementAccountType, StatementImportPreview, StatementImportRow } from '@/lib/bank-statement-types';
+import type {
+  StatementAccountType,
+  StatementClassificationSource,
+  StatementDirection,
+  StatementImportPreview,
+  StatementImportRow,
+  StatementImportStatus,
+  StatementRawData,
+} from '@/lib/bank-statement-types';
 import type { ExpenseCategory, IncomeSource } from '@/store/useAppStore';
 import { ensurePdfJsNodePolyfills } from '@/lib/pdfjs-node-polyfills';
 
@@ -69,6 +77,40 @@ function sanitizeText(value: string) {
     .trim();
 
   return cleaned.slice(0, MAX_TEXT_FIELD_LENGTH);
+}
+
+function sanitizeRawValue(value: unknown): string | number | boolean | null {
+  if (typeof value === 'string') {
+    return sanitizeText(value);
+  }
+
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null;
+  }
+
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  if (value instanceof Date && Number.isFinite(value.getTime())) {
+    return value.toISOString();
+  }
+
+  if (value === null || typeof value === 'undefined') {
+    return null;
+  }
+
+  return sanitizeText(String(value));
+}
+
+function buildRawStatementData(row: Record<string, unknown>): StatementRawData {
+  const output: StatementRawData = {};
+
+  for (const [key, value] of Object.entries(row)) {
+    output[sanitizeText(key) || key] = sanitizeRawValue(value);
+  }
+
+  return output;
 }
 
 function assertStatementFile(file: File, bytes: Uint8Array) {
@@ -526,48 +568,122 @@ function looksLikeInternalTransfer(descriptionText: string) {
   return /(payment received|card payment|payment thank you|auto[-\s]?pay|internal transfer|own account|balance transfer|سداد|تحويل داخلي)/i.test(descriptionText);
 }
 
-function resolveTransactionDirection({
-  accountType,
+function buildTransactionFingerprint({
+  date,
+  amount,
+  currency,
+  direction,
+  description,
+  reference,
+}: {
+  date: string;
+  amount: number;
+  currency: string;
+  direction: StatementDirection | null;
+  description: string;
+  reference: string | null;
+}) {
+  const normalizedDescription = normalizeHeader(description).slice(0, 120);
+  const normalizedReference = normalizeHeader(reference ?? '').slice(0, 80);
+
+  return [
+    date,
+    amount.toFixed(2),
+    currency.toUpperCase(),
+    direction ?? 'review',
+    normalizedDescription,
+    normalizedReference,
+  ].join('|');
+}
+
+function buildStatementRowNotes(parts: Array<string | null | undefined>) {
+  const values = parts
+    .map((part) => sanitizeText(String(part ?? '')))
+    .filter(Boolean);
+
+  return values.length > 0 ? values.join(' • ') : null;
+}
+
+function classifyTransactionDirection({
   amount,
   debit,
   credit,
   description,
   typeText,
 }: {
-  accountType: StatementAccountType;
   amount: number;
   debit: number;
   credit: number;
   description: string;
   typeText: string;
-}) {
+}): {
+  direction: StatementDirection | null;
+  classificationSource: StatementClassificationSource | null;
+  importStatus: StatementImportStatus;
+  reviewReason: string | null;
+} {
   const context = `${description} ${typeText}`.toLowerCase();
 
   if (looksLikeInternalTransfer(context)) {
-    return 'skip' as const;
+    return {
+      direction: null,
+      classificationSource: null,
+      importStatus: 'needs_review',
+      reviewReason: 'Internal transfer or card payment detected. Review before importing.',
+    };
   }
 
   if (credit > 0 && debit <= 0) {
-    if (accountType === 'credit_card' && /(refund|reversal|cashback|credit)/.test(context)) {
-      return 'income' as const;
-    }
-
-    return accountType === 'credit_card' ? 'skip' as const : 'income' as const;
+    return {
+      direction: 'income',
+      classificationSource: 'credit',
+      importStatus: 'ready',
+      reviewReason: null,
+    };
   }
 
   if (debit > 0 && credit <= 0) {
-    return 'expense' as const;
+    return {
+      direction: 'expense',
+      classificationSource: 'debit',
+      importStatus: 'ready',
+      reviewReason: null,
+    };
   }
 
-  if (accountType === 'credit_card') {
-    if (/(refund|reversal|cashback)/.test(context)) {
-      return 'income' as const;
-    }
-
-    return amount >= 0 ? 'expense' as const : 'income' as const;
+  if (debit > 0 && credit > 0) {
+    return {
+      direction: null,
+      classificationSource: null,
+      importStatus: 'needs_review',
+      reviewReason: 'Both debit and credit values were found in the same row.',
+    };
   }
 
-  return amount >= 0 ? 'income' as const : 'expense' as const;
+  if (amount > 0) {
+    return {
+      direction: 'income',
+      classificationSource: 'signed_amount',
+      importStatus: 'needs_review',
+      reviewReason: 'Direction was inferred from a positive signed amount because debit/credit columns were missing.',
+    };
+  }
+
+  if (amount < 0) {
+    return {
+      direction: 'expense',
+      classificationSource: 'signed_amount',
+      importStatus: 'needs_review',
+      reviewReason: 'Direction was inferred from a negative signed amount because debit/credit columns were missing.',
+    };
+  }
+
+  return {
+    direction: null,
+    classificationSource: null,
+    importStatus: 'needs_review',
+    reviewReason: 'No valid debit or credit amount was found.',
+  };
 }
 
 function validateStatementColumns(rows: Record<string, unknown>[]) {
@@ -601,12 +717,16 @@ export async function buildStatementImportPreview(file: File, accountType: State
     validateStatementColumns(rows);
 
     let skippedRows = 0;
+    let readyCount = 0;
+    let needsReviewCount = 0;
+    let duplicateCount = 0;
     let incomeCount = 0;
     let expenseCount = 0;
     let incomeTotal = 0;
     let expenseTotal = 0;
+    const seenFingerprints = new Set<string>();
 
-    const previewRows = rows.flatMap((row, index) => {
+    const previewRows = rows.flatMap((row, index): StatementImportRow[] => {
       const date = parseDateValue(
         getFieldValue(row, ['Date', 'Transaction Date', 'Posting Date', 'Value Date', 'Booked Date'])
       );
@@ -615,58 +735,100 @@ export async function buildStatementImportPreview(file: File, accountType: State
       ));
       const currency = sanitizeText(String(getFieldValue(row, ['Currency', 'Curr', 'CCY']) ?? DEFAULT_CURRENCY).toUpperCase()) || DEFAULT_CURRENCY;
       const rawType = sanitizeText(String(getFieldValue(row, ['Type', 'Category', 'Transaction Type', 'Classification']) ?? ''));
+      const reference = sanitizeText(String(
+        getFieldValue(row, ['Reference', 'Reference Number', 'Ref', 'Transaction Reference', 'ID', 'Trace Number']) ?? ''
+      )) || null;
+      const rowNotes = sanitizeText(String(
+        getFieldValue(row, ['Notes', 'Note', 'Comment', 'Remarks', 'Additional Details']) ?? ''
+      )) || null;
       const amountValue = parseAmount(getFieldValue(row, ['Amount', 'Transaction Amount', 'Amt', 'Value', 'Net Amount', 'Total']));
       const debit = Math.abs(parseAmount(getFieldValue(row, ['Debit', 'Withdrawal', 'Outflow', 'Money Out', 'DR', 'Debit Amount'])));
       const credit = Math.abs(parseAmount(getFieldValue(row, ['Credit', 'Deposit', 'Inflow', 'Money In', 'CR', 'Credit Amount'])));
       const absoluteAmount = debit > 0 || credit > 0 ? Math.max(debit, credit) : Math.abs(amountValue);
+      const sourceRowId = `statement-row-${index + 1}`;
+      const rawData = buildRawStatementData(row);
 
       if (!date || !description || absoluteAmount <= 0) {
         skippedRows += 1;
         return [];
       }
 
-      const direction = resolveTransactionDirection({
-        accountType,
+      const classification = classifyTransactionDirection({
         amount: amountValue,
         debit,
         credit,
         description,
         typeText: rawType,
       });
-
-      if (direction === 'skip') {
-        skippedRows += 1;
-        return [];
-      }
-
       const expenseCategory = inferExpenseCategory(rawType, description);
       const incomeSource = inferIncomeSource(rawType, description);
       const typeLabel = rawType
         ? formatTypeLabel(rawType)
-        : direction === 'income'
+        : classification.direction === 'income'
           ? formatTypeLabel(incomeSource)
-          : formatTypeLabel(expenseCategory);
+          : classification.direction === 'expense'
+            ? formatTypeLabel(expenseCategory)
+            : formatTypeLabel(accountType === 'credit_card' ? 'card transaction' : 'bank transaction');
+      const fingerprint = buildTransactionFingerprint({
+        date,
+        amount: absoluteAmount,
+        currency,
+        direction: classification.direction,
+        description,
+        reference,
+      });
 
-      if (direction === 'income') {
+      let importStatus = classification.importStatus;
+      let reviewReason = classification.reviewReason;
+
+      if (seenFingerprints.has(fingerprint)) {
+        importStatus = 'duplicate';
+        reviewReason = 'Duplicate row detected inside the uploaded statement.';
+      } else {
+        seenFingerprints.add(fingerprint);
+      }
+
+      if (importStatus === 'ready' && classification.direction === 'income') {
         incomeCount += 1;
         incomeTotal += absoluteAmount;
-      } else {
+      } else if (importStatus === 'ready' && classification.direction === 'expense') {
         expenseCount += 1;
         expenseTotal += absoluteAmount;
       }
 
+      if (importStatus === 'ready') {
+        readyCount += 1;
+      } else if (importStatus === 'duplicate') {
+        duplicateCount += 1;
+      } else {
+        needsReviewCount += 1;
+      }
+
       return [{
-        id: `statement-row-${index + 1}`,
+        id: sourceRowId,
+        sourceRowId,
         date,
         description,
+        details: description,
         amount: absoluteAmount,
         currency,
-        direction,
+        direction: classification.direction,
+        debitAmount: debit > 0 ? debit : null,
+        creditAmount: credit > 0 ? credit : null,
+        reference,
         typeLabel,
         expenseCategory,
         incomeSource,
         merchantName: inferMerchantName(description),
-        notes: rawType ? `Statement type: ${rawType}` : null,
+        notes: buildStatementRowNotes([
+          rawType ? `Statement type: ${rawType}` : null,
+          rowNotes,
+        ]),
+        rawData,
+        fingerprint,
+        classificationSource: classification.classificationSource,
+        importStatus,
+        reviewReason,
       }] satisfies StatementImportRow[];
     });
 
@@ -679,6 +841,9 @@ export async function buildStatementImportPreview(file: File, accountType: State
     return {
       rows: previewRows.sort((left, right) => right.date.localeCompare(left.date)),
       skippedRows,
+      readyCount,
+      needsReviewCount,
+      duplicateCount,
       incomeCount,
       expenseCount,
       incomeTotal,

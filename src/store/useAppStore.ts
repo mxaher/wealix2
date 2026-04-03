@@ -26,6 +26,14 @@ export type ExpenseCategory =
   | 'Housing'
   | 'Other';
 export type PaymentMethod = 'Cash' | 'Card' | 'Transfer' | 'Wallet' | 'Other';
+export type ImportedRecordSource = 'receipt' | 'statement';
+
+export interface ImportAuditRecord {
+  source: ImportedRecordSource;
+  sourceRowId?: string | null;
+  importedAt: string;
+  rawData?: Record<string, string | number | boolean | null> | null;
+}
 
 interface User {
   id: string;
@@ -93,6 +101,8 @@ export interface IncomeEntry {
   date: string;
   isRecurring: boolean;
   notes?: string | null;
+  importFingerprint?: string | null;
+  importAudit?: ImportAuditRecord | null;
 }
 
 export interface ExpenseEntry {
@@ -106,6 +116,8 @@ export interface ExpenseEntry {
   paymentMethod: PaymentMethod;
   notes?: string | null;
   receiptId?: string | null;
+  importFingerprint?: string | null;
+  importAudit?: ImportAuditRecord | null;
 }
 
 export interface ReceiptScanResult {

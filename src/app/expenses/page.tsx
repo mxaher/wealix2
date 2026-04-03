@@ -17,6 +17,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import {
   type StatementAccountType,
   type StatementImportPreview,
+  type StatementImportRow,
+  type StatementImportStatus,
 } from '@/lib/bank-statement-types';
 import {
   useAppStore,
@@ -24,6 +26,7 @@ import {
   useSubscription,
   type ExpenseCategory,
   type ExpenseEntry,
+  type ImportAuditRecord,
   type IncomeEntry,
   type PaymentMethod,
 } from '@/store/useAppStore';
@@ -58,8 +61,42 @@ const defaultExpenseForm = {
   notes: '',
 };
 
+function normalizeFingerprintText(value: string | null | undefined) {
+  return String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+    .slice(0, 120);
+}
+
+function buildTransactionFingerprint({
+  date,
+  amount,
+  currency,
+  direction,
+  description,
+  reference,
+}: {
+  date: string;
+  amount: number;
+  currency: string;
+  direction: 'income' | 'expense' | null;
+  description: string;
+  reference?: string | null;
+}) {
+  return [
+    date,
+    amount.toFixed(2),
+    currency.toUpperCase(),
+    direction ?? 'review',
+    normalizeFingerprintText(description),
+    normalizeFingerprintText(reference),
+  ].join('|');
+}
+
 export default function ExpensesPage() {
   const locale = useAppStore((state) => state.locale);
+  const incomeEntries = useAppStore((state) => state.incomeEntries);
   const expenseEntries = useAppStore((state) => state.expenseEntries);
   const receiptScans = useAppStore((state) => state.receiptScans);
   const addExpenseEntry = useAppStore((state) => state.addExpenseEntry);
@@ -125,6 +162,90 @@ export default function ExpensesPage() {
       topCategory,
     };
   }, [expenseEntries]);
+
+  const existingTransactionFingerprints = useMemo(() => {
+    const fingerprints = new Set<string>();
+
+    for (const entry of incomeEntries) {
+      const fingerprint = entry.importFingerprint || buildTransactionFingerprint({
+        date: entry.date,
+        amount: entry.amount,
+        currency: entry.currency,
+        direction: 'income',
+        description: entry.sourceName || entry.notes || '',
+      });
+      fingerprints.add(fingerprint);
+    }
+
+    for (const entry of expenseEntries) {
+      const fingerprint = entry.importFingerprint || buildTransactionFingerprint({
+        date: entry.date,
+        amount: entry.amount,
+        currency: entry.currency,
+        direction: 'expense',
+        description: entry.description,
+      });
+      fingerprints.add(fingerprint);
+    }
+
+    return fingerprints;
+  }, [expenseEntries, incomeEntries]);
+
+  const statementRowsWithStatus = useMemo(() => {
+    if (!statementPreview) {
+      return [];
+    }
+
+    return statementPreview.rows.map((row) => {
+      if (row.importStatus === 'duplicate') {
+        return row;
+      }
+
+      if (existingTransactionFingerprints.has(row.fingerprint)) {
+        return {
+          ...row,
+          importStatus: 'duplicate' as StatementImportStatus,
+          reviewReason: isArabic
+            ? 'هذه العملية موجودة بالفعل وتم منع استيرادها مرة أخرى.'
+            : 'This transaction already exists and will not be imported again.',
+        };
+      }
+
+      return row;
+    });
+  }, [existingTransactionFingerprints, isArabic, statementPreview]);
+
+  const statementPreviewStats = useMemo(() => {
+    return statementRowsWithStatus.reduce((accumulator, row) => {
+      if (row.importStatus === 'ready') {
+        accumulator.readyCount += 1;
+
+        if (row.direction === 'income') {
+          accumulator.incomeCount += 1;
+          accumulator.incomeTotal += row.amount;
+        }
+
+        if (row.direction === 'expense') {
+          accumulator.expenseCount += 1;
+          accumulator.expenseTotal += row.amount;
+        }
+      } else if (row.importStatus === 'duplicate') {
+        accumulator.duplicateCount += 1;
+      } else {
+        accumulator.needsReviewCount += 1;
+      }
+
+      return accumulator;
+    }, {
+      readyCount: 0,
+      needsReviewCount: 0,
+      duplicateCount: 0,
+      incomeCount: 0,
+      expenseCount: 0,
+      incomeTotal: 0,
+      expenseTotal: 0,
+    });
+  }, [statementRowsWithStatus]);
 
   const resetStatementImport = () => {
     setStatementFile(null);
@@ -244,7 +365,10 @@ export default function ExpensesPage() {
       return;
     }
 
-    const importedIncomeEntries: IncomeEntry[] = statementPreview.rows
+    const importedAt = new Date().toISOString();
+    const readyRows = statementRowsWithStatus.filter((row) => row.importStatus === 'ready');
+
+    const importedIncomeEntries: IncomeEntry[] = readyRows
       .filter((row) => row.direction === 'income')
       .map((row) => ({
         id: createOpaqueId('income'),
@@ -255,16 +379,28 @@ export default function ExpensesPage() {
         frequency: 'one_time' as const,
         date: row.date,
         isRecurring: false,
-        notes: [`Imported from ${statementAccountType === 'credit_card' ? 'credit card' : 'current account'} statement`, row.notes, row.description]
+        notes: [
+          `Imported from ${statementAccountType === 'credit_card' ? 'credit card' : 'current account'} statement`,
+          row.notes,
+          row.description,
+          row.reference ? `Reference: ${row.reference}` : null,
+        ]
           .filter(Boolean)
           .join(' • '),
+        importFingerprint: row.fingerprint,
+        importAudit: {
+          source: 'statement',
+          sourceRowId: row.sourceRowId,
+          importedAt,
+          rawData: row.rawData,
+        } satisfies ImportAuditRecord,
       }))
       .sort((left, right) => right.date.localeCompare(left.date));
 
     const importedExpensePaymentMethod: PaymentMethod =
       statementAccountType === 'credit_card' ? 'Card' : 'Transfer';
 
-    const importedExpenseEntries: ExpenseEntry[] = statementPreview.rows
+    const importedExpenseEntries: ExpenseEntry[] = readyRows
       .filter((row) => row.direction === 'expense')
       .map((row) => ({
         id: createOpaqueId('expense'),
@@ -275,12 +411,37 @@ export default function ExpensesPage() {
         merchantName: row.merchantName,
         date: row.date,
         paymentMethod: importedExpensePaymentMethod,
-        notes: [`Imported from ${statementAccountType === 'credit_card' ? 'credit card' : 'current account'} statement`, row.notes]
+        notes: [
+          `Imported from ${statementAccountType === 'credit_card' ? 'credit card' : 'current account'} statement`,
+          row.notes,
+          row.reference ? `Reference: ${row.reference}` : null,
+        ]
           .filter(Boolean)
           .join(' • '),
         receiptId: null,
+        importFingerprint: row.fingerprint,
+        importAudit: {
+          source: 'statement',
+          sourceRowId: row.sourceRowId,
+          importedAt,
+          rawData: row.rawData,
+        } satisfies ImportAuditRecord,
       }))
       .sort((left, right) => right.date.localeCompare(left.date));
+
+    const duplicateRows = statementRowsWithStatus.filter((row) => row.importStatus === 'duplicate').length;
+    const reviewRows = statementRowsWithStatus.filter((row) => row.importStatus === 'needs_review').length;
+
+    if (importedIncomeEntries.length === 0 && importedExpenseEntries.length === 0) {
+      toast({
+        title: isArabic ? 'لا توجد صفوف قابلة للاستيراد' : 'No importable rows',
+        description: isArabic
+          ? 'كل الصفوف الحالية إما مكررة أو تحتاج مراجعة يدوية.'
+          : 'All current rows are either duplicates or need manual review.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     if (importedIncomeEntries.length > 0) {
       addIncomeEntries(importedIncomeEntries);
@@ -295,8 +456,8 @@ export default function ExpensesPage() {
     toast({
       title: isArabic ? 'تم استيراد كشف الحساب' : 'Statement imported',
       description: isArabic
-        ? `تمت إضافة ${importedIncomeEntries.length} دخل و${importedExpenseEntries.length} مصروف إلى النظام.`
-        : `Added ${importedIncomeEntries.length} income and ${importedExpenseEntries.length} expenses to the system.`,
+        ? `تمت إضافة ${importedIncomeEntries.length} دخل و${importedExpenseEntries.length} مصروف. تم تخطي ${duplicateRows} مكرر وترك ${reviewRows} للمراجعة.`
+        : `Added ${importedIncomeEntries.length} income and ${importedExpenseEntries.length} expenses. Skipped ${duplicateRows} duplicates and left ${reviewRows} for review.`,
     });
   };
 
@@ -392,6 +553,25 @@ export default function ExpensesPage() {
       return;
     }
 
+    const receiptFingerprint = buildTransactionFingerprint({
+      date: ocrDraft.date,
+      amount,
+      currency: ocrDraft.currency,
+      direction: 'expense',
+      description: ocrDraft.description.trim() || `${selectedFile.name} receipt`,
+    });
+
+    if (existingTransactionFingerprints.has(receiptFingerprint)) {
+      toast({
+        title: isArabic ? 'إيصال مكرر' : 'Duplicate receipt',
+        description: isArabic
+          ? 'هذه العملية موجودة بالفعل ولن يتم حفظها مرتين.'
+          : 'This transaction already exists and will not be saved twice.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const receiptId = createOpaqueId('receipt');
     addReceiptScan({
       id: receiptId,
@@ -416,6 +596,19 @@ export default function ExpensesPage() {
       paymentMethod: 'Card',
       notes: ocrDraft.rawText.trim().slice(0, 200) || null,
       receiptId,
+      importFingerprint: receiptFingerprint,
+      importAudit: {
+        source: 'receipt',
+        importedAt: new Date().toISOString(),
+        rawData: {
+          merchantName: ocrDraft.merchantName.trim() || null,
+          amount,
+          currency: ocrDraft.currency,
+          date: ocrDraft.date,
+          rawText: ocrDraft.rawText.trim().slice(0, 500),
+          imageName: selectedFile.name,
+        },
+      } satisfies ImportAuditRecord,
     });
 
     setScannerOpen(false);
@@ -551,37 +744,48 @@ export default function ExpensesPage() {
 
                 {statementPreview && (
                   <div className="space-y-4">
-                    <div className="grid gap-3 md:grid-cols-4">
+                    <div className="grid gap-3 md:grid-cols-5">
                       <Card>
                         <CardContent className="p-4">
                           <div className="text-xs text-muted-foreground">{isArabic ? 'الدخل المستخرج' : 'Extracted income'}</div>
-                          <div className="mt-1 font-semibold">{formatCurrency(statementPreview.incomeTotal, statementPreview.currency, locale)}</div>
-                          <div className="text-xs text-muted-foreground">{statementPreview.incomeCount} {isArabic ? 'عملية' : 'rows'}</div>
+                          <div className="mt-1 font-semibold">{formatCurrency(statementPreviewStats.incomeTotal, statementPreview.currency, locale)}</div>
+                          <div className="text-xs text-muted-foreground">{statementPreviewStats.incomeCount} {isArabic ? 'عملية جاهزة' : 'ready rows'}</div>
                         </CardContent>
                       </Card>
                       <Card>
                         <CardContent className="p-4">
                           <div className="text-xs text-muted-foreground">{isArabic ? 'المصروفات المستخرجة' : 'Extracted expenses'}</div>
-                          <div className="mt-1 font-semibold">{formatCurrency(statementPreview.expenseTotal, statementPreview.currency, locale)}</div>
-                          <div className="text-xs text-muted-foreground">{statementPreview.expenseCount} {isArabic ? 'عملية' : 'rows'}</div>
+                          <div className="mt-1 font-semibold">{formatCurrency(statementPreviewStats.expenseTotal, statementPreview.currency, locale)}</div>
+                          <div className="text-xs text-muted-foreground">{statementPreviewStats.expenseCount} {isArabic ? 'عملية جاهزة' : 'ready rows'}</div>
                         </CardContent>
                       </Card>
                       <Card>
                         <CardContent className="p-4">
                           <div className="text-xs text-muted-foreground">{isArabic ? 'الإجمالي القابل للاستيراد' : 'Ready to import'}</div>
-                          <div className="mt-1 font-semibold">{statementPreview.rows.length}</div>
+                          <div className="mt-1 font-semibold">{statementPreviewStats.readyCount}</div>
                           <div className="text-xs text-muted-foreground">{isArabic ? 'صف صالح' : 'valid rows'}</div>
                         </CardContent>
                       </Card>
                       <Card>
                         <CardContent className="p-4">
-                          <div className="text-xs text-muted-foreground">{isArabic ? 'صفوف متخطاة' : 'Skipped rows'}</div>
-                          <div className="mt-1 font-semibold">{statementPreview.skippedRows}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {isArabic ? 'تحويلات داخلية أو بيانات ناقصة' : 'internal transfers or incomplete rows'}
-                          </div>
+                          <div className="text-xs text-muted-foreground">{isArabic ? 'تحتاج مراجعة' : 'Needs review'}</div>
+                          <div className="mt-1 font-semibold">{statementPreviewStats.needsReviewCount}</div>
+                          <div className="text-xs text-muted-foreground">{isArabic ? 'صف غير مؤكد' : 'uncertain rows'}</div>
                         </CardContent>
                       </Card>
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="text-xs text-muted-foreground">{isArabic ? 'الصفوف المكررة' : 'Duplicate rows'}</div>
+                          <div className="mt-1 font-semibold">{statementPreviewStats.duplicateCount}</div>
+                          <div className="text-xs text-muted-foreground">{isArabic ? 'لن تُستورد' : 'will not import'}</div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    <div className="text-xs text-muted-foreground">
+                      {isArabic
+                        ? `تم تجاهل ${statementPreview.skippedRows} صف غير صالح أو ناقص أثناء التحليل.`
+                        : `Skipped ${statementPreview.skippedRows} empty or invalid rows during parsing.`}
                     </div>
 
                     <Card className="border-gold/30 bg-gold/5">
@@ -589,8 +793,8 @@ export default function ExpensesPage() {
                         <CardTitle className="text-base">{isArabic ? 'معاينة المعاملات' : 'Transaction Preview'}</CardTitle>
                         <CardDescription>
                           {isArabic
-                            ? 'سيتم حفظ الحركات الدائنة كدخل والحركات المدينة كمصروفات، مع تصنيف النوع تلقائياً.'
-                            : 'Credits will be saved as income and debits as expenses, with type inferred automatically.'}
+                            ? 'سيتم استيراد الصفوف الجاهزة فقط. الصفوف المكررة أو غير المؤكدة ستبقى للمراجعة اليدوية.'
+                            : 'Only ready rows will be imported. Duplicate or uncertain rows stay flagged for manual review.'}
                         </CardDescription>
                         <div className="text-xs text-muted-foreground">
                           {isArabic
@@ -599,14 +803,24 @@ export default function ExpensesPage() {
                         </div>
                       </CardHeader>
                       <CardContent className="space-y-3">
-                        {statementPreview.rows.slice(0, 12).map((row) => (
+                        {statementRowsWithStatus.slice(0, 12).map((row) => (
                           <div key={row.id} className="flex flex-col gap-3 rounded-xl border bg-background/80 p-4 md:flex-row md:items-center md:justify-between">
                             <div className="space-y-1">
                               <div className="flex flex-wrap items-center gap-2">
                                 <span className="font-medium">{row.description}</span>
                                 <Badge variant="secondary">{row.typeLabel}</Badge>
-                                <Badge variant={row.direction === 'income' ? 'default' : 'outline'}>
-                                  {row.direction === 'income'
+                                <Badge
+                                  variant={
+                                    row.importStatus === 'ready'
+                                      ? row.direction === 'income' ? 'default' : 'outline'
+                                      : 'secondary'
+                                  }
+                                >
+                                  {row.importStatus === 'duplicate'
+                                    ? (isArabic ? 'مكرر' : 'Duplicate')
+                                    : row.importStatus === 'needs_review'
+                                      ? (isArabic ? 'مراجعة' : 'Review')
+                                      : row.direction === 'income'
                                     ? (isArabic ? 'دخل' : 'Income')
                                     : (isArabic ? 'مصروف' : 'Expense')}
                                 </Badge>
@@ -615,22 +829,37 @@ export default function ExpensesPage() {
                                 {row.date}
                                 {' • '}
                                 {row.merchantName || (isArabic ? 'بدون تاجر' : 'No merchant')}
+                                {row.reference ? ` • ${row.reference}` : ''}
                               </div>
+                              {row.reviewReason && (
+                                <div className="text-xs text-amber-600">
+                                  {row.reviewReason}
+                                </div>
+                              )}
+                              {row.notes && (
+                                <div className="text-xs text-muted-foreground">
+                                  {row.notes}
+                                </div>
+                              )}
                             </div>
-                            <div className={`flex items-center gap-2 text-right font-semibold ${row.direction === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                              {row.direction === 'income' ? <ArrowUpCircle className="h-4 w-4" /> : <ArrowDownCircle className="h-4 w-4" />}
+                            <div className={`flex items-center gap-2 text-right font-semibold ${row.direction === 'income' ? 'text-emerald-600' : row.direction === 'expense' ? 'text-rose-600' : 'text-amber-600'}`}>
+                              {row.direction === 'income'
+                                ? <ArrowUpCircle className="h-4 w-4" />
+                                : row.direction === 'expense'
+                                  ? <ArrowDownCircle className="h-4 w-4" />
+                                  : <Info className="h-4 w-4" />}
                               {formatCurrency(row.amount, row.currency, locale)}
                             </div>
                           </div>
                         ))}
-                        {statementPreview.rows.length > 12 && (
+                        {statementRowsWithStatus.length > 12 && (
                           <p className="text-xs text-muted-foreground">
                             {isArabic
-                              ? `يتم عرض أول 12 حركة فقط من أصل ${statementPreview.rows.length} حركة جاهزة للاستيراد.`
-                              : `Showing the first 12 rows out of ${statementPreview.rows.length} transactions ready to import.`}
+                              ? `يتم عرض أول 12 حركة فقط من أصل ${statementRowsWithStatus.length} حركة مستخرجة.`
+                              : `Showing the first 12 rows out of ${statementRowsWithStatus.length} extracted transactions.`}
                           </p>
                         )}
-                        <Button className="w-full" onClick={handleSaveStatementImport}>
+                        <Button className="w-full" onClick={handleSaveStatementImport} disabled={statementPreviewStats.readyCount === 0}>
                           {isArabic ? 'استيراد إلى النظام' : 'Import to System'}
                         </Button>
                       </CardContent>
