@@ -1,16 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireInternalRouteSecret } from '@/lib/internal-route-auth';
+import { extractNvidiaResponseText } from './response';
 
 type NvidiaChatResponse = {
   choices?: Array<{
     message?: {
-      content?: string;
+      content?: string | Array<{ type?: string; text?: string }>;
+      reasoning_content?: string;
     };
   }>;
   error?: {
     message?: string;
   };
 };
+
+const DEFAULT_NVIDIA_TIMEOUT_MS = 25_000;
 
 export async function POST(request: NextRequest) {
   const authError = requireInternalRouteSecret(request);
@@ -39,33 +43,44 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'NVIDIA_API_KEY is not configured.' }, { status: 503 });
   }
 
-  const response = await fetch(`${nvidiaBase}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${nvidiaApiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: nvidiaModel,
-      temperature: 0.3,
-      top_p: 0.9,
-      max_tokens: 1800,
-      messages: [
-        {
-          role: 'system',
-          content:
-            body?.response_format === 'json'
-              ? 'You are an internal Wealix company operating agent. Return only valid JSON and no markdown fencing.'
-              : 'You are an internal Wealix company operating agent. Be concise, actionable, and factual.'
-        },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ]
-    }),
-    cache: 'no-store'
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${nvidiaBase}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${nvidiaApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: nvidiaModel,
+        temperature: 0.3,
+        top_p: 0.9,
+        max_tokens: 1800,
+        messages: [
+          {
+            role: 'system',
+            content:
+              body?.response_format === 'json'
+                ? 'You are an internal Wealix company operating agent. Return only valid JSON and no markdown fencing.'
+                : 'You are an internal Wealix company operating agent. Be concise, actionable, and factual.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ]
+      }),
+      cache: 'no-store',
+      signal: AbortSignal.timeout(DEFAULT_NVIDIA_TIMEOUT_MS)
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown NVIDIA request failure.';
+    const status = /aborted|timeout/i.test(message) ? 504 : 502;
+    return NextResponse.json(
+      { error: status === 504 ? 'NVIDIA request timed out.' : `NVIDIA request failed: ${message}` },
+      { status }
+    );
+  }
 
   const payload = await response.json().catch(() => null) as NvidiaChatResponse | null;
   if (!response.ok) {
@@ -75,7 +90,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const content = payload?.choices?.[0]?.message?.content?.trim();
+  const content = extractNvidiaResponseText(payload);
   if (!content) {
     return NextResponse.json({ error: 'Empty NVIDIA response.' }, { status: 502 });
   }
