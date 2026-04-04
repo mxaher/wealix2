@@ -162,12 +162,56 @@ export interface PortfolioTradeRecommendation {
   note: string;
 }
 
+export interface PortfolioTopPerformer {
+  asset: string;
+  ticker: string;
+  weight: number;
+  pnlPercent: number;
+  reason: string;
+}
+
+export interface PortfolioUnderperformer {
+  asset: string;
+  ticker: string;
+  weight: number;
+  pnlPercent: number;
+  rootCause: string;
+  action: string;
+}
+
+export interface PortfolioExecutionSummaryRow {
+  asset: string;
+  ticker: string;
+  action: 'buy' | 'sell' | 'hold' | 'watch';
+  sharesUnits: string;
+  executeWhen: string;
+  priceZone: string;
+  stopLoss: string;
+  priority: 'high' | 'medium' | 'low';
+  notes: string;
+}
+
+export interface PortfolioHealthDimension {
+  dimension: string;
+  score: number;
+  comment: string;
+}
+
 export interface PortfolioAnalysisRecord {
   id: string;
   createdAt: string;
   summary: string;
   actions: PortfolioAnalysisAction[];
   tradePlan: PortfolioTradeRecommendation[];
+  marketOutlook?: string;
+  keyRisks?: string[];
+  riskScore?: number | null;
+  topPerformers?: PortfolioTopPerformer[];
+  underperformers?: PortfolioUnderperformer[];
+  opportunities?: string[];
+  executionSummary?: PortfolioExecutionSummaryRow[];
+  healthScore?: number | null;
+  healthBreakdown?: PortfolioHealthDimension[];
 }
 
 export interface InvestmentDecisionDimensionRecord {
@@ -364,6 +408,90 @@ function normalizePortfolioAnalysisHistory(entries: unknown): PortfolioAnalysisR
       summary: record.summary,
       actions: Array.isArray(record.actions) ? record.actions : [],
       tradePlan: Array.isArray(record.tradePlan) ? record.tradePlan : [],
+      marketOutlook: typeof record.marketOutlook === 'string' ? record.marketOutlook : '',
+      keyRisks: Array.isArray(record.keyRisks) ? record.keyRisks.filter((risk): risk is string => typeof risk === 'string') : [],
+      riskScore: typeof record.riskScore === 'number' ? record.riskScore : null,
+      topPerformers: Array.isArray(record.topPerformers) ? record.topPerformers.flatMap((item) => {
+        if (!item || typeof item !== 'object') {
+          return [];
+        }
+
+        const performer = item as Partial<PortfolioTopPerformer>;
+        if (
+          typeof performer.asset !== 'string' ||
+          typeof performer.ticker !== 'string' ||
+          typeof performer.weight !== 'number' ||
+          typeof performer.pnlPercent !== 'number' ||
+          typeof performer.reason !== 'string'
+        ) {
+          return [];
+        }
+
+        return [performer as PortfolioTopPerformer];
+      }) : [],
+      underperformers: Array.isArray(record.underperformers) ? record.underperformers.flatMap((item) => {
+        if (!item || typeof item !== 'object') {
+          return [];
+        }
+
+        const underperformer = item as Partial<PortfolioUnderperformer>;
+        if (
+          typeof underperformer.asset !== 'string' ||
+          typeof underperformer.ticker !== 'string' ||
+          typeof underperformer.weight !== 'number' ||
+          typeof underperformer.pnlPercent !== 'number' ||
+          typeof underperformer.rootCause !== 'string' ||
+          typeof underperformer.action !== 'string'
+        ) {
+          return [];
+        }
+
+        return [underperformer as PortfolioUnderperformer];
+      }) : [],
+      opportunities: Array.isArray(record.opportunities) ? record.opportunities.filter((item): item is string => typeof item === 'string') : [],
+      executionSummary: Array.isArray(record.executionSummary) ? record.executionSummary.flatMap((item) => {
+        if (!item || typeof item !== 'object') {
+          return [];
+        }
+
+        const row = item as Partial<PortfolioExecutionSummaryRow>;
+        if (
+          typeof row.asset !== 'string' ||
+          typeof row.ticker !== 'string' ||
+          typeof row.action !== 'string' ||
+          typeof row.sharesUnits !== 'string' ||
+          typeof row.executeWhen !== 'string' ||
+          typeof row.priceZone !== 'string' ||
+          typeof row.stopLoss !== 'string' ||
+          typeof row.priority !== 'string' ||
+          typeof row.notes !== 'string'
+        ) {
+          return [];
+        }
+
+        if (!['buy', 'sell', 'hold', 'watch'].includes(row.action) || !['high', 'medium', 'low'].includes(row.priority)) {
+          return [];
+        }
+
+        return [row as PortfolioExecutionSummaryRow];
+      }) : [],
+      healthScore: typeof record.healthScore === 'number' ? record.healthScore : null,
+      healthBreakdown: Array.isArray(record.healthBreakdown) ? record.healthBreakdown.flatMap((item) => {
+        if (!item || typeof item !== 'object') {
+          return [];
+        }
+
+        const dimension = item as Partial<PortfolioHealthDimension>;
+        if (
+          typeof dimension.dimension !== 'string' ||
+          typeof dimension.score !== 'number' ||
+          typeof dimension.comment !== 'string'
+        ) {
+          return [];
+        }
+
+        return [dimension as PortfolioHealthDimension];
+      }) : [],
     }];
   });
 }

@@ -71,11 +71,15 @@ import { createOpaqueId } from '@/lib/ids';
 import {
   useAppStore,
   formatNumber,
+  type PortfolioExecutionSummaryRow,
+  type PortfolioHealthDimension,
   type PortfolioExchange,
   type PortfolioHolding,
   type PortfolioAnalysisAction,
   type InvestmentDecisionRecord,
+  type PortfolioTopPerformer,
   type PortfolioTradeRecommendation,
+  type PortfolioUnderperformer,
 } from '@/store/useAppStore';
 
 type FxRateMap = Partial<Record<'USD_SAR' | 'EGP_SAR', {
@@ -162,6 +166,53 @@ function getTradeRecommendationMeta(side: PortfolioTradeRecommendation['side'], 
     label: isArabic ? 'بيع' : 'Sell',
     badgeClass: 'border-rose-500/30 bg-rose-500/10 text-rose-600',
   };
+}
+
+function getExecutionActionMeta(action: PortfolioExecutionSummaryRow['action'], isArabic: boolean) {
+  switch (action) {
+    case 'buy':
+      return {
+        label: isArabic ? 'شراء' : 'Buy',
+        badgeClass: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600',
+      };
+    case 'sell':
+      return {
+        label: isArabic ? 'بيع' : 'Sell',
+        badgeClass: 'border-rose-500/30 bg-rose-500/10 text-rose-600',
+      };
+    case 'watch':
+      return {
+        label: isArabic ? 'مراقبة' : 'Watch',
+        badgeClass: 'border-blue-500/30 bg-blue-500/10 text-blue-600',
+      };
+    case 'hold':
+    default:
+      return {
+        label: isArabic ? 'احتفاظ' : 'Hold',
+        badgeClass: 'border-slate-500/30 bg-slate-500/10 text-slate-600',
+      };
+  }
+}
+
+function getExecutionPriorityMeta(priority: PortfolioExecutionSummaryRow['priority'], isArabic: boolean) {
+  switch (priority) {
+    case 'high':
+      return {
+        label: isArabic ? 'عالية' : 'High',
+        badgeClass: 'border-rose-500/30 bg-rose-500/10 text-rose-600',
+      };
+    case 'medium':
+      return {
+        label: isArabic ? 'متوسطة' : 'Medium',
+        badgeClass: 'border-amber-500/30 bg-amber-500/10 text-amber-600',
+      };
+    case 'low':
+    default:
+      return {
+        label: isArabic ? 'منخفضة' : 'Low',
+        badgeClass: 'border-slate-500/30 bg-slate-500/10 text-slate-600',
+      };
+  }
 }
 
 function getDecisionVerdictMeta(verdict: InvestmentDecisionRecord['verdict']) {
@@ -592,7 +643,16 @@ export default function PortfolioPage() {
       });
       const data = await response.json() as {
         summary?: string;
+        marketOutlook?: string;
+        keyRisks?: string[];
+        riskScore?: number | null;
+        topPerformers?: PortfolioTopPerformer[];
+        underperformers?: PortfolioUnderperformer[];
         actions?: PortfolioAnalysisAction[];
+        opportunities?: string[];
+        executionSummary?: PortfolioExecutionSummaryRow[];
+        healthScore?: number | null;
+        healthBreakdown?: PortfolioHealthDimension[];
         tradePlan?: PortfolioTradeRecommendation[];
       } & AnalysisApiError;
       if (!response.ok) {
@@ -602,7 +662,16 @@ export default function PortfolioPage() {
         id: createOpaqueId('analysis'),
         createdAt: new Date().toISOString(),
         summary: data.summary || '',
+        marketOutlook: data.marketOutlook || '',
+        keyRisks: Array.isArray(data.keyRisks) ? data.keyRisks : [],
+        riskScore: typeof data.riskScore === 'number' ? data.riskScore : null,
+        topPerformers: Array.isArray(data.topPerformers) ? data.topPerformers : [],
+        underperformers: Array.isArray(data.underperformers) ? data.underperformers : [],
         actions: Array.isArray(data.actions) ? data.actions as PortfolioAnalysisAction[] : [],
+        opportunities: Array.isArray(data.opportunities) ? data.opportunities : [],
+        executionSummary: Array.isArray(data.executionSummary) ? data.executionSummary : [],
+        healthScore: typeof data.healthScore === 'number' ? data.healthScore : null,
+        healthBreakdown: Array.isArray(data.healthBreakdown) ? data.healthBreakdown : [],
         tradePlan: Array.isArray(data.tradePlan) ? data.tradePlan as PortfolioTradeRecommendation[] : [],
       });
       toast({
@@ -1159,6 +1228,8 @@ export default function PortfolioPage() {
                     {portfolioAnalysisHistory.map((record, index) => {
                       const buyCount = record.tradePlan.filter((item) => item.side === 'buy').length;
                       const sellCount = record.tradePlan.filter((item) => item.side === 'sell').length;
+                      const riskScoreLabel = typeof record.riskScore === 'number' ? `${record.riskScore}/100` : null;
+                      const healthScoreLabel = typeof record.healthScore === 'number' ? `${record.healthScore}/100` : null;
 
                       return (
                         <motion.div
@@ -1204,8 +1275,18 @@ export default function PortfolioPage() {
                                             {record.actions.length} {isArabic ? 'توصيات' : 'actions'}
                                           </Badge>
                                           <Badge variant="outline" className="border-border bg-background/80 text-muted-foreground">
-                                            {record.tradePlan.length} {isArabic ? 'صفوف تنفيذ' : 'trade rows'}
+                                            {(record.executionSummary?.length ?? record.tradePlan.length)} {isArabic ? 'صفوف تنفيذ' : 'execution rows'}
                                           </Badge>
+                                          {riskScoreLabel ? (
+                                            <Badge variant="outline" className="border-rose-500/20 bg-rose-500/10 text-rose-600">
+                                              {isArabic ? 'مخاطر' : 'Risk'} {riskScoreLabel}
+                                            </Badge>
+                                          ) : null}
+                                          {healthScoreLabel ? (
+                                            <Badge variant="outline" className="border-emerald-500/20 bg-emerald-500/10 text-emerald-600">
+                                              {isArabic ? 'الصحة' : 'Health'} {healthScoreLabel}
+                                            </Badge>
+                                          ) : null}
                                         </div>
                                         <p className="line-clamp-3 text-sm leading-7 text-foreground/90">{record.summary}</p>
                                         <div className={`flex flex-wrap items-center gap-2 ${isArabic ? 'justify-end' : ''}`}>
@@ -1239,7 +1320,64 @@ export default function PortfolioPage() {
 
                               <CollapsibleContent className="data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
                                 <div className="space-y-5 px-4 py-5 md:px-5">
-                                  {record.tradePlan.length > 0 ? (
+                                  {(record.executionSummary?.length ?? 0) > 0 ? (
+                                    <div className="overflow-hidden rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-background to-background">
+                                      <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
+                                        <Coins className="h-4 w-4 text-amber-600" />
+                                        <p className="text-sm font-semibold text-foreground">
+                                          {isArabic ? 'ملخص التنفيذ لهذا الأسبوع' : 'Execution Summary This Week'}
+                                        </p>
+                                      </div>
+                                      <ScrollArea className="w-full">
+                                        <Table>
+                                          <TableHeader>
+                                            <TableRow>
+                                              <TableHead>{isArabic ? 'الإجراء' : 'Action'}</TableHead>
+                                              <TableHead>{isArabic ? 'الأصل' : 'Asset'}</TableHead>
+                                              <TableHead>{isArabic ? 'الوحدات' : 'Shares / Units'}</TableHead>
+                                              <TableHead>{isArabic ? 'التنفيذ' : 'Execute When'}</TableHead>
+                                              <TableHead>{isArabic ? 'النطاق السعري' : 'Price Zone'}</TableHead>
+                                              <TableHead>{isArabic ? 'إيقاف الخسارة' : 'Stop Loss'}</TableHead>
+                                              <TableHead>{isArabic ? 'الأولوية' : 'Priority'}</TableHead>
+                                              <TableHead>{isArabic ? 'ملاحظات' : 'Notes'}</TableHead>
+                                            </TableRow>
+                                          </TableHeader>
+                                          <TableBody>
+                                            {record.executionSummary?.map((row, executionIndex) => {
+                                              const actionMeta = getExecutionActionMeta(row.action, isArabic);
+                                              const priorityMeta = getExecutionPriorityMeta(row.priority, isArabic);
+
+                                              return (
+                                                <TableRow key={`${record.id}-${row.ticker}-${executionIndex}`}>
+                                                  <TableCell>
+                                                    <Badge variant="outline" className={actionMeta.badgeClass}>
+                                                      {actionMeta.label}
+                                                    </Badge>
+                                                  </TableCell>
+                                                  <TableCell>
+                                                    <div className="space-y-1">
+                                                      <div className="font-medium">{row.ticker}</div>
+                                                      <div className="text-xs text-muted-foreground">{row.asset}</div>
+                                                    </div>
+                                                  </TableCell>
+                                                  <TableCell>{row.sharesUnits}</TableCell>
+                                                  <TableCell>{row.executeWhen}</TableCell>
+                                                  <TableCell>{row.priceZone}</TableCell>
+                                                  <TableCell>{row.stopLoss}</TableCell>
+                                                  <TableCell>
+                                                    <Badge variant="outline" className={priorityMeta.badgeClass}>
+                                                      {priorityMeta.label}
+                                                    </Badge>
+                                                  </TableCell>
+                                                  <TableCell className="max-w-[320px] text-sm text-muted-foreground">{row.notes}</TableCell>
+                                                </TableRow>
+                                              );
+                                            })}
+                                          </TableBody>
+                                        </Table>
+                                      </ScrollArea>
+                                    </div>
+                                  ) : record.tradePlan.length > 0 ? (
                                     <div className="overflow-hidden rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-background to-background">
                                       <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
                                         <Coins className="h-4 w-4 text-amber-600" />
@@ -1302,9 +1440,122 @@ export default function PortfolioPage() {
                                       </p>
                                     </div>
                                     <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
-                                      <p className={`text-sm leading-7 text-foreground ${isArabic ? 'text-right' : ''}`}>{record.summary}</p>
+                                      <p className={`whitespace-pre-wrap text-sm leading-7 text-foreground ${isArabic ? 'text-right' : ''}`}>{record.summary}</p>
                                     </div>
                                   </div>
+
+                                  {record.marketOutlook ? (
+                                    <div className="space-y-3">
+                                      <div className={`space-y-1 ${isArabic ? 'text-right' : ''}`}>
+                                        <p className="text-sm font-semibold text-foreground">
+                                          {isArabic ? 'نظرة السوق' : 'Market Outlook'}
+                                        </p>
+                                      </div>
+                                      <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
+                                        <p className={`whitespace-pre-wrap text-sm leading-7 text-foreground ${isArabic ? 'text-right' : ''}`}>{record.marketOutlook}</p>
+                                      </div>
+                                    </div>
+                                  ) : null}
+
+                                  {(record.keyRisks?.length ?? 0) > 0 || typeof record.riskScore === 'number' ? (
+                                    <div className="space-y-3">
+                                      <div className={`space-y-1 ${isArabic ? 'text-right' : ''}`}>
+                                        <p className="text-sm font-semibold text-foreground">
+                                          {isArabic ? 'المخاطر الرئيسية' : 'Key Portfolio Risks'}
+                                        </p>
+                                        {typeof record.riskScore === 'number' ? (
+                                          <p className="text-xs text-muted-foreground">
+                                            {isArabic ? `درجة المخاطر: ${record.riskScore}/100` : `Risk score: ${record.riskScore}/100`}
+                                          </p>
+                                        ) : null}
+                                      </div>
+                                      <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
+                                        <ul className={`space-y-2 text-sm leading-7 text-foreground ${isArabic ? 'text-right' : ''}`}>
+                                          {record.keyRisks?.map((risk, riskIndex) => (
+                                            <li key={`${record.id}-risk-${riskIndex}`}>{risk}</li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    </div>
+                                  ) : null}
+
+                                  {(record.topPerformers?.length ?? 0) > 0 ? (
+                                    <div className="overflow-hidden rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 via-background to-background">
+                                      <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
+                                        <TrendingUp className="h-4 w-4 text-emerald-600" />
+                                        <p className="text-sm font-semibold text-foreground">
+                                          {isArabic ? 'أفضل الأصول أداءً' : 'Top Performing Assets'}
+                                        </p>
+                                      </div>
+                                      <ScrollArea className="w-full">
+                                        <Table>
+                                          <TableHeader>
+                                            <TableRow>
+                                              <TableHead>{isArabic ? 'الأصل' : 'Asset'}</TableHead>
+                                              <TableHead className="text-right">{isArabic ? 'الوزن' : 'Weight'}</TableHead>
+                                              <TableHead className="text-right">{isArabic ? 'العائد' : 'P&L'}</TableHead>
+                                              <TableHead>{isArabic ? 'لماذا ينجح' : 'Why It Is Working'}</TableHead>
+                                            </TableRow>
+                                          </TableHeader>
+                                          <TableBody>
+                                            {record.topPerformers?.map((item, performerIndex) => (
+                                              <TableRow key={`${record.id}-top-${performerIndex}`}>
+                                                <TableCell>
+                                                  <div className="space-y-1">
+                                                    <div className="font-medium">{item.ticker}</div>
+                                                    <div className="text-xs text-muted-foreground">{item.asset}</div>
+                                                  </div>
+                                                </TableCell>
+                                                <TableCell className="text-right">{item.weight.toFixed(1)}%</TableCell>
+                                                <TableCell className="text-right text-emerald-600">+{item.pnlPercent.toFixed(1)}%</TableCell>
+                                                <TableCell className="text-sm text-muted-foreground">{item.reason}</TableCell>
+                                              </TableRow>
+                                            ))}
+                                          </TableBody>
+                                        </Table>
+                                      </ScrollArea>
+                                    </div>
+                                  ) : null}
+
+                                  {(record.underperformers?.length ?? 0) > 0 ? (
+                                    <div className="overflow-hidden rounded-2xl border border-rose-500/20 bg-gradient-to-br from-rose-500/10 via-background to-background">
+                                      <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
+                                        <TrendingDown className="h-4 w-4 text-rose-600" />
+                                        <p className="text-sm font-semibold text-foreground">
+                                          {isArabic ? 'الأصول المتراجعة' : 'Underperforming Assets'}
+                                        </p>
+                                      </div>
+                                      <ScrollArea className="w-full">
+                                        <Table>
+                                          <TableHeader>
+                                            <TableRow>
+                                              <TableHead>{isArabic ? 'الأصل' : 'Asset'}</TableHead>
+                                              <TableHead className="text-right">{isArabic ? 'الوزن' : 'Weight'}</TableHead>
+                                              <TableHead className="text-right">{isArabic ? 'العائد' : 'P&L'}</TableHead>
+                                              <TableHead>{isArabic ? 'السبب' : 'Root Cause'}</TableHead>
+                                              <TableHead>{isArabic ? 'الإجراء' : 'Action'}</TableHead>
+                                            </TableRow>
+                                          </TableHeader>
+                                          <TableBody>
+                                            {record.underperformers?.map((item, underperformerIndex) => (
+                                              <TableRow key={`${record.id}-under-${underperformerIndex}`}>
+                                                <TableCell>
+                                                  <div className="space-y-1">
+                                                    <div className="font-medium">{item.ticker}</div>
+                                                    <div className="text-xs text-muted-foreground">{item.asset}</div>
+                                                  </div>
+                                                </TableCell>
+                                                <TableCell className="text-right">{item.weight.toFixed(1)}%</TableCell>
+                                                <TableCell className="text-right text-rose-600">{item.pnlPercent.toFixed(1)}%</TableCell>
+                                                <TableCell className="text-sm text-muted-foreground">{item.rootCause}</TableCell>
+                                                <TableCell>{item.action}</TableCell>
+                                              </TableRow>
+                                            ))}
+                                          </TableBody>
+                                        </Table>
+                                      </ScrollArea>
+                                    </div>
+                                  ) : null}
 
                                   <div className="space-y-3">
                                     <div className={`space-y-1 ${isArabic ? 'text-right' : ''}`}>
@@ -1343,6 +1594,61 @@ export default function PortfolioPage() {
                                     })}
                                   </div>
                                   </div>
+
+                                  {(record.opportunities?.length ?? 0) > 0 ? (
+                                    <div className="space-y-3">
+                                      <div className={`space-y-1 ${isArabic ? 'text-right' : ''}`}>
+                                        <p className="text-sm font-semibold text-foreground">
+                                          {isArabic ? 'فرص التحسين' : 'Investment Opportunities'}
+                                        </p>
+                                      </div>
+                                      <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
+                                        <ul className={`space-y-2 text-sm leading-7 text-foreground ${isArabic ? 'text-right' : ''}`}>
+                                          {record.opportunities?.map((opportunity, opportunityIndex) => (
+                                            <li key={`${record.id}-opportunity-${opportunityIndex}`}>{opportunity}</li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    </div>
+                                  ) : null}
+
+                                  {(record.healthBreakdown?.length ?? 0) > 0 || typeof record.healthScore === 'number' ? (
+                                    <div className="overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-background to-background">
+                                      <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
+                                        <ShieldAlert className="h-4 w-4 text-primary" />
+                                        <p className="text-sm font-semibold text-foreground">
+                                          {isArabic ? 'درجة صحة المحفظة' : 'Portfolio Health Score'}
+                                        </p>
+                                        {typeof record.healthScore === 'number' ? (
+                                          <Badge variant="outline" className="border-primary/20 bg-primary/10 text-primary">
+                                            {record.healthScore}/100
+                                          </Badge>
+                                        ) : null}
+                                      </div>
+                                      {(record.healthBreakdown?.length ?? 0) > 0 ? (
+                                        <ScrollArea className="w-full">
+                                          <Table>
+                                            <TableHeader>
+                                              <TableRow>
+                                                <TableHead>{isArabic ? 'البعد' : 'Dimension'}</TableHead>
+                                                <TableHead className="text-right">{isArabic ? 'النتيجة' : 'Score'}</TableHead>
+                                                <TableHead>{isArabic ? 'التعليق' : 'Comment'}</TableHead>
+                                              </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                              {record.healthBreakdown?.map((dimension, healthIndex) => (
+                                                <TableRow key={`${record.id}-health-${healthIndex}`}>
+                                                  <TableCell>{dimension.dimension}</TableCell>
+                                                  <TableCell className="text-right">{dimension.score.toFixed(0)}</TableCell>
+                                                  <TableCell className="text-sm text-muted-foreground">{dimension.comment}</TableCell>
+                                                </TableRow>
+                                              ))}
+                                            </TableBody>
+                                          </Table>
+                                        </ScrollArea>
+                                      ) : null}
+                                    </div>
+                                  ) : null}
                                 </div>
                               </CollapsibleContent>
                             </div>

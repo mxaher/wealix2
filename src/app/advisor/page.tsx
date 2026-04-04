@@ -65,12 +65,12 @@ interface ChatSession {
 
 // Suggested prompts
 const suggestedPrompts = [
-  { en: 'How is my portfolio performing?', ar: 'كيف أداء محفظتي؟' },
-  { en: 'Am I on track for my FIRE goal?', ar: 'هل أنا في الطريق الصحيح نحو FIRE؟' },
-  { en: 'Where am I overspending this month?', ar: 'أين أنفق أكثر هذا الشهر؟' },
-  { en: 'Give me your analysis of my top 3 holdings', ar: 'حلل أفضل 3 ممتلكات لدي' },
-  { en: 'What should I rebalance in my portfolio?', ar: 'ماذا يجب أن أعيد توازنه في محفظتي؟' },
-  { en: 'Should I buy this investment now?', ar: 'هل أشتري هذا الاستثمار الآن؟' },
+  { en: 'How is my portfolio performing this week?', ar: 'كيف أداء محفظتي هذا الأسبوع؟' },
+  { en: 'Am I on track for financial independence?', ar: 'هل أنا على المسار الصحيح نحو الاستقلال المالي؟' },
+  { en: 'What should I be watching in the market right now?', ar: 'ما الذي يجب أن أراقبه في السوق الآن؟' },
+  { en: 'I have cash to invest, where should it go?', ar: 'لدي سيولة للاستثمار، أين يجب أن أوجهها؟' },
+  { en: 'Are there any risks in my portfolio I should know about?', ar: 'هل توجد مخاطر في محفظتي يجب أن أعرفها؟' },
+  { en: 'Give me a full portfolio health check', ar: 'أعطني فحصاً كاملاً لصحة محفظتي' },
 ];
 
 export default function AdvisorPage() {
@@ -298,10 +298,10 @@ export default function AdvisorPage() {
                   </div>
                   <div>
                     <CardTitle className="text-lg">
-                      {isArabic ? 'المستشار المالي' : 'AI Financial Advisor'}
+                      {isArabic ? 'وائل - المستشار المالي' : 'Wael - AI Financial Advisor'}
                     </CardTitle>
                     <p className="text-xs text-muted-foreground">
-                      {isArabic ? 'متخصص في السوق السعودي والشرق أوسطي' : 'Specialized in Saudi & MENA market'}
+                      {isArabic ? 'ذكاء مالي حواري لسوق السعودية والمنطقة' : 'Conversational financial intelligence for Saudi and MENA investors'}
                     </p>
                   </div>
                 </div>
@@ -342,12 +342,17 @@ export default function AdvisorPage() {
                     <Sparkles className="w-8 h-8 text-gold" />
                   </div>
                   <h3 className="text-lg font-medium mb-2">
-                    {isArabic ? 'كيف يمكنني مساعدتك؟' : 'How can I help you today?'}
+                    {isArabic ? 'كيف أساعدك اليوم؟' : 'How can I help you today?'}
                   </h3>
                   <p className="text-sm text-muted-foreground mb-6 max-w-md">
                     {isArabic
-                      ? 'أسألني أي سؤال عن وضعك المالي، محفظتك، أو خططك للمستقبل.'
-                      : 'Ask me anything about your finances, portfolio, or future plans.'}
+                      ? 'اسأل وائل عن محفظتك، الاستقلال المالي، السوق، أو أي قرار مالي تفكر فيه.'
+                      : 'Ask Wael about your portfolio, FIRE progress, the market, or any financial decision you are thinking through.'}
+                  </p>
+                  <p className="text-xs text-muted-foreground mb-6 max-w-lg">
+                    {isArabic
+                      ? 'تحليلات وائل لأغراض معلوماتية فقط وليست استشارة مالية مرخّصة. راجع الشروط قبل اتخاذ قرارات استثمارية.'
+                      : 'Wael provides informational analysis only and is not a licensed financial advisor. Review the Wealix terms before making investment decisions.'}
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-lg">
                     {suggestedPrompts.map((prompt, index) => (
@@ -484,7 +489,7 @@ export default function AdvisorPage() {
                   {isArabic ? 'بيانات Wealix مرفقة تلقائياً' : 'Wealix data attached automatically'}
                 </Badge>
                 <span className="text-xs text-muted-foreground">
-                  {isArabic ? 'اضغط Enter للإرسال' : 'Press Enter to send'}
+                  {isArabic ? 'الأسعار قد تكون آنية أو حسب آخر إغلاق بحسب المصدر' : 'Market data may be live or based on last close depending on source'}
                 </span>
               </div>
             </div>
