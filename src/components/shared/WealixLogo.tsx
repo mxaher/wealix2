@@ -29,7 +29,7 @@ export function WealixLogo({ className, imageClassName, textClassName, compact =
           priority
         />
       </span>
-      <span className={cn('font-semibold tracking-tight text-foreground', compact ? 'text-base' : 'text-lg', textClassName)}>
+      <span className={cn('font-semibold tracking-tight leading-none text-foreground', compact ? 'text-base' : 'text-lg', textClassName)}>
         Wealix
       </span>
     </span>

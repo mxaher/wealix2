@@ -93,11 +93,8 @@ export function Sidebar() {
           isArabic ? 'right-0' : 'left-0'
         )}
       >
-        <div className={cn(
-          'flex h-16 items-center justify-between border-b border-sidebar-border px-4',
-          isArabic && !sidebarCollapsed && 'flex-row-reverse'
-        )}>
-          <Link href={startPageHref} dir="ltr" className="overflow-hidden">
+        <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
+          <Link href={startPageHref} className="overflow-hidden">
             <WealixLogo compact={sidebarCollapsed} textClassName={sidebarCollapsed ? 'sr-only' : ''} />
           </Link>
           {!sidebarCollapsed && (
@@ -130,7 +127,7 @@ export function Sidebar() {
                       className={cn(
                         'sidebar-item',
                         isActive && 'active',
-                        isArabic && !sidebarCollapsed && 'flex-row-reverse text-right',
+                        isArabic && !sidebarCollapsed && 'text-right',
                         sidebarCollapsed && 'justify-center px-2'
                       )}
                     >

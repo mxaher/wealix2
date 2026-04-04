@@ -14,7 +14,7 @@ export function BlogPageClient({ posts }: Props) {
   const isArabic = locale === 'ar';
 
   return (
-    <main className="min-h-screen bg-background">
+    <main className="min-h-screen bg-background" dir={isArabic ? 'rtl' : 'ltr'}>
       <section className="max-w-4xl mx-auto px-4 py-20">
         <Link
           href="/app"
