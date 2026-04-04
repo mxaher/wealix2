@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { sanitizeUserMessage, logAiAuditEvent } from '@/lib/ai-safety';
 import { buildFinancialSnapshotFromWorkspace } from '@/lib/financial-snapshot';
+import { buildAiRouteHeaders, getAiProviderEndpoint, getAiProviderModel, getAiRouteDecision, getGemmaApiMode, type AiProvider } from '@/lib/llm-routing';
 import { buildRateLimitHeaders, enforceRateLimit } from '@/lib/rate-limit';
 import { isRemotePersistenceConfigured, loadRemoteWorkspace } from '@/lib/remote-user-data';
 import { requirePaidTier } from '@/lib/server-auth';
@@ -86,6 +87,19 @@ type NvidiaChatResponse = {
   choices?: Array<{
     message?: {
       content?: string;
+    };
+  }>;
+  error?: {
+    message?: string;
+  };
+};
+
+type GeminiGenerateContentResponse = {
+  candidates?: Array<{
+    content?: {
+      parts?: Array<{
+        text?: string;
+      }>;
     };
   }>;
   error?: {
@@ -306,23 +320,67 @@ function generateFallbackAdvisorResponse(params: {
   return lines.join('\n');
 }
 
-async function createAdvisorCompletion(messages: ChatMessage[]) {
-  const nvidiaApiKey = process.env.NVIDIA_API_KEY;
-  const nvidiaModel = process.env.NVIDIA_ADVISOR_MODEL || process.env.NVIDIA_MODEL || 'meta/llama-3.3-70b-instruct';
-  const nvidiaBase = (process.env.NVIDIA_API_BASE || 'https://integrate.api.nvidia.com/v1').replace(/\/$/, '');
+async function createAdvisorCompletion(provider: AiProvider, messages: ChatMessage[]) {
+  const { apiKey, apiBase } = getAiProviderEndpoint(provider);
+  const model = getAiProviderModel('advisor', provider);
 
-  if (!nvidiaApiKey) {
-    throw new Error('NVIDIA_API_KEY is not configured for AI Advisor.');
+  if (!apiKey) {
+    throw new Error(`${provider.toUpperCase()} API key is not configured for AI Advisor.`);
   }
 
-  const response = await fetch(`${nvidiaBase}/chat/completions`, {
+  if (provider === 'gemma' && getGemmaApiMode() === 'google-native') {
+    const [firstMessage, ...restMessages] = messages;
+    const systemInstruction = firstMessage?.role === 'system' ? firstMessage.content : '';
+    const conversation = firstMessage?.role === 'system' ? restMessages : messages;
+    const modelPath = model.startsWith('models/') ? model : `models/${model}`;
+
+    const response = await fetch(`${apiBase}/${modelPath}:generateContent`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey,
+      },
+      body: JSON.stringify({
+        system_instruction: systemInstruction
+          ? { parts: [{ text: systemInstruction }] }
+          : undefined,
+        contents: conversation.map((message) => ({
+          role: message.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: message.content }],
+        })),
+        generationConfig: {
+          temperature: 0.25,
+          topP: 0.9,
+          maxOutputTokens: 1600,
+        },
+      }),
+      cache: 'no-store',
+    });
+
+    const json = await response.json().catch(() => null) as GeminiGenerateContentResponse | null;
+    if (!response.ok) {
+      throw new Error(json?.error?.message || `Gemma API request failed with status ${response.status}`);
+    }
+
+    const content = json?.candidates?.[0]?.content?.parts
+      ?.map((part) => part.text ?? '')
+      .join('')
+      .trim();
+    if (!content) {
+      throw new Error('The advisor returned an empty response.');
+    }
+
+    return content;
+  }
+
+  const response = await fetch(`${apiBase}/chat/completions`, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${nvidiaApiKey}`,
+      Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: nvidiaModel,
+      model,
       messages,
       temperature: 0.25,
       top_p: 0.9,
@@ -333,7 +391,7 @@ async function createAdvisorCompletion(messages: ChatMessage[]) {
 
   const json = await response.json().catch(() => null) as NvidiaChatResponse | null;
   if (!response.ok) {
-    throw new Error(json?.error?.message || `NVIDIA API request failed with status ${response.status}`);
+    throw new Error(json?.error?.message || `${provider.toUpperCase()} API request failed with status ${response.status}`);
   }
 
   const content = json?.choices?.[0]?.message?.content?.trim();
@@ -342,6 +400,51 @@ async function createAdvisorCompletion(messages: ChatMessage[]) {
   }
 
   return content;
+}
+
+async function createMergedAdvisorCompletion(params: {
+  locale: 'ar' | 'en';
+  messages: ChatMessage[];
+  primaryProvider: AiProvider;
+  secondaryProvider: AiProvider;
+}) {
+  const { locale, messages, primaryProvider, secondaryProvider } = params;
+  const primaryDraft = await createAdvisorCompletion(primaryProvider, messages);
+  const secondaryDraft = await createAdvisorCompletion(secondaryProvider, messages);
+  const latestUserPrompt =
+    [...messages].reverse().find((message) => message.role === 'user')?.content ?? '';
+
+  const synthesisMessages: ChatMessage[] = [
+    {
+      role: 'system',
+      content: [
+        locale === 'ar'
+          ? 'أنت محرر نهائي للإجابة المالية. ادمج المسودتين في إجابة واحدة أفضل.'
+          : 'You are the final financial answer editor. Merge the two drafts into one stronger response.',
+        locale === 'ar'
+          ? 'الحفاظ على نفس اللغة المطلوبة ونفس الحقائق الواردة في بيانات Wealix. لا تذكر وجود مسودتين أو أكثر من نموذج.'
+          : 'Preserve the requested language and the facts grounded in the Wealix data. Do not mention multiple drafts or multiple models.',
+        locale === 'ar'
+          ? 'اختر الأدق والأكثر تحفظاً عندما يوجد تعارض، وابقِ الإجابة عملية ومباشرة.'
+          : 'Choose the more accurate and more conservative point when the drafts conflict, and keep the answer practical and direct.',
+      ].join(' '),
+    },
+    {
+      role: 'user',
+      content: [
+        locale === 'ar' ? `طلب المستخدم الأخير:\n${latestUserPrompt}` : `Latest user request:\n${latestUserPrompt}`,
+        locale === 'ar' ? `المسودة A:\n${primaryDraft}` : `Draft A:\n${primaryDraft}`,
+        locale === 'ar' ? `المسودة B:\n${secondaryDraft}` : `Draft B:\n${secondaryDraft}`,
+      ].join('\n\n'),
+    },
+  ];
+
+  try {
+    return await createAdvisorCompletion(primaryProvider, synthesisMessages);
+  } catch (error) {
+    console.error('[ai/chat] merged advisor synthesis failed, returning primary draft', error);
+    return primaryDraft;
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -463,12 +566,31 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    const decision = getAiRouteDecision('advisor', authResult.userId!);
     let response: string;
+    let responseProvider = decision.primaryProvider;
     try {
-      response = await createAdvisorCompletion(apiMessages);
+      if (decision.strategy === 'fallback' && decision.secondaryProvider) {
+        try {
+          response = await createAdvisorCompletion(decision.primaryProvider, apiMessages);
+        } catch (primaryError) {
+          console.error('[ai/chat] primary advisor provider failed, trying fallback', primaryError);
+          response = await createAdvisorCompletion(decision.secondaryProvider, apiMessages);
+          responseProvider = decision.secondaryProvider;
+        }
+      } else if (decision.strategy === 'merge' && decision.secondaryProvider) {
+        response = await createMergedAdvisorCompletion({
+          locale: locale === 'ar' ? 'ar' : 'en',
+          messages: apiMessages,
+          primaryProvider: decision.primaryProvider,
+          secondaryProvider: decision.secondaryProvider,
+        });
+      } else {
+        response = await createAdvisorCompletion(decision.primaryProvider, apiMessages);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : '';
-      if (/NVIDIA_API_KEY|NVIDIA API request failed|empty response/i.test(message)) {
+      if (/API key is not configured|API request failed|empty response/i.test(message)) {
         response = generateFallbackAdvisorResponse({ locale, userContext, messages: apiMessages });
       } else {
         throw error;
@@ -496,12 +618,13 @@ export async function POST(request: NextRequest) {
         'Content-Type': 'application/x-ndjson',
         'Transfer-Encoding': 'chunked',
         ...buildRateLimitHeaders(rateLimit),
+        ...buildAiRouteHeaders(decision, responseProvider),
       },
     });
   } catch (error) {
     console.error('AI Chat Error:', error);
     const message = error instanceof Error ? error.message : 'Failed to process chat request';
-    const status = message.includes('NVIDIA_API_KEY') ? 503 : 500;
+    const status = /API key is not configured/i.test(message) ? 503 : 500;
     return new Response(
       JSON.stringify({
         error: status === 503 ? 'AI advisor is temporarily unavailable' : 'Failed to process chat request',

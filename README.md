@@ -111,7 +111,22 @@ TWELVEDATA_API_KEY=
 
 ```env
 NVIDIA_API_BASE=https://integrate.api.nvidia.com/v1
+GEMMA_API_MODE=google-native
+GEMMA_API_BASE=https://generativelanguage.googleapis.com/v1beta
 NVIDIA_OCR_MODEL=meta/llama-3.2-90b-vision-instruct
+GEMMA_API_KEY=
+GEMMA_ADVISOR_MODEL=gemma-3-27b-it
+GEMMA_PORTFOLIO_MODEL=gemma-3-27b-it
+AI_ADVISOR_STRATEGY=primary
+AI_ADVISOR_PRIMARY_PROVIDER=nvidia
+AI_ADVISOR_FALLBACK_PROVIDER=gemma
+AI_ADVISOR_AB_TEST_PROVIDER=gemma
+AI_ADVISOR_AB_PERCENT=0
+AI_PORTFOLIO_STRATEGY=primary
+AI_PORTFOLIO_PRIMARY_PROVIDER=nvidia
+AI_PORTFOLIO_FALLBACK_PROVIDER=gemma
+AI_PORTFOLIO_AB_TEST_PROVIDER=gemma
+AI_PORTFOLIO_AB_PERCENT=0
 DATALAB_API_BASE=https://www.datalab.to
 CHANDRA_API_KEY=
 SAHMK_API_BASE=https://app.sahmk.sa/api/v1
@@ -124,6 +139,12 @@ Notes:
 - `CHANDRA_API_KEY` is supported as an alternate name, but `DATALAB_API_KEY` is preferred.
 - `NVIDIA_API_KEY` is used by the AI Advisor, portfolio analysis, and NVIDIA-based receipt OCR.
 - `NVIDIA_API_BASE` is optional unless you are pointing to a non-default NVIDIA API base.
+- `GEMMA_API_KEY` is the Google AI Studio / Gemini API key when Gemma is routed through Google.
+- `GEMMA_API_MODE` defaults to `google-native` and uses Google `generateContent`.
+- `GEMMA_API_BASE` defaults to `https://generativelanguage.googleapis.com/v1beta`.
+- `GEMMA_ADVISOR_MODEL` and `GEMMA_PORTFOLIO_MODEL` currently default to `gemma-3-27b-it` until Google publishes a hosted Gemma 4 model ID for AI Studio.
+- `AI_ADVISOR_STRATEGY` and `AI_PORTFOLIO_STRATEGY` support `primary`, `fallback`, `merge`, or `ab`.
+- `AI_*_AB_PERCENT` is the percentage of users deterministically routed to the test provider when `AI_*_STRATEGY=ab`.
 - `NVIDIA_OCR_MODEL` defaults to `meta/llama-3.2-90b-vision-instruct`.
 - `DATALAB_API_BASE` is optional unless you are pointing to a non-default Datalab base URL.
 - `SAHMK_API_KEY` is used to fetch Saudi market quotes for TASI holdings.
@@ -180,6 +201,61 @@ Current behavior:
 - first tries NVIDIA vision OCR
 - falls back to Datalab/Chandra OCR if NVIDIA is unavailable or fails
 - then falls back to Datalab Marker as the final structured OCR fallback
+
+### Advisor and portfolio model routing
+
+Advisor and portfolio requests can now be routed independently between NVIDIA and Gemma through env vars.
+
+Defaults keep the current production behavior:
+
+```env
+AI_ADVISOR_STRATEGY=primary
+AI_ADVISOR_PRIMARY_PROVIDER=nvidia
+AI_PORTFOLIO_STRATEGY=primary
+AI_PORTFOLIO_PRIMARY_PROVIDER=nvidia
+```
+
+Gemma fallback after NVIDIA failure:
+
+```env
+AI_ADVISOR_STRATEGY=fallback
+AI_ADVISOR_FALLBACK_PROVIDER=gemma
+
+AI_PORTFOLIO_STRATEGY=fallback
+AI_PORTFOLIO_FALLBACK_PROVIDER=gemma
+```
+
+Merged output, where both providers run and NVIDIA synthesizes the final answer:
+
+```env
+AI_ADVISOR_STRATEGY=merge
+AI_PORTFOLIO_STRATEGY=merge
+```
+
+Feature-flagged A/B test with 20% of users on Gemma:
+
+```env
+AI_ADVISOR_STRATEGY=ab
+AI_ADVISOR_AB_TEST_PROVIDER=gemma
+AI_ADVISOR_AB_PERCENT=20
+
+AI_PORTFOLIO_STRATEGY=ab
+AI_PORTFOLIO_AB_TEST_PROVIDER=gemma
+AI_PORTFOLIO_AB_PERCENT=20
+```
+
+Responses include these headers so you can inspect live routing:
+
+- `X-Wealix-AI-Strategy`
+- `X-Wealix-AI-Variant`
+- `X-Wealix-AI-Provider`
+
+Cloudflare deploy note:
+
+- Non-secret deployment vars are already committed in [wrangler.jsonc](/Users/mohammedzaher/projects/Wealixapp%20v2/wrangler.jsonc).
+- Secrets such as `NVIDIA_API_KEY`, `GEMMA_API_KEY`, `CLERK_SECRET_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `DATALAB_API_KEY`, `SAHMK_API_KEY`, and `TWELVEDATA_API_KEY` should be added once in the Cloudflare dashboard or via `wrangler secret put`.
+- Local development can copy the template from [.env.example](/Users/mohammedzaher/projects/Wealixapp%20v2/.env.example) into `.env.local`.
+- If Google later exposes Gemma 4 in AI Studio, you should only need to change `GEMMA_ADVISOR_MODEL` and `GEMMA_PORTFOLIO_MODEL`.
 
 ### Cloudflare D1
 
