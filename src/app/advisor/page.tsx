@@ -65,6 +65,14 @@ interface ChatSession {
   createdAt: Date;
 }
 
+function isArabicText(value: string) {
+  return /[\u0600-\u06FF]/.test(value);
+}
+
+function getAssistantMessageDirection(content: string) {
+  return isArabicText(content) ? 'rtl' : 'ltr';
+}
+
 // Suggested prompts
 const suggestedPrompts = [
   { en: 'How is my portfolio performing this week?', ar: 'كيف أداء محفظتي هذا الأسبوع؟' },
@@ -370,8 +378,8 @@ export default function AdvisorPage() {
             <CardHeader className="border-b p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gold to-gold-dark flex items-center justify-center">
-                    <Bot className="w-5 h-5 text-navy-dark" />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[radial-gradient(circle_at_top,_#fff3c4,_#e0a63a_55%,_#8b5e10)] shadow-[0_10px_30px_rgba(224,166,58,0.35)]">
+                    <BrainCircuit className="h-5 w-5 text-navy-dark" />
                   </div>
                   <div>
                     <CardTitle className="text-lg">
@@ -449,7 +457,12 @@ export default function AdvisorPage() {
               ) : (
                 <div className="space-y-4">
                   <AnimatePresence>
-                    {activeSession?.messages.map((message) => (
+                    {activeSession?.messages.map((message) => {
+                      const assistantDirection = message.role === 'assistant'
+                        ? getAssistantMessageDirection(message.content)
+                        : 'ltr';
+
+                      return (
                       <motion.div
                         key={message.id}
                         initial={{ opacity: 0, y: 10 }}
@@ -459,20 +472,21 @@ export default function AdvisorPage() {
                         }`}
                       >
                         <Avatar className="w-8 h-8">
-                          <AvatarFallback className={message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-gold text-navy-dark'}>
-                            {message.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+                          <AvatarFallback className={message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-[radial-gradient(circle_at_top,_#fff3c4,_#e0a63a_55%,_#8b5e10)] text-navy-dark'}>
+                            {message.role === 'user' ? <User className="w-4 h-4" /> : <BrainCircuit className="w-4 h-4" />}
                           </AvatarFallback>
                         </Avatar>
-                        <div className={`min-w-0 flex-1 ${message.role === 'user' ? 'text-right' : ''}`}>
+                        <div className={`min-w-0 flex-1 ${message.role === 'user' || assistantDirection === 'rtl' ? 'text-right' : ''}`}>
                           <div
                             className={`inline-block max-w-[85%] min-w-0 overflow-hidden rounded-lg p-3 align-top ${
                               message.role === 'user'
                                 ? 'bg-primary text-primary-foreground'
                                 : 'bg-muted'
                             }`}
+                            dir={message.role === 'assistant' ? assistantDirection : undefined}
                           >
                             {message.role === 'assistant' ? (
-                              <div className="prose prose-sm dark:prose-invert max-w-none break-words [&_*]:break-words [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_code]:whitespace-pre-wrap [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto">
+                              <div className="prose prose-sm max-w-none break-words leading-7 text-foreground dark:prose-invert [&_*]:break-words [&_code]:whitespace-pre-wrap [&_h1]:mb-3 [&_h1]:mt-0 [&_h2]:mb-2 [&_h2]:mt-4 [&_h3]:mb-2 [&_h3]:mt-4 [&_li]:my-1 [&_ol]:my-3 [&_ol]:ps-5 [&_p]:my-2 [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto [&_ul]:my-3 [&_ul]:list-disc [&_ul]:ps-5">
                                 <ReactMarkdown>{message.content}</ReactMarkdown>
                               </div>
                             ) : (
@@ -484,7 +498,8 @@ export default function AdvisorPage() {
                           </p>
                         </div>
                       </motion.div>
-                    ))}
+                      );
+                    })}
                   </AnimatePresence>
 
                   {/* Streaming message */}
@@ -495,13 +510,16 @@ export default function AdvisorPage() {
                       className="flex min-w-0 gap-3"
                     >
                       <Avatar className="w-8 h-8">
-                        <AvatarFallback className="bg-gold text-navy-dark">
-                          <Bot className="w-4 h-4" />
+                        <AvatarFallback className="bg-[radial-gradient(circle_at_top,_#fff3c4,_#e0a63a_55%,_#8b5e10)] text-navy-dark">
+                          <BrainCircuit className="w-4 h-4" />
                         </AvatarFallback>
                       </Avatar>
-                      <div className="min-w-0 flex-1">
+                      <div className={`min-w-0 flex-1 ${getAssistantMessageDirection(streamingContent) === 'rtl' ? 'text-right' : ''}`}>
                         <div className="inline-block max-w-[85%] min-w-0 overflow-hidden rounded-lg bg-muted p-3 align-top">
-                          <div className="prose prose-sm dark:prose-invert max-w-none break-words [&_*]:break-words [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_code]:whitespace-pre-wrap [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto">
+                          <div
+                            className="prose prose-sm max-w-none break-words leading-7 text-foreground dark:prose-invert [&_*]:break-words [&_code]:whitespace-pre-wrap [&_h1]:mb-3 [&_h1]:mt-0 [&_h2]:mb-2 [&_h2]:mt-4 [&_h3]:mb-2 [&_h3]:mt-4 [&_li]:my-1 [&_ol]:my-3 [&_ol]:ps-5 [&_p]:my-2 [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto [&_ul]:my-3 [&_ul]:list-disc [&_ul]:ps-5"
+                            dir={getAssistantMessageDirection(streamingContent)}
+                          >
                             <ReactMarkdown>{streamingContent}</ReactMarkdown>
                           </div>
                         </div>
@@ -517,8 +535,8 @@ export default function AdvisorPage() {
                       className="flex gap-3"
                     >
                       <Avatar className="w-8 h-8">
-                        <AvatarFallback className="bg-gold text-navy-dark">
-                          <Bot className="w-4 h-4" />
+                        <AvatarFallback className="bg-[radial-gradient(circle_at_top,_#fff3c4,_#e0a63a_55%,_#8b5e10)] text-navy-dark">
+                          <BrainCircuit className="w-4 h-4" />
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex items-center gap-2 p-3 rounded-lg bg-muted">
