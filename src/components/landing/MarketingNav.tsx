@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { BookOpen, GitCompare, Globe, Moon, Sun, TrendingUp } from 'lucide-react';
+import { BookOpen, GitCompare, Globe, Mail, Moon, Sun, TrendingUp } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useAuth } from '@clerk/nextjs';
 import { useAppStore } from '@/store/useAppStore';
@@ -13,12 +13,20 @@ import { WealixLogo } from '@/components/shared/WealixLogo';
 // ---------------------------------------------------------------------------
 const sections = {
   en: [
+    { id: 'value', label: 'Why Wealix' },
     { id: 'features', label: 'Features' },
+    { id: 'advisor', label: 'AI Advisor' },
+    { id: 'analysis', label: 'Analysis' },
+    { id: 'decisions', label: 'Decision Support' },
     { id: 'pricing', label: 'Pricing' },
     { id: 'faq', label: 'FAQ' },
   ],
   ar: [
+    { id: 'value', label: 'لماذا Wealix' },
     { id: 'features', label: 'المميزات' },
+    { id: 'advisor', label: 'المستشار الذكي' },
+    { id: 'analysis', label: 'التحليل' },
+    { id: 'decisions', label: 'دعم القرار' },
     { id: 'pricing', label: 'الأسعار' },
     { id: 'faq', label: 'الأسئلة الشائعة' },
   ],
@@ -29,11 +37,13 @@ const routedLinks = {
     { href: '/blog', label: 'Blog', icon: BookOpen },
     { href: '/vs', label: 'Comparisons', icon: GitCompare },
     { href: '/markets', label: 'Markets', icon: TrendingUp },
+    { href: '/contact', label: 'Contact', icon: Mail },
   ],
   ar: [
     { href: '/blog', label: 'المدونة', icon: BookOpen },
     { href: '/vs', label: 'مقارنات', icon: GitCompare },
     { href: '/markets', label: 'الأسواق', icon: TrendingUp },
+    { href: '/contact', label: 'تواصل', icon: Mail },
   ],
 } as const;
 
@@ -92,13 +102,6 @@ export function MarketingNav({ showSections = false }: MarketingNavProps) {
               {link.label}
             </Link>
           ))}
-
-          <a
-            href={showSections ? '#contact' : '/#contact'}
-            className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-          >
-            {isArabic ? 'تواصل معنا' : 'Contact'}
-          </a>
         </div>
 
         {/* Actions */}

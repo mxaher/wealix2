@@ -19,6 +19,9 @@ import { LandingPageClient } from '@/components/landing/LandingPageClient';
 const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://wealix.app';
 
 export const metadata: Metadata = {
+  title: 'Wealix | AI-Powered Investment Platform for MENA Investors',
+  description:
+    'Wealix is a bilingual AI-powered investment platform for investors across MENA. Analyze portfolios, ask investment questions, and evaluate buy, hold, or sell decisions with clear decision support.',
   alternates: {
     canonical: siteUrl,
   },
@@ -31,50 +34,50 @@ const faqSchema = {
   mainEntity: [
     {
       '@type': 'Question',
-      name: 'What do I get in the 14-day trial?',
+      name: 'What does the AI Advisor do?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'After you choose Core or Pro, the 14-day trial unlocks the standard app experience for that plan. AI features and reports stay locked until payment is completed.',
+        text: 'It lets investors ask portfolio and investment questions in natural language and returns context-aware explanations about allocations, risks, opportunities, and portfolio fit.',
       },
     },
     {
       '@type': 'Question',
-      name: 'Is Wealix a licensed bank, broker, or financial advisor?',
+      name: 'How does portfolio analysis work?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'No. Wealix is a personal wealth management and analysis platform, not a SAMA-licensed bank, brokerage, or regulated investment advisory firm. It does not hold custody of assets or execute trades for you.',
+        text: 'Wealix reads your holdings and surfaces allocation, diversification, concentration risk, sector mix, performance tracking, and gains or losses breakdowns so you can review the portfolio from multiple angles.',
       },
     },
     {
       '@type': 'Question',
-      name: 'Where is my data stored?',
+      name: 'Can I decide whether to buy or sell?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'Signed-in workspace data is persisted in Cloudflare D1, and some supporting processors such as AI, OCR, email, and monitoring vendors may handle limited data outside Saudi Arabia depending on the feature you use.',
+        text: 'You can evaluate buy, hold, and sell scenarios inside the app, but the product is framed as decision support. It helps assess exposure, valuation, signals, and fit rather than providing regulated financial advice.',
       },
     },
     {
       '@type': 'Question',
-      name: 'How does the AI Advisor use my financial data?',
+      name: 'Does the app support MENA markets?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'When you use AI features, Wealix sends only the financial context needed for that request to the active AI processors. The Privacy Policy explains processing and retention in more detail.',
+        text: 'Yes. The platform is built for investors across MENA and is designed to support regional markets first while remaining ready for broader global coverage.',
       },
     },
     {
       '@type': 'Question',
-      name: 'How do live market prices work?',
+      name: 'Will more markets be added?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'Saudi holdings are refreshed through SAHMK. EGX and US coverage can be expanded through additional market providers. The portfolio page always labels the active source and whether data is live, delayed, or demo.',
+        text: 'Yes. The product direction is to expand market coverage over time so investors can keep using the same workflow as new exchanges and regions are introduced.',
       },
     },
     {
       '@type': 'Question',
-      name: 'Can I review OCR results before they become expenses?',
+      name: 'Is this financial advice?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'Yes. Receipt OCR is review-first. The extracted merchant, amount, date, category, and raw text are shown for confirmation and editing before anything is saved into your expenses.',
+        text: 'No. Wealix provides analytics, portfolio context, and decision-support tools. It does not provide regulated investment advice, hold assets, or execute trades.',
       },
     },
   ],
@@ -95,33 +98,38 @@ export default function LandingPage() {
         The client component hydrates over this for interactivity.
       */}
       <div id="seo-anchor" className="sr-only" aria-hidden="true">
-        <h1>Master your wealth with intelligent insights — Wealix AI Wealth OS</h1>
+        <h1>Wealix is an AI-powered investment platform for MENA investors</h1>
         <p>
-          Wealix combines budgeting, investing, FIRE planning, OCR-powered expense capture,
-          and AI analysis into one calm operating system for personal wealth.
+          Wealix helps investors across MENA analyze portfolios, ask investment questions in
+          natural language, and evaluate buy, hold, or sell decisions with bilingual decision
+          support.
         </p>
         <section aria-label="Features">
-          <h2>Everything you need in one place</h2>
+          <h2>Global positioning with regional relevance</h2>
           <ul>
-            <li>Financial Command Center — Track income, expenses, assets, liabilities, and net worth from one clear operating layer.</li>
-            <li>Portfolio Intelligence — Import holdings, review allocation, and get AI-guided decisions for hold, trim, add, or diversify.</li>
-            <li>Receipt Capture &amp; OCR — Scan or upload receipts, review extracted fields, then approve corrected data into expenses.</li>
-            <li>FIRE Planning — Model financial independence progress and connect day-to-day budgeting with long-term freedom.</li>
-            <li>AI Wealth Advisor — Turn your current numbers into practical guidance, summaries, and next-best actions.</li>
-            <li>Secure User Accounts — Each signed-in user gets an isolated workspace with clean live data and a safe demo experience for guests.</li>
+            <li>Built for investors across MENA with expansion into additional markets over time.</li>
+            <li>AI Advisor that answers investment questions in natural language with portfolio context.</li>
+            <li>Portfolio analysis for allocation, diversification, concentration risk, and gains or losses breakdown.</li>
+            <li>Decision-support workflows for evaluating buy, hold, and sell scenarios.</li>
+            <li>Arabic and English product experience designed for RTL and LTR reading patterns.</li>
+            <li>Secure signed-in workspaces for personal portfolio monitoring and analysis.</li>
           </ul>
         </section>
-        <section aria-label="Pricing">
-          <h2>Choose your plan, then start a 14-day trial</h2>
-          <p>Core plan from $10/month. Pro plan from $15/month. Annual billing saves up to 20%.</p>
+        <section aria-label="FAQ">
+          <h2>Frequently asked questions</h2>
+          <p>
+            Learn what the AI Advisor does, how portfolio analysis works, whether more MENA and
+            global markets will be added, and how Wealix frames decision support versus financial
+            advice.
+          </p>
         </section>
         <section aria-label="Blog and Resources">
           <nav>
             <a href="/blog">Financial Insights Blog</a>
             <a href="/vs/mint">Wealix vs Mint</a>
             <a href="/vs/personal-capital">Wealix vs Personal Capital</a>
-            <a href="/markets/saudi-arabia">Saudi Arabia Market Insights</a>
-            <a href="/markets/egypt">Egypt Market Insights</a>
+            <a href="/markets">Regional market coverage</a>
+            <a href="/contact">Contact Wealix</a>
           </nav>
         </section>
       </div>
