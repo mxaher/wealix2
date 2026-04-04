@@ -47,8 +47,9 @@ const content = {
   en: {
     heroBadge: 'Global investing intelligence, designed for MENA',
     heroTitle: 'One AI-powered platform for portfolios, context, and confident investment decisions.',
+    heroTagline: 'Invest clearly. Ask naturally. Decide confidently.',
     heroDescription:
-      'Wealix helps investors across MENA understand allocations, ask portfolio questions in natural language, and evaluate decisions with a calm, bilingual product built for regional markets and global expansion.',
+      'Wealix is the AI-powered investment platform for investors who want real clarity — track your portfolio, understand your allocations, and ask any financial question in plain English or Arabic. Every insight is designed to give you the context and confidence to make decisions you\'ll stand behind. Built to grow with you.',
     primaryCta: 'Start 14-Day Trial',
     secondaryCta: 'Explore the Platform',
     trustNote:
@@ -239,9 +240,10 @@ const content = {
   },
   ar: {
     heroBadge: 'ذكاء استثماري عالمي مصمم للمستثمرين في المنطقة',
-    heroTitle: 'منصة واحدة مدعومة بالذكاء الاصطناعي للمحافظ الاستثمارية والسياق واتخاذ القرار بثقة.',
+    heroTitle: 'منصة شاملة مدعومة بالذكاء الاصطناعي لادارة محفظتك الاستثمارية.',
+    heroTagline: 'استثمر بوضوح. اسأل بلغتك. قرر بثقة.',
     heroDescription:
-      'تساعد Wealix المستثمرين في منطقة الشرق الأوسط وشمال أفريقيا على فهم التوزيع، وطرح الأسئلة الاستثمارية باللغة الطبيعية، وتقييم القرارات ضمن تجربة هادئة ثنائية اللغة تدعم الأسواق الإقليمية اليوم وتتوسع عالمياً مع الوقت.',
+      'Wealix منصة استثمارية مدعومة بالذكاء الاصطناعي، صممت للمستثمر الذي يريد وضوحاً حقيقياً. تابع محفظتك، وافهم توزيع أصولك، واطرح أي سؤال استثماري بالعربية أو الإنجليزية بكل سهولة. كل رؤية مصممة لتمنحك السياق والثقة اللازمين لاتخاذ قرارات تؤمن بها. مبنية لتنمو معك.',
     primaryCta: 'ابدأ التجربة المجانية لمدة 14 يوماً',
     secondaryCta: 'استكشف المنصة',
     trustNote:
@@ -464,9 +466,9 @@ export function LandingPageClient() {
               <h1 className="mt-6 max-w-4xl text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">
                 {isArabic ? (
                   <>
-                    منصة واحدة مدعومة{' '}
+                    منصة شاملة مدعومة{' '}
                     <span className="gradient-text">بالذكاء الاصطناعي</span>
-                    {' '}للمحافظ الاستثمارية والسياق واتخاذ القرار بثقة.
+                    {' '}لادارة محفظتك الاستثمارية.
                   </>
                 ) : (
                   <>
@@ -474,7 +476,10 @@ export function LandingPageClient() {
                   </>
                 )}
               </h1>
-              <p className="mt-5 max-w-2xl text-base leading-8 text-muted-foreground md:text-lg">
+              <p className="mt-6 max-w-2xl text-base font-medium text-foreground md:text-lg">
+                {t.heroTagline}
+              </p>
+              <p className="mt-3 max-w-2xl text-base leading-8 text-muted-foreground md:text-lg">
                 {t.heroDescription}
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
