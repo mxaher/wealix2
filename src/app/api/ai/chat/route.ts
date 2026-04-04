@@ -677,7 +677,11 @@ export async function POST(request: NextRequest) {
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : '';
-      if (/API key is not configured|API request failed|empty response/i.test(message)) {
+      if (/API key is not configured/i.test(message)) {
+        throw error;
+      }
+
+      if (/API request failed|empty response/i.test(message)) {
         response = generateFallbackAdvisorResponse({ locale, userContext, messages: apiMessages });
       } else {
         throw error;
@@ -714,8 +718,13 @@ export async function POST(request: NextRequest) {
     const status = /API key is not configured/i.test(message) ? 503 : 500;
     return new Response(
       JSON.stringify({
-        error: status === 503 ? 'AI advisor is temporarily unavailable' : 'Failed to process chat request',
+        error: status === 503
+          ? 'AI advisor is unavailable because no AI provider API key is configured.'
+          : 'Failed to process chat request',
         code: status === 503 ? 'ADVISOR_UNAVAILABLE' : 'INTERNAL_ERROR',
+        details: status === 503
+          ? 'Add NVIDIA_API_KEY or configure GEMMA_API_KEY in your .env.local, then restart the dev server.'
+          : undefined,
       }),
       { status, headers: { 'Content-Type': 'application/json' } }
     );

@@ -139,7 +139,10 @@ export default function AdvisorPage() {
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to get response');
+      if (!response.ok) {
+        const data = await response.json().catch(() => null) as { error?: string; details?: string } | null;
+        throw new Error(data?.details || data?.error || 'Failed to get response');
+      }
 
       // Read streaming response
       const reader = response.body?.getReader();
@@ -204,9 +207,11 @@ export default function AdvisorPage() {
       const errorMessage: Message = {
         id: createOpaqueId('chat-message'),
         role: 'assistant',
-        content: isArabic 
-          ? 'عذراً، حدث خطأ. يرجى المحاولة مرة أخرى.' 
-          : 'Sorry, an error occurred. Please try again.',
+        content: error instanceof Error
+          ? error.message
+          : (isArabic
+            ? 'عذراً، حدث خطأ. يرجى المحاولة مرة أخرى.'
+            : 'Sorry, an error occurred. Please try again.'),
         timestamp: new Date(),
       };
 
