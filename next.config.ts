@@ -4,6 +4,7 @@ import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 
 const nextConfig: NextConfig = {
   // NOTE: Do NOT set output: 'standalone' — it breaks @opennextjs/cloudflare
+  turbopack: {},
   images: {
     unoptimized: true,
   },

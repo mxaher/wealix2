@@ -462,7 +462,17 @@ export function LandingPageClient() {
                 {t.heroBadge}
               </span>
               <h1 className="mt-6 max-w-4xl text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">
-                {t.heroTitle}
+                {isArabic ? (
+                  <>
+                    منصة واحدة مدعومة{' '}
+                    <span className="gradient-text">بالذكاء الاصطناعي</span>
+                    {' '}للمحافظ الاستثمارية والسياق واتخاذ القرار بثقة.
+                  </>
+                ) : (
+                  <>
+                    One <span className="gradient-text">AI-powered</span> platform for portfolios, context, and confident investment decisions.
+                  </>
+                )}
               </h1>
               <p className="mt-5 max-w-2xl text-base leading-8 text-muted-foreground md:text-lg">
                 {t.heroDescription}
