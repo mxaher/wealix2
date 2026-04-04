@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
+import { MarketingNav } from '@/components/landing/MarketingNav';
 import type { BlogPostSummary } from './data';
 
 type Props = {
@@ -14,8 +15,10 @@ export function BlogPageClient({ posts }: Props) {
   const isArabic = locale === 'ar';
 
   return (
-    <main className="min-h-screen bg-background" dir={isArabic ? 'rtl' : 'ltr'}>
-      <section className="max-w-4xl mx-auto px-4 py-20">
+    <>
+      <MarketingNav />
+      <main className="min-h-screen bg-background" dir={isArabic ? 'rtl' : 'ltr'}>
+      <section className="max-w-4xl mx-auto px-4 pt-28 pb-20">
         <Link
           href="/app"
           className="text-sm text-muted-foreground hover:text-primary mb-8 inline-flex items-center gap-2"
@@ -65,5 +68,6 @@ export function BlogPageClient({ posts }: Props) {
         </div>
       </section>
     </main>
+    </>
   );
 }

@@ -13,23 +13,21 @@ interface WealixLogoProps {
 export function WealixLogo({ className, imageClassName, textClassName, compact = false }: WealixLogoProps) {
   return (
     <span className={cn('inline-flex items-center gap-2', className)}>
+      <Image
+        src="/brand/wealix-mark.svg"
+        alt="Wealix logo"
+        width={compact ? 36 : 44}
+        height={compact ? 28 : 32}
+        className={cn('shrink-0 dark:invert', imageClassName)}
+        priority
+      />
       <span
         className={cn(
-          'relative block shrink-0 overflow-hidden',
-          compact ? 'h-7 w-9' : 'h-8 w-11',
-          imageClassName
+          'font-semibold tracking-tight leading-none text-foreground',
+          compact ? 'text-base' : 'text-lg',
+          textClassName
         )}
       >
-        <Image
-          src="/brand/wealix-mark.svg"
-          alt="Wealix logo"
-          fill
-          sizes={compact ? '36px' : '44px'}
-          className="scale-[1.16] object-cover object-center dark:invert"
-          priority
-        />
-      </span>
-      <span className={cn('font-semibold tracking-tight leading-none text-foreground', compact ? 'text-base' : 'text-lg', textClassName)}>
         Wealix
       </span>
     </span>

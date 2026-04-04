@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useAppStore } from '@/store/useAppStore';
+import { MarketingNav } from '@/components/landing/MarketingNav';
 
 const comparisons = [
   {
@@ -39,8 +40,10 @@ export function VsIndexPageClient() {
   const isArabic = locale === 'ar';
 
   return (
-    <main className="min-h-screen bg-background" dir={isArabic ? 'rtl' : 'ltr'}>
-      <section className="max-w-3xl mx-auto px-4 py-20">
+    <>
+      <MarketingNav />
+      <main className="min-h-screen bg-background" dir={isArabic ? 'rtl' : 'ltr'}>
+      <section className="max-w-3xl mx-auto px-4 pt-28 pb-20">
         <h1 className="text-4xl font-bold text-foreground mb-4">
           {isArabic ? 'Wealix مقابل البدائل' : 'Wealix vs. The Alternatives'}
         </h1>
@@ -68,5 +71,6 @@ export function VsIndexPageClient() {
         </div>
       </section>
     </main>
+    </>
   );
 }

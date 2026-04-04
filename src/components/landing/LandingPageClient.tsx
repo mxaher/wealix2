@@ -21,55 +21,19 @@ import { motion } from 'framer-motion';
 import {
   ArrowRight,
   Bot,
-  BookOpen,
   Briefcase,
   Flame,
-  Globe,
   LineChart,
-  Moon,
   Receipt,
   ShieldCheck,
-  Sun,
   Wallet,
-  GitCompare,
-  TrendingUp,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useAuth } from '@clerk/nextjs';
 import { useAppStore } from '@/store/useAppStore';
 import { Button } from '@/components/ui/button';
 import { CookieConsentBanner } from '@/components/shared/CookieConsentBanner';
-import { WealixLogo } from '@/components/shared/WealixLogo';
-
-// ---------------------------------------------------------------------------
-// Nav sections (anchor links within landing page)
-// ---------------------------------------------------------------------------
-const sections = {
-  en: [
-    { id: 'features', label: 'Features' },
-    { id: 'pricing', label: 'Pricing' },
-    { id: 'faq', label: 'FAQ' },
-  ],
-  ar: [
-    { id: 'features', label: 'المميزات' },
-    { id: 'pricing', label: 'الأسعار' },
-    { id: 'faq', label: 'الأسئلة الشائعة' },
-  ],
-} as const;
-
-// Routed nav links — these connect the homepage to SEO-indexed pages
-const routedLinks = {
-  en: [
-    { href: '/blog', label: 'Blog', icon: BookOpen },
-    { href: '/vs/mint', label: 'Comparisons', icon: GitCompare },
-    { href: '/markets', label: 'Markets', icon: TrendingUp },
-  ],
-  ar: [
-    { href: '/blog', label: 'المدونة', icon: BookOpen },
-    { href: '/vs/mint', label: 'مقارنات', icon: GitCompare },
-    { href: '/markets', label: 'الأسواق', icon: TrendingUp },
-  ],
-} as const;
+import { MarketingNav } from '@/components/landing/MarketingNav';
 
 // ---------------------------------------------------------------------------
 // Feature cards data
@@ -233,9 +197,7 @@ export function LandingPageClient() {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
   const { isLoaded, isSignedIn } = useAuth();
   const clerkSignedIn = isLoaded && isSignedIn;
-  const currentSections = isArabic ? sections.ar : sections.en;
   const currentFaqItems = isArabic ? faqItems.ar : faqItems.en;
-  const currentRoutedLinks = isArabic ? routedLinks.ar : routedLinks.en;
 
   return (
     <div
@@ -247,95 +209,7 @@ export function LandingPageClient() {
       {/* ------------------------------------------------------------------ */}
       {/* Navigation                                                           */}
       {/* ------------------------------------------------------------------ */}
-      <nav className="glass fixed inset-x-0 top-0 z-50 border-b border-border/70">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link href="/">
-            <WealixLogo />
-          </Link>
-
-          <div className="hidden items-center gap-6 md:flex">
-            {/* Anchor links (scroll) */}
-            {currentSections.map((section) => (
-              <a
-                key={section.id}
-                href={`#${section.id}`}
-                className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-              >
-                {section.label}
-              </a>
-            ))}
-
-            {/* Separator */}
-            <span className="h-4 w-px bg-border" aria-hidden="true" />
-
-            {/* Routed links — Blog, Comparisons, Markets */}
-            {currentRoutedLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-              >
-                <link.icon className="h-3.5 w-3.5" />
-                {link.label}
-              </Link>
-            ))}
-
-            <a
-              href="#contact"
-              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-            >
-              {isArabic ? 'تواصل معنا' : 'Contact'}
-            </a>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-full"
-              onClick={() => setLocale(isArabic ? 'en' : 'ar')}
-              title={isArabic ? 'Switch to English' : 'التبديل إلى العربية'}
-            >
-              <Globe className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-full"
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              title={isArabic ? 'تبديل الوضع' : 'Toggle theme'}
-            >
-              <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-              <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-            </Button>
-            {!clerkSignedIn && (
-              <>
-                <Button
-                  asChild
-                  variant="ghost"
-                  className="hidden rounded-full md:inline-flex"
-                >
-                  <Link href="/sign-in">
-                    {isArabic ? 'تسجيل الدخول' : 'Log In'}
-                  </Link>
-                </Button>
-                <Button asChild className="btn-primary rounded-full">
-                  <Link href="/sign-up">
-                    {isArabic ? 'ابدأ الآن' : 'Get Started'}
-                  </Link>
-                </Button>
-              </>
-            )}
-            {clerkSignedIn && (
-              <Button asChild className="btn-primary rounded-full">
-                <Link href="/app">
-                  {isArabic ? 'افتح التطبيق' : 'Open App'}
-                </Link>
-              </Button>
-            )}
-          </div>
-        </div>
-      </nav>
+      <MarketingNav showSections />
 
       <main>
         {/* ---------------------------------------------------------------- */}

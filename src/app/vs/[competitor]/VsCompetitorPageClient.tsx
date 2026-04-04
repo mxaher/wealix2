@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useAppStore } from '@/store/useAppStore';
+import { MarketingNav } from '@/components/landing/MarketingNav';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -188,8 +189,10 @@ export function VsCompetitorPageClient({ competitor }: Props) {
   if (!data) return null;
 
   return (
-    <main className="min-h-screen bg-background" dir={isArabic ? 'rtl' : 'ltr'}>
-      <section className="max-w-4xl mx-auto px-4 py-20">
+    <>
+      <MarketingNav />
+      <main className="min-h-screen bg-background" dir={isArabic ? 'rtl' : 'ltr'}>
+      <section className="max-w-4xl mx-auto px-4 pt-28 pb-20">
         <Link href="/vs" className="text-sm text-muted-foreground hover:text-primary mb-8 inline-block">
           {isArabic ? 'كل المقارنات ←' : '← All Comparisons'}
         </Link>
@@ -276,5 +279,6 @@ export function VsCompetitorPageClient({ competitor }: Props) {
         </div>
       </section>
     </main>
+    </>
   );
 }
