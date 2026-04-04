@@ -8,6 +8,9 @@ export type AgentRole =
   | 'infrastructure';
 
 export type DecisionPriority = 'critical' | 'high' | 'medium' | 'low';
+export type AgentHealth = 'healthy' | 'degraded' | 'down';
+export type AgentConfidence = 'high' | 'medium' | 'low';
+export type DispatchMode = 'local-execution' | 'remote-trigger' | 'queued-local';
 
 export type CompanyMetric = {
   name: string;
@@ -15,6 +18,8 @@ export type CompanyMetric = {
   trend: 'up' | 'down' | 'stable';
   threshold?: { warning: number; critical: number };
 };
+
+export type CompanyMetricMap = Partial<Record<AgentRole | 'company', CompanyMetric[]>>;
 
 export type AgentTask = {
   id: string;
@@ -24,7 +29,7 @@ export type AgentTask = {
   priority: DecisionPriority;
   deadline?: Date;
   status: 'pending' | 'running' | 'done' | 'failed';
-  result?: unknown;
+  result?: TaskExecutionResult | null;
 };
 
 export type CompanyState = {
@@ -58,7 +63,27 @@ export type CEOMemory = {
   companyState: CompanyState;
   decisions: DecisionLog[];
   activeAlerts: Alert[];
-  agentStatuses: Record<AgentRole, 'healthy' | 'degraded' | 'down'>;
+  agentStatuses: Record<AgentRole, AgentHealth>;
+};
+
+export type SubAgentBriefing = {
+  role: AgentRole;
+  headline: string;
+  summary: string;
+  findings: string[];
+  recommendations: string[];
+  metrics: CompanyMetric[];
+  confidence: AgentConfidence;
+  generatedAt: Date;
+  rawContext?: Record<string, unknown>;
+};
+
+export type TaskExecutionResult = {
+  summary: string;
+  recommendations: string[];
+  confidence: AgentConfidence;
+  generatedAt: Date;
+  remoteAgent?: string;
 };
 
 export type CEOResponse = {
@@ -67,12 +92,17 @@ export type CEOResponse = {
   tasksDispatched: AgentTask[];
   alerts: Alert[];
   nextActions: string[];
+  companyState: CompanyState;
+  metrics: CompanyMetric[];
+  briefings: SubAgentBriefing[];
+  dispatchResults: ToolDispatchResult[];
 };
 
 export type ToolDispatchResult = {
   taskId: string;
   assignedTo: AgentRole;
-  mode: 'remote-trigger' | 'queued-local';
+  mode: DispatchMode;
   accepted: boolean;
   note: string;
+  execution?: TaskExecutionResult | null;
 };

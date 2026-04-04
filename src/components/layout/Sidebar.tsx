@@ -94,7 +94,12 @@ export function Sidebar() {
           isArabic ? 'right-0' : 'left-0'
         )}
       >
-        <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
+        <div
+          className={cn(
+            'flex h-16 items-center justify-between border-b border-sidebar-border px-4',
+            isArabic && 'flex-row-reverse'
+          )}
+        >
           <Link href={startPageHref} className="overflow-hidden">
             <WealixLogo compact={sidebarCollapsed} textClassName={sidebarCollapsed ? 'sr-only' : ''} />
           </Link>
@@ -128,7 +133,7 @@ export function Sidebar() {
                       className={cn(
                         'sidebar-item',
                         isActive && 'active',
-                        isArabic && !sidebarCollapsed && 'text-right',
+                        isArabic && !sidebarCollapsed && 'flex-row-reverse text-right',
                         sidebarCollapsed && 'justify-center px-2'
                       )}
                     >
@@ -172,7 +177,7 @@ export function Sidebar() {
         <div className="border-t border-sidebar-border p-3">
           {!sidebarCollapsed && (
             <div className="mb-3 rounded-2xl border border-border bg-card px-4 py-3 shadow-card">
-              <div className="flex items-center gap-3">
+              <div className={cn('flex items-center gap-3', isArabic && 'flex-row-reverse text-right')}>
                 <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                   <ShieldCheck className="h-4 w-4" />
                 </div>
