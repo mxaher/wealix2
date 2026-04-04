@@ -120,14 +120,6 @@ function formatProfilePercent(value: unknown): string | null {
     : null;
 }
 
-function safeJsonBlock(value: unknown): string | null {
-  try {
-    return JSON.stringify(value, null, 2);
-  } catch {
-    return null;
-  }
-}
-
 // Recursively sanitize all string values in an object to prevent prompt injection
 // from persisted data (e.g. merchant names from OCR stored in D1).
 function sanitizeContextStrings(value: unknown): unknown {
@@ -201,6 +193,7 @@ type AdvisorUserContext = {
   savingsRate?: number;
   fireGoal?: number;
   fireProgress?: number;
+  riskProfile?: string;
   holdings?: Array<{
     ticker?: string;
     name?: string;
@@ -213,12 +206,24 @@ type AdvisorUserContext = {
     profitLossPercent?: number;
     isShariah?: boolean;
   }>;
-  assets?: unknown[];
-  liabilities?: unknown[];
-  budgetLimits?: unknown[];
-  expenseEntries?: unknown[];
-  incomeEntries?: unknown[];
-  receiptScans?: unknown[];
+  sectorExposure?: Array<{
+    sector: string;
+    weightPct: number;
+  }>;
+  exchangeExposure?: Array<{
+    exchange: string;
+    weightPct: number;
+  }>;
+  activeGoals?: Array<{
+    name: string;
+    targetAmount: number;
+    progressPct: number;
+    targetDate: string | null;
+    status: string;
+  }>;
+  expenseEntryCount?: number;
+  incomeEntryCount?: number;
+  budgetCount?: number;
 };
 
 function isValidMessageArray(value: unknown): value is Array<{ role: string; content: string }> {
@@ -231,7 +236,7 @@ function isValidMessageArray(value: unknown): value is Array<{ role: string; con
 }
 
 function capConversationHistory<T>(messages: T[]) {
-  return messages.slice(-50);
+  return messages.slice(-20);
 }
 
 async function loadAdvisorUserContext(userId: string): Promise<AdvisorUserContext | null> {
@@ -258,7 +263,8 @@ async function loadAdvisorUserContext(userId: string): Promise<AdvisorUserContex
     savingsRate: snapshot.savingsRate,
     fireGoal: fireGoal?.targetAmount,
     fireProgress: fireGoal?.progressPct,
-    holdings: snapshot.holdings.map((holding) => ({
+    riskProfile: snapshot.riskProfile,
+    holdings: snapshot.holdings.slice(0, 8).map((holding) => ({
       ticker: holding.ticker,
       name: holding.name,
       sector: holding.sector,
@@ -272,12 +278,24 @@ async function loadAdvisorUserContext(userId: string): Promise<AdvisorUserContex
         : 0,
       isShariah: holding.isShariah,
     })),
-    assets: snapshot.assets,
-    liabilities: snapshot.liabilities,
-    budgetLimits: workspace.budgetLimits.slice(0, 25),
-    expenseEntries: workspace.expenseEntries.slice(-30),
-    incomeEntries: workspace.incomeEntries.slice(-20),
-    receiptScans: workspace.receiptScans.slice(-10),
+    sectorExposure: snapshot.sectorExposure.slice(0, 5).map((item) => ({
+      sector: item.sector,
+      weightPct: item.weightPct,
+    })),
+    exchangeExposure: snapshot.exchangeExposure.slice(0, 4).map((item) => ({
+      exchange: item.exchange,
+      weightPct: item.weightPct,
+    })),
+    activeGoals: snapshot.activeGoals.slice(0, 4).map((goal) => ({
+      name: goal.name,
+      targetAmount: goal.targetAmount,
+      progressPct: goal.progressPct,
+      targetDate: goal.targetDate,
+      status: goal.status,
+    })),
+    expenseEntryCount: workspace.expenseEntries.length,
+    incomeEntryCount: workspace.incomeEntries.length,
+    budgetCount: workspace.budgetLimits.length,
   };
 }
 
@@ -291,6 +309,71 @@ function formatSarAmount(value: number | undefined, locale: string) {
     currency: 'SAR',
     maximumFractionDigits: 0,
   }).format(value);
+}
+
+function buildCompactAdvisorContext(userContext: AdvisorUserContext, locale: string) {
+  const lines: string[] = [];
+
+  if (userContext.snapshotDate) lines.push(`Snapshot date: ${userContext.snapshotDate}`);
+  if (userContext.currency) lines.push(`Currency: ${userContext.currency}`);
+  if (userContext.riskProfile) lines.push(`Risk profile: ${userContext.riskProfile}`);
+
+  const netWorth = formatSarAmount(userContext.netWorth, locale);
+  if (netWorth) lines.push(`Net worth: ${netWorth}`);
+  const portfolioValue = formatSarAmount(userContext.portfolioValue, locale);
+  if (portfolioValue) lines.push(`Portfolio value: ${portfolioValue}`);
+  const monthlyIncome = formatSarAmount(userContext.monthlyIncome, locale);
+  if (monthlyIncome) lines.push(`Monthly income: ${monthlyIncome}`);
+  const monthlyExpenses = formatSarAmount(userContext.monthlyExpenses, locale);
+  if (monthlyExpenses) lines.push(`Monthly expenses: ${monthlyExpenses}`);
+  const monthlySavings = formatSarAmount(userContext.monthlySavings, locale);
+  if (monthlySavings) lines.push(`Monthly savings: ${monthlySavings}`);
+  if (typeof userContext.savingsRate === 'number') lines.push(`Savings rate: ${userContext.savingsRate.toFixed(1)}%`);
+  const fireGoal = formatSarAmount(userContext.fireGoal, locale);
+  if (fireGoal) lines.push(`FIRE goal: ${fireGoal}`);
+  if (typeof userContext.fireProgress === 'number') lines.push(`FIRE progress: ${userContext.fireProgress.toFixed(1)}%`);
+  if (typeof userContext.incomeEntryCount === 'number') lines.push(`Income entries in context: ${userContext.incomeEntryCount}`);
+  if (typeof userContext.expenseEntryCount === 'number') lines.push(`Expense entries in context: ${userContext.expenseEntryCount}`);
+  if (typeof userContext.budgetCount === 'number') lines.push(`Budget categories in context: ${userContext.budgetCount}`);
+
+  const holdings = (userContext.holdings ?? []).map((holding) => {
+    const totalValue = formatSarAmount(holding.totalValue, locale);
+    const pnl = typeof holding.profitLossPercent === 'number' ? `${holding.profitLossPercent.toFixed(1)}%` : null;
+    return [
+      holding.ticker || holding.name || 'Holding',
+      holding.sector || null,
+      totalValue ? `value ${totalValue}` : null,
+      pnl ? `P&L ${pnl}` : null,
+      holding.isShariah ? 'Shariah' : null,
+    ].filter(Boolean).join(' | ');
+  });
+  if (holdings.length > 0) {
+    lines.push('Top holdings:');
+    lines.push(...holdings.map((item) => `- ${item}`));
+  }
+
+  const sectors = (userContext.sectorExposure ?? []).map((item) => `- ${item.sector}: ${item.weightPct.toFixed(1)}%`);
+  if (sectors.length > 0) {
+    lines.push('Sector exposure:');
+    lines.push(...sectors);
+  }
+
+  const exchanges = (userContext.exchangeExposure ?? []).map((item) => `- ${item.exchange}: ${item.weightPct.toFixed(1)}%`);
+  if (exchanges.length > 0) {
+    lines.push('Exchange exposure:');
+    lines.push(...exchanges);
+  }
+
+  const goals = (userContext.activeGoals ?? []).map((goal) => {
+    const target = formatSarAmount(goal.targetAmount, locale);
+    return `- ${goal.name}: ${goal.progressPct.toFixed(1)}% complete${target ? ` | target ${target}` : ''}${goal.targetDate ? ` | date ${goal.targetDate}` : ''} | status ${goal.status}`;
+  });
+  if (goals.length > 0) {
+    lines.push('Active goals:');
+    lines.push(...goals);
+  }
+
+  return lines.join('\n');
 }
 
 function generateFallbackAdvisorResponse(params: {
@@ -603,24 +686,10 @@ export async function POST(request: NextRequest) {
       }
 
       const holdingsCount = Array.isArray(userContext.holdings) ? userContext.holdings.length : 0;
-      const assetsCount = Array.isArray(userContext.assets) ? userContext.assets.length : 0;
-      const liabilitiesCount = Array.isArray(userContext.liabilities) ? userContext.liabilities.length : 0;
-      const budgetCount = Array.isArray(userContext.budgetLimits) ? userContext.budgetLimits.length : 0;
-      const expensesCount = Array.isArray(userContext.expenseEntries) ? userContext.expenseEntries.length : 0;
-      const incomeCount = Array.isArray(userContext.incomeEntries) ? userContext.incomeEntries.length : 0;
 
       systemPrompt += `\n- Holdings in context: ${holdingsCount}`;
-      systemPrompt += `\n- Asset entries in context: ${assetsCount}`;
-      systemPrompt += `\n- Liability entries in context: ${liabilitiesCount}`;
-      systemPrompt += `\n- Budget categories in context: ${budgetCount}`;
-      systemPrompt += `\n- Income entries in context: ${incomeCount}`;
-      systemPrompt += `\n- Expense entries in context: ${expensesCount}`;
-
-      const sanitizedContext = sanitizeContextStrings(userContext);
-      const contextJson = safeJsonBlock(sanitizedContext);
-      if (contextJson) {
-        systemPrompt += `\n\nDetailed Wealix account context (JSON):\n${contextJson}`;
-      }
+      const sanitizedContext = sanitizeContextStrings(userContext) as AdvisorUserContext;
+      systemPrompt += `\n\nCompact Wealix account context:\n${buildCompactAdvisorContext(sanitizedContext, locale)}`;
     }
 
     systemPrompt += `\n\nRespond in ${locale === 'ar' ? 'Arabic' : 'English'}.`;

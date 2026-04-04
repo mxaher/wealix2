@@ -49,6 +49,8 @@ import { useAppStore } from '@/store/useAppStore';
 import ReactMarkdown from 'react-markdown';
 import { createOpaqueId } from '@/lib/ids';
 
+const ADVISOR_STORAGE_KEY = 'wealix-advisor-chat-v1';
+
 interface Message {
   id: string;
   role: 'user' | 'assistant';
@@ -79,15 +81,8 @@ export default function AdvisorPage() {
   } = useAppStore();
   const isArabic = locale === 'ar';
 
-  const [sessions, setSessions] = useState<ChatSession[]>([
-    {
-      id: '1',
-      title: isArabic ? 'محادثة جديدة' : 'New Conversation',
-      messages: [],
-      createdAt: new Date(),
-    },
-  ]);
-  const [activeSessionId, setActiveSessionId] = useState('1');
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState('');
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [streamingContent, setStreamingContent] = useState('');
@@ -96,6 +91,81 @@ export default function AdvisorPage() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const activeSession = sessions.find(s => s.id === activeSessionId);
+
+  useEffect(() => {
+    const defaultSession: ChatSession = {
+      id: createOpaqueId('chat-session'),
+      title: isArabic ? 'محادثة جديدة' : 'New Conversation',
+      messages: [],
+      createdAt: new Date(),
+    };
+
+    if (typeof window === 'undefined') {
+      setSessions([defaultSession]);
+      setActiveSessionId(defaultSession.id);
+      return;
+    }
+
+    try {
+      const raw = window.localStorage.getItem(ADVISOR_STORAGE_KEY);
+      if (!raw) {
+        setSessions([defaultSession]);
+        setActiveSessionId(defaultSession.id);
+        return;
+      }
+
+      const parsed = JSON.parse(raw) as {
+        sessions?: Array<{
+          id: string;
+          title: string;
+          messages: Array<{ id: string; role: 'user' | 'assistant'; content: string; timestamp: string }>;
+          createdAt: string;
+        }>;
+        activeSessionId?: string;
+      };
+
+      const restoredSessions = Array.isArray(parsed.sessions)
+        ? parsed.sessions.map((session) => ({
+          id: session.id,
+          title: session.title,
+          messages: Array.isArray(session.messages)
+            ? session.messages.map((message) => ({
+                ...message,
+                timestamp: new Date(message.timestamp),
+              }))
+            : [],
+          createdAt: new Date(session.createdAt),
+        }))
+        : [];
+
+      if (restoredSessions.length === 0) {
+        setSessions([defaultSession]);
+        setActiveSessionId(defaultSession.id);
+        return;
+      }
+
+      setSessions(restoredSessions);
+      setActiveSessionId(
+        restoredSessions.some((session) => session.id === parsed.activeSessionId)
+          ? parsed.activeSessionId ?? restoredSessions[0].id
+          : restoredSessions[0].id
+      );
+    } catch {
+      setSessions([defaultSession]);
+      setActiveSessionId(defaultSession.id);
+    }
+  }, [isArabic]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || sessions.length === 0) {
+      return;
+    }
+
+    window.localStorage.setItem(ADVISOR_STORAGE_KEY, JSON.stringify({
+      sessions,
+      activeSessionId,
+    }));
+  }, [activeSessionId, sessions]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -240,10 +310,12 @@ export default function AdvisorPage() {
   const deleteSession = (sessionId: string) => {
     if (sessions.length === 1) {
       createNewSession();
+      return;
     }
-    setSessions(prev => prev.filter(s => s.id !== sessionId));
+    const remainingSessions = sessions.filter((session) => session.id !== sessionId);
+    setSessions(remainingSessions);
     if (activeSessionId === sessionId) {
-      setActiveSessionId(sessions.find(s => s.id !== sessionId)?.id || '');
+      setActiveSessionId(remainingSessions[0]?.id || '');
     }
   };
 
