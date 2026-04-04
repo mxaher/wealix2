@@ -635,6 +635,12 @@ export default function PortfolioPage() {
     }
 
     setIsAnalyzing(true);
+    toast({
+      title: isArabic ? 'بدأ التحليل' : 'Analysis started',
+      description: isArabic
+        ? 'سنضيف إشعاراً في أعلى التطبيق فور اكتمال تحليل المحفظة.'
+        : 'We will notify you in the header as soon as the portfolio analysis is completed.',
+    });
     try {
       const response = await fetch('/api/portfolio/analyze', {
         method: 'POST',
@@ -1046,6 +1052,12 @@ export default function PortfolioPage() {
             </div>
           </FeatureGate>
         </div>
+
+        <p className={`text-xs text-muted-foreground ${isArabic ? 'text-right' : ''}`}>
+          {isArabic
+            ? 'عند تشغيل تحليل المحفظة أو Decision Check سنرسل لك إشعاراً داخل أيقونة التنبيهات في الأعلى عند اكتمال النتيجة.'
+            : 'When you run Portfolio Analysis or Decision Check, we will notify you in the header notification bell as soon as the result is ready.'}
+        </p>
 
         <Tabs defaultValue="holdings" className="space-y-6">
           <div className="overflow-x-auto">

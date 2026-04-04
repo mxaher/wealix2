@@ -354,15 +354,15 @@ export default function AdvisorPage() {
                       ? 'تحليلات وائل لأغراض معلوماتية فقط وليست استشارة مالية مرخّصة. راجع الشروط قبل اتخاذ قرارات استثمارية.'
                       : 'Wael provides informational analysis only and is not a licensed financial advisor. Review the Wealix terms before making investment decisions.'}
                   </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-lg">
+                  <div className="flex w-full max-w-3xl flex-wrap items-stretch justify-center gap-2 px-4">
                     {suggestedPrompts.map((prompt, index) => (
                       <Button
                         key={index}
                         variant="outline"
-                        className="justify-start h-auto py-2 px-3"
+                        className="h-auto min-h-12 max-w-full whitespace-normal px-4 py-3 text-left sm:flex-[1_1_320px]"
                         onClick={() => sendMessage(isArabic ? prompt.ar : prompt.en)}
                       >
-                        <span className="text-left text-sm">
+                        <span className="block w-full break-words text-left text-sm leading-5">
                           {isArabic ? prompt.ar : prompt.en}
                         </span>
                       </Button>

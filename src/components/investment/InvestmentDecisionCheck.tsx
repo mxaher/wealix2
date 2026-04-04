@@ -138,6 +138,12 @@ export function InvestmentDecisionCheck() {
     }
 
     setIsLoading(true);
+    toast({
+      title: isArabic ? 'بدأ فحص القرار' : 'Decision Check started',
+      description: isArabic
+        ? 'سنضيف إشعاراً في أعلى التطبيق فور اكتمال النتيجة.'
+        : 'We will notify you in the header as soon as the decision check is completed.',
+    });
     try {
       const response = await fetch('/api/investment-decision', {
         method: 'POST',
@@ -221,6 +227,11 @@ export function InvestmentDecisionCheck() {
             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Target className="h-4 w-4" />}
             {isArabic ? 'افحص القرار' : 'Run Decision Check'}
           </Button>
+          <p className={`text-xs text-muted-foreground ${isArabic ? 'text-right' : ''}`}>
+            {isArabic
+              ? 'سنرسل إشعاراً داخل أيقونة التنبيهات بالأعلى عند اكتمال فحص القرار.'
+              : 'We will notify you in the header notification bell when the decision check is completed.'}
+          </p>
         </CardContent>
       </Card>
 

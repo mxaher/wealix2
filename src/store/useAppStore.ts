@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { useUser } from '@clerk/nextjs';
 import { getBillingState } from '@/lib/billing-state';
+import { createOpaqueId } from '@/lib/ids';
 
 const APP_STORAGE_KEY = 'wealix-storage-v4';
 const LEGACY_STORAGE_KEYS = ['wealthos-storage', 'wealix-storage-v3'];
@@ -644,6 +645,10 @@ const defaultNotificationFeed: NotificationItem[] = [
     href: '/reports',
   },
 ];
+
+function prependNotification(feed: NotificationItem[], item: NotificationItem) {
+  return [item, ...feed].slice(0, 30);
+}
 
 const defaultIncomeEntries: IncomeEntry[] = [
   {
@@ -1289,6 +1294,15 @@ export const useAppStore = create<AppState>()(
       addPortfolioAnalysisRecord: (record) => set((state) =>
         syncActiveProfileState(state, {
           portfolioAnalysisHistory: [record, ...state.portfolioAnalysisHistory].slice(0, 20),
+          notificationFeed: prependNotification(state.notificationFeed, {
+            id: createOpaqueId('notification'),
+            title: 'Portfolio analysis ready',
+            titleAr: 'تحليل المحفظة جاهز',
+            description: 'Your latest portfolio review is ready in the portfolio page.',
+            descriptionAr: 'أحدث مراجعة لمحفظتك أصبحت جاهزة داخل صفحة المحفظة.',
+            read: false,
+            href: '/portfolio',
+          }),
         })
       ),
       deletePortfolioAnalysisRecord: (id) => set((state) =>
@@ -1300,6 +1314,15 @@ export const useAppStore = create<AppState>()(
       addInvestmentDecisionRecord: (record) => set((state) =>
         syncActiveProfileState(state, {
           investmentDecisionHistory: [record, ...state.investmentDecisionHistory].slice(0, 30),
+          notificationFeed: prependNotification(state.notificationFeed, {
+            id: createOpaqueId('notification'),
+            title: 'Decision Check completed',
+            titleAr: 'اكتمل فحص القرار',
+            description: `${record.investmentName} was evaluated and saved to your portfolio history.`,
+            descriptionAr: `تم تقييم ${record.investmentName} وحفظ النتيجة داخل سجل المحفظة.`,
+            read: false,
+            href: '/portfolio',
+          }),
         })
       ),
       deleteInvestmentDecisionRecord: (id) => set((state) =>
