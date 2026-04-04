@@ -38,8 +38,8 @@ const heroStats = [
     label: { en: 'Portfolio context on demand', ar: 'سياق محفظتك عند الطلب' },
   },
   {
-    value: 'EN / AR',
-    label: { en: 'Native bilingual experience', ar: 'تجربة ثنائية اللغة أصلية' },
+    value: '0',
+    label: { en: 'Commission or advice conflicts', ar: 'لا عمولات أو تضارب مصالح' },
   },
 ] as const;
 
@@ -463,7 +463,7 @@ export function LandingPageClient() {
               <span className="inline-flex items-center rounded-full border border-primary/15 bg-primary/8 px-3 py-1 text-xs font-semibold tracking-[0.16em] text-primary uppercase">
                 {t.heroBadge}
               </span>
-              <h1 className="mt-6 max-w-4xl text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">
+              <h1 className="mt-6 max-w-4xl text-4xl font-semibold tracking-tight leading-[1.15] sm:text-5xl sm:leading-[1.15] lg:text-6xl lg:leading-[1.12]">
                 {isArabic ? (
                   <>
                     منصة شاملة مدعومة{' '}
