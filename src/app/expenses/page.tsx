@@ -42,6 +42,7 @@ const expenseCategories: ExpenseCategory[] = [
   'Education',
   'Shopping',
   'Housing',
+  'Household',
   'Other',
 ];
 

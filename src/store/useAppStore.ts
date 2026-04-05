@@ -26,7 +26,27 @@ export type ExpenseCategory =
   | 'Education'
   | 'Shopping'
   | 'Housing'
+  | 'Household'
   | 'Other';
+
+export type RecurringFrequency = 'monthly' | 'quarterly' | 'semi_annual' | 'annual' | 'one_time' | 'custom';
+export type ObligationStatus = 'upcoming' | 'due_soon' | 'paid' | 'overdue';
+
+export interface RecurringObligation {
+  id: string;
+  title: string;
+  category: string;
+  amount: number;
+  currency: string;
+  dueDay: number; // day of month (1-31)
+  startDate: string; // ISO date 'YYYY-MM-DD'
+  endDate?: string | null;
+  frequency: RecurringFrequency;
+  customIntervalMonths?: number | null;
+  notes?: string | null;
+  status?: ObligationStatus;
+  lastPaidDate?: string | null;
+}
 export type PaymentMethod = 'Cash' | 'Card' | 'Transfer' | 'Wallet' | 'Other';
 export type ImportedRecordSource = 'receipt' | 'statement';
 
@@ -85,6 +105,7 @@ export interface LocalProfile {
   assets: AssetEntry[];
   liabilities: LiabilityEntry[];
   budgetLimits: BudgetLimit[];
+  recurringObligations: RecurringObligation[];
 }
 
 interface AuthenticatedUserPayload {
@@ -283,6 +304,7 @@ export interface RemoteWorkspaceSnapshot {
   assets: AssetEntry[];
   liabilities: LiabilityEntry[];
   budgetLimits: BudgetLimit[];
+  recurringObligations: RecurringObligation[];
 }
 
 function workspaceFieldsToSnapshot(source: {
@@ -299,6 +321,7 @@ function workspaceFieldsToSnapshot(source: {
   assets: AssetEntry[];
   liabilities: LiabilityEntry[];
   budgetLimits: BudgetLimit[];
+  recurringObligations: RecurringObligation[];
 }): RemoteWorkspaceSnapshot {
   return {
     appMode: source.appMode,
@@ -314,6 +337,7 @@ function workspaceFieldsToSnapshot(source: {
     assets: source.assets,
     liabilities: source.liabilities,
     budgetLimits: source.budgetLimits,
+    recurringObligations: source.recurringObligations,
   };
 }
 
@@ -792,6 +816,45 @@ const defaultReceiptScans: ReceiptScanResult[] = [
   },
 ];
 
+const defaultRecurringObligations: RecurringObligation[] = [
+  {
+    id: 'obligation-rent',
+    title: 'Monthly Rent',
+    category: 'housing',
+    amount: 7200,
+    currency: 'SAR',
+    dueDay: 1,
+    startDate: new Date().toISOString().slice(0, 10),
+    frequency: 'monthly',
+    notes: 'Apartment rent - Riyadh',
+    status: 'upcoming',
+  },
+  {
+    id: 'obligation-household',
+    title: 'Household Allowance',
+    category: 'household_allowance',
+    amount: 3500,
+    currency: 'SAR',
+    dueDay: 5,
+    startDate: new Date().toISOString().slice(0, 10),
+    frequency: 'monthly',
+    notes: 'Monthly household management budget',
+    status: 'upcoming',
+  },
+  {
+    id: 'obligation-insurance',
+    title: 'Car Insurance',
+    category: 'other',
+    amount: 2400,
+    currency: 'SAR',
+    dueDay: 15,
+    startDate: new Date().toISOString().slice(0, 10),
+    frequency: 'annual',
+    notes: 'Annual vehicle insurance renewal',
+    status: 'upcoming',
+  },
+];
+
 function buildDemoState() {
   return {
     appMode: 'demo' as const,
@@ -806,6 +869,7 @@ function buildDemoState() {
     assets: defaultAssets,
     liabilities: defaultLiabilities,
     budgetLimits: defaultBudgetLimits,
+    recurringObligations: defaultRecurringObligations,
   };
 }
 
@@ -823,6 +887,7 @@ function buildLiveState() {
     assets: [] as AssetEntry[],
     liabilities: [] as LiabilityEntry[],
     budgetLimits: [] as BudgetLimit[],
+    recurringObligations: [] as RecurringObligation[],
   };
 }
 
@@ -846,6 +911,7 @@ function sanitizeRemoteWorkspace(workspace: Partial<RemoteWorkspaceSnapshot> | u
     assets: normalizeAssetEntries(workspace?.assets),
     liabilities: normalizeLiabilityEntries(workspace?.liabilities),
     budgetLimits: Array.isArray(workspace?.budgetLimits) ? workspace.budgetLimits : live.budgetLimits,
+    recurringObligations: Array.isArray(workspace?.recurringObligations) ? workspace.recurringObligations : live.recurringObligations,
   };
 }
 
@@ -879,6 +945,7 @@ function createProfileSnapshot(
     assets: state.assets,
     liabilities: state.liabilities,
     budgetLimits: state.budgetLimits,
+    recurringObligations: state.recurringObligations,
   };
 }
 
@@ -924,6 +991,7 @@ function normalizeLocalProfiles(profiles: unknown): LocalProfile[] {
       assets: normalizeAssetEntries(item.assets),
       liabilities: normalizeLiabilityEntries(item.liabilities),
       budgetLimits: Array.isArray(item.budgetLimits) ? item.budgetLimits : [],
+      recurringObligations: Array.isArray(item.recurringObligations) ? item.recurringObligations : [],
     }];
   });
 }
@@ -943,6 +1011,7 @@ function profileToRemoteWorkspace(profile: LocalProfile): RemoteWorkspaceSnapsho
     assets: profile.assets,
     liabilities: profile.liabilities,
     budgetLimits: profile.budgetLimits,
+    recurringObligations: profile.recurringObligations,
   });
 }
 
@@ -967,6 +1036,7 @@ function snapshotActiveProfile(state: AppState): LocalProfile {
     assets: state.assets,
     liabilities: state.liabilities,
     budgetLimits: state.budgetLimits,
+    recurringObligations: state.recurringObligations,
   };
 }
 
@@ -1008,6 +1078,7 @@ function profileToState(profile: LocalProfile) {
     assets: normalizeAssetEntries(profile.assets),
     liabilities: normalizeLiabilityEntries(profile.liabilities),
     budgetLimits: profile.budgetLimits,
+    recurringObligations: Array.isArray(profile.recurringObligations) ? profile.recurringObligations : [],
   };
 }
 
@@ -1068,6 +1139,11 @@ interface AppState {
   deleteLiability: (id: string) => void;
   budgetLimits: BudgetLimit[];
   setBudgetLimits: (limits: BudgetLimit[]) => void;
+  recurringObligations: RecurringObligation[];
+  addRecurringObligation: (obligation: RecurringObligation) => void;
+  updateRecurringObligation: (id: string, updates: Partial<RecurringObligation>) => void;
+  deleteRecurringObligation: (id: string) => void;
+  markObligationPaid: (id: string, paidDate: string) => void;
   hydrateRemoteWorkspace: (workspace: RemoteWorkspaceSnapshot) => void;
   stashRemoteWorkspace: (workspace: RemoteWorkspaceSnapshot) => void;
   clearAllData: () => void;
@@ -1420,6 +1496,31 @@ export const useAppStore = create<AppState>()(
           budgetLimits: limits,
         })
       ),
+      recurringObligations: initialGuestProfile.recurringObligations,
+      addRecurringObligation: (obligation) => set((state) =>
+        syncActiveProfileState(state, {
+          recurringObligations: [obligation, ...state.recurringObligations],
+        })
+      ),
+      updateRecurringObligation: (id, updates) => set((state) =>
+        syncActiveProfileState(state, {
+          recurringObligations: state.recurringObligations.map((o) =>
+            o.id === id ? { ...o, ...updates } : o
+          ),
+        })
+      ),
+      deleteRecurringObligation: (id) => set((state) =>
+        syncActiveProfileState(state, {
+          recurringObligations: state.recurringObligations.filter((o) => o.id !== id),
+        })
+      ),
+      markObligationPaid: (id, paidDate) => set((state) =>
+        syncActiveProfileState(state, {
+          recurringObligations: state.recurringObligations.map((o) =>
+            o.id === id ? { ...o, status: 'paid', lastPaidDate: paidDate } : o
+          ),
+        })
+      ),
       hydrateRemoteWorkspace: (workspace) => set((state) => {
         const sanitizedWorkspace = sanitizeRemoteWorkspace(workspace);
         return syncActiveProfileState(state, {
@@ -1436,6 +1537,7 @@ export const useAppStore = create<AppState>()(
           assets: sanitizedWorkspace.assets,
           liabilities: sanitizedWorkspace.liabilities,
           budgetLimits: sanitizedWorkspace.budgetLimits,
+          recurringObligations: sanitizedWorkspace.recurringObligations,
         });
       }),
       stashRemoteWorkspace: (workspace) => set((state) => {
@@ -1476,6 +1578,7 @@ export const useAppStore = create<AppState>()(
           assets: sanitizedWorkspace.assets,
           liabilities: sanitizedWorkspace.liabilities,
           budgetLimits: sanitizedWorkspace.budgetLimits,
+          recurringObligations: sanitizedWorkspace.recurringObligations,
         };
 
         return {
@@ -1636,6 +1739,7 @@ export function getPersistableWorkspaceSnapshot(state: Pick<
   | 'assets'
   | 'liabilities'
   | 'budgetLimits'
+  | 'recurringObligations'
 >): RemoteWorkspaceSnapshot {
   if (state.appMode === 'demo') {
     const activeProfile = findProfileById(state.profiles, state.activeProfileId);
@@ -1658,6 +1762,7 @@ export function getPersistableWorkspaceSnapshot(state: Pick<
     assets: state.assets,
     liabilities: state.liabilities,
     budgetLimits: state.budgetLimits,
+    recurringObligations: state.recurringObligations,
   });
 }
 

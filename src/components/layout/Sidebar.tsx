@@ -19,6 +19,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Lock,
+  CalendarRange,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/store/useAppStore';
@@ -36,6 +37,7 @@ const navSections = [
       { href: '/dashboard', label: { en: 'Dashboard', ar: 'لوحة التحكم' }, icon: LayoutDashboard },
       { href: '/net-worth', label: { en: 'Net Worth', ar: 'صافي الثروة' }, icon: ChartNoAxesCombined },
       { href: '/budget', label: { en: 'Budget', ar: 'الميزانية' }, icon: Landmark },
+      { href: '/planning', label: { en: 'Planning', ar: 'التخطيط' }, icon: CalendarRange },
       { href: '/reports', label: { en: 'Reports', ar: 'التقارير' }, icon: FileText },
     ],
   },

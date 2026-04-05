@@ -17,6 +17,14 @@ import {
   MoreHorizontal,
   Trash2,
   PiggyBank,
+  ShoppingBag,
+  Calendar,
+  RefreshCw,
+  CheckCircle,
+  AlertCircle,
+  Clock,
+  ChevronRight,
+  X,
 } from 'lucide-react';
 import {
   PieChart,
@@ -58,9 +66,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { DashboardShell } from '@/components/layout';
 import { StatCard } from '@/components/shared';
-import { useAppStore, formatCurrency, type ExpenseEntry } from '@/store/useAppStore';
+import { useAppStore, formatCurrency, type ExpenseEntry, type RecurringObligation, type RecurringFrequency } from '@/store/useAppStore';
 import { toast } from '@/hooks/use-toast';
 import { createOpaqueId } from '@/lib/ids';
+import { getUpcomingOccurrences } from '@/lib/recurring-obligations';
 
 const budgetToExpenseCategory: Record<string, ExpenseEntry['category']> = {
   housing: 'Housing',
@@ -72,6 +81,7 @@ const budgetToExpenseCategory: Record<string, ExpenseEntry['category']> = {
   healthcare: 'Healthcare',
   education: 'Education',
   utilities: 'Utilities',
+  household_allowance: 'Household',
   other: 'Other',
 };
 
@@ -85,6 +95,7 @@ const categoryIcons: Record<string, React.ReactNode> = {
   healthcare: <Heart className="w-4 h-4" />,
   education: <PiggyBank className="w-4 h-4" />,
   utilities: <Home className="w-4 h-4" />,
+  household_allowance: <ShoppingBag className="w-4 h-4" />,
   other: <MoreHorizontal className="w-4 h-4" />,
 };
 
@@ -98,6 +109,7 @@ const categoryColors: Record<string, string> = {
   healthcare: '#F43F5E',
   education: '#14B8A6',
   utilities: '#F59E0B',
+  household_allowance: '#0EA5E9',
   other: '#6B7280',
 };
 
@@ -111,7 +123,24 @@ const categoryLabels: Record<string, { en: string; ar: string }> = {
   healthcare: { en: 'Healthcare', ar: 'الرعاية الصحية' },
   education: { en: 'Education', ar: 'التعليم' },
   utilities: { en: 'Utilities', ar: 'الفواتير' },
+  household_allowance: { en: 'Household Allowance', ar: 'المصروف المنزلي' },
   other: { en: 'Other', ar: 'أخرى' },
+};
+
+const obligationFrequencyLabels: Record<RecurringFrequency, { en: string; ar: string }> = {
+  monthly: { en: 'Monthly', ar: 'شهري' },
+  quarterly: { en: 'Quarterly', ar: 'ربع سنوي' },
+  semi_annual: { en: 'Every 6 months', ar: 'كل 6 أشهر' },
+  annual: { en: 'Yearly', ar: 'سنوي' },
+  one_time: { en: 'One-time', ar: 'مرة واحدة' },
+  custom: { en: 'Custom', ar: 'مخصص' },
+};
+
+const obligationStatusColors: Record<string, string> = {
+  upcoming: 'text-blue-500',
+  due_soon: 'text-amber-500',
+  paid: 'text-emerald-500',
+  overdue: 'text-rose-500',
 };
 
 const mockTrendData = [
@@ -122,19 +151,38 @@ const mockTrendData = [
   { month: 'Feb', expenses: 17050, income: 25500 },
 ];
 
+const defaultObligationForm = {
+  title: '',
+  category: 'household_allowance',
+  amount: '',
+  currency: 'SAR',
+  dueDay: '1',
+  startDate: new Date().toISOString().slice(0, 10),
+  endDate: '',
+  frequency: 'monthly' as RecurringFrequency,
+  customIntervalMonths: '',
+  notes: '',
+};
+
 export default function BudgetPage() {
   const locale = useAppStore((state) => state.locale);
   const incomeEntries = useAppStore((state) => state.incomeEntries);
   const expenseEntries = useAppStore((state) => state.expenseEntries);
   const budgetLimits = useAppStore((state) => state.budgetLimits);
+  const recurringObligations = useAppStore((state) => state.recurringObligations);
   const addExpenseEntry = useAppStore((state) => state.addExpenseEntry);
   const deleteExpenseEntry = useAppStore((state) => state.deleteExpenseEntry);
   const setBudgetLimits = useAppStore((state) => state.setBudgetLimits);
+  const addRecurringObligation = useAppStore((state) => state.addRecurringObligation);
+  const deleteRecurringObligation = useAppStore((state) => state.deleteRecurringObligation);
+  const markObligationPaid = useAppStore((state) => state.markObligationPaid);
   const isArabic = locale === 'ar';
   const { isSignedIn } = useUser();
 
   const [showAddExpense, setShowAddExpense] = useState(false);
   const [newExpense, setNewExpense] = useState({ category: 'food', description: '', amount: '' });
+  const [showAddObligation, setShowAddObligation] = useState(false);
+  const [obligationForm, setObligationForm] = useState(defaultObligationForm);
 
   const totalIncome = incomeEntries.reduce((sum, entry) => sum + entry.amount, 0);
   const totalExpenses = expenseEntries.reduce((sum, entry) => sum + entry.amount, 0);
@@ -200,6 +248,39 @@ export default function BudgetPage() {
     addExpenseEntry(entry);
     setNewExpense({ category: 'food', description: '', amount: '' });
     setShowAddExpense(false);
+  };
+
+  const upcomingObligations = useMemo(
+    () => getUpcomingOccurrences(recurringObligations, 90),
+    [recurringObligations]
+  );
+
+  const handleAddObligation = () => {
+    if (!isSignedIn) {
+      requireAccount();
+      return;
+    }
+    if (!obligationForm.title || !obligationForm.amount) return;
+
+    const obligation: RecurringObligation = {
+      id: createOpaqueId('obligation'),
+      title: obligationForm.title,
+      category: obligationForm.category,
+      amount: Number(obligationForm.amount),
+      currency: obligationForm.currency,
+      dueDay: Number(obligationForm.dueDay) || 1,
+      startDate: obligationForm.startDate || new Date().toISOString().slice(0, 10),
+      endDate: obligationForm.endDate || null,
+      frequency: obligationForm.frequency,
+      customIntervalMonths: obligationForm.frequency === 'custom' ? Number(obligationForm.customIntervalMonths) || 1 : null,
+      notes: obligationForm.notes || null,
+      status: 'upcoming',
+    };
+
+    addRecurringObligation(obligation);
+    setObligationForm(defaultObligationForm);
+    setShowAddObligation(false);
+    toast({ title: isArabic ? 'تم إضافة الالتزام' : 'Obligation added' });
   };
 
   const updateBudgetLimit = (category: string, value: number) => {
@@ -299,8 +380,9 @@ export default function BudgetPage() {
         </div>
 
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList>
+          <TabsList className="flex-wrap h-auto gap-1">
             <TabsTrigger value="overview">{isArabic ? 'نظرة عامة' : 'Overview'}</TabsTrigger>
+            <TabsTrigger value="obligations">{isArabic ? 'الالتزامات' : 'Obligations'}</TabsTrigger>
             <TabsTrigger value="expenses">{isArabic ? 'المصروفات' : 'Expenses'}</TabsTrigger>
             <TabsTrigger value="budget">{isArabic ? 'الميزانية' : 'Budget Setup'}</TabsTrigger>
             <TabsTrigger value="trends">{isArabic ? 'الاتجاهات' : 'Trends'}</TabsTrigger>
@@ -424,6 +506,231 @@ export default function BudgetPage() {
                       </div>
                     );
                   })
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="obligations" className="space-y-6">
+            {/* Add Obligation Dialog */}
+            <Dialog open={showAddObligation} onOpenChange={setShowAddObligation}>
+              <div className="flex justify-end">
+                <Button className="gap-2" onClick={() => isSignedIn ? setShowAddObligation(true) : requireAccount()}>
+                  <Plus className="w-4 h-4" />
+                  {isArabic ? 'إضافة التزام' : 'Add Obligation'}
+                </Button>
+              </div>
+              <DialogContent className="max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>{isArabic ? 'إضافة التزام مالي متكرر' : 'Add Recurring Financial Obligation'}</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label>{isArabic ? 'العنوان' : 'Title'}</Label>
+                    <Input
+                      placeholder={isArabic ? 'مثال: مصروف المنزل' : 'e.g. Household Allowance'}
+                      value={obligationForm.title}
+                      onChange={(e) => setObligationForm((f) => ({ ...f, title: e.target.value }))}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>{isArabic ? 'الفئة' : 'Category'}</Label>
+                      <Select
+                        value={obligationForm.category}
+                        onValueChange={(v) => setObligationForm((f) => ({ ...f, category: v }))}
+                      >
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(categoryLabels).map(([key, label]) => (
+                            <SelectItem key={key} value={key}>
+                              {isArabic ? label.ar : label.en}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>{isArabic ? 'التكرار' : 'Frequency'}</Label>
+                      <Select
+                        value={obligationForm.frequency}
+                        onValueChange={(v) => setObligationForm((f) => ({ ...f, frequency: v as RecurringFrequency }))}
+                      >
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(obligationFrequencyLabels).map(([key, label]) => (
+                            <SelectItem key={key} value={key}>
+                              {isArabic ? label.ar : label.en}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  {obligationForm.frequency === 'custom' && (
+                    <div className="space-y-2">
+                      <Label>{isArabic ? 'الفترة (بالأشهر)' : 'Interval (months)'}</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={obligationForm.customIntervalMonths}
+                        onChange={(e) => setObligationForm((f) => ({ ...f, customIntervalMonths: e.target.value }))}
+                      />
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>{isArabic ? 'المبلغ' : 'Amount'}</Label>
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        value={obligationForm.amount}
+                        onChange={(e) => setObligationForm((f) => ({ ...f, amount: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>{isArabic ? 'يوم الاستحقاق في الشهر' : 'Due day of month'}</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        max="31"
+                        value={obligationForm.dueDay}
+                        onChange={(e) => setObligationForm((f) => ({ ...f, dueDay: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>{isArabic ? 'تاريخ البدء' : 'Start date'}</Label>
+                      <Input
+                        type="date"
+                        value={obligationForm.startDate}
+                        onChange={(e) => setObligationForm((f) => ({ ...f, startDate: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>{isArabic ? 'تاريخ الانتهاء (اختياري)' : 'End date (optional)'}</Label>
+                      <Input
+                        type="date"
+                        value={obligationForm.endDate}
+                        onChange={(e) => setObligationForm((f) => ({ ...f, endDate: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{isArabic ? 'ملاحظات' : 'Notes'}</Label>
+                    <Input
+                      placeholder={isArabic ? 'اختياري' : 'Optional'}
+                      value={obligationForm.notes}
+                      onChange={(e) => setObligationForm((f) => ({ ...f, notes: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowAddObligation(false)}>
+                    {isArabic ? 'إلغاء' : 'Cancel'}
+                  </Button>
+                  <Button onClick={handleAddObligation}>
+                    {isArabic ? 'إضافة' : 'Add'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Upcoming Occurrences */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-primary" />
+                  {isArabic ? 'المدفوعات القادمة (90 يوماً)' : 'Upcoming Payments (Next 90 days)'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {upcomingObligations.length === 0 ? (
+                  <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+                    {isArabic ? 'لا توجد التزامات مستحقة في الـ 90 يوماً القادمة.' : 'No obligations due in the next 90 days.'}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {upcomingObligations.map((occ) => (
+                      <div key={`${occ.obligationId}-${occ.dueDate}`} className="flex items-center gap-3 rounded-lg bg-muted/50 p-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full" style={{ backgroundColor: `${categoryColors[occ.category] || '#6B7280'}20` }}>
+                          <span style={{ color: categoryColors[occ.category] || '#6B7280' }}>
+                            {categoryIcons[occ.category] ?? <Calendar className="w-4 h-4" />}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{occ.title}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {occ.dueDate} · {occ.daysUntilDue === 0 ? (isArabic ? 'اليوم' : 'Today') : occ.daysUntilDue < 0 ? (isArabic ? `منذ ${Math.abs(occ.daysUntilDue)} يوم` : `${Math.abs(occ.daysUntilDue)}d overdue`) : (isArabic ? `خلال ${occ.daysUntilDue} يوم` : `in ${occ.daysUntilDue}d`)}
+                          </p>
+                        </div>
+                        <span className="font-semibold">{formatCurrency(occ.amount, occ.currency, locale)}</span>
+                        <Badge
+                          variant="outline"
+                          className={`text-xs ${obligationStatusColors[occ.status ?? 'upcoming']}`}
+                        >
+                          {occ.status === 'paid' ? (isArabic ? 'مدفوع' : 'Paid') : occ.status === 'overdue' ? (isArabic ? 'متأخر' : 'Overdue') : occ.status === 'due_soon' ? (isArabic ? 'قريباً' : 'Due soon') : (isArabic ? 'قادم' : 'Upcoming')}
+                        </Badge>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-emerald-600 hover:text-emerald-700 text-xs"
+                          onClick={() => isSignedIn ? markObligationPaid(occ.obligationId, new Date().toISOString().slice(0, 10)) : requireAccount()}
+                        >
+                          <CheckCircle className="w-3.5 h-3.5 mr-1" />
+                          {isArabic ? 'تم' : 'Paid'}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* All Obligations */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <RefreshCw className="w-5 h-5 text-primary" />
+                  {isArabic ? 'جميع الالتزامات المتكررة' : 'All Recurring Obligations'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {recurringObligations.length === 0 ? (
+                  <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+                    {isArabic ? 'لا توجد التزامات مضافة بعد.' : 'No obligations added yet. Add your rent, allowances, and scheduled payments.'}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {recurringObligations.map((o) => (
+                      <div key={o.id} className="flex items-center gap-3 rounded-lg border p-3">
+                        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: `${categoryColors[o.category] || '#6B7280'}20` }}>
+                          <span style={{ color: categoryColors[o.category] || '#6B7280' }}>
+                            {categoryIcons[o.category] ?? <Calendar className="w-4 h-4" />}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium">{o.title}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {isArabic ? categoryLabels[o.category]?.ar : categoryLabels[o.category]?.en || o.category}
+                            {' · '}
+                            {isArabic ? obligationFrequencyLabels[o.frequency]?.ar : obligationFrequencyLabels[o.frequency]?.en}
+                            {o.dueDay ? ` · ${isArabic ? `يوم ${o.dueDay}` : `Day ${o.dueDay}`}` : ''}
+                          </p>
+                        </div>
+                        <span className="font-semibold">{formatCurrency(o.amount, o.currency, locale)}</span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-rose-500 hover:text-rose-600 flex-shrink-0"
+                          onClick={() => isSignedIn ? deleteRecurringObligation(o.id) : requireAccount()}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </CardContent>
             </Card>

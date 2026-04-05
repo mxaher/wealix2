@@ -12,6 +12,7 @@ import type {
   PortfolioAnalysisRecord,
   PortfolioHolding,
   ReceiptScanResult,
+  RecurringObligation,
 } from '@/store/useAppStore';
 import type { StartPage } from '@/lib/start-page';
 
@@ -29,6 +30,7 @@ export type RemoteUserWorkspace = {
   assets: AssetEntry[];
   liabilities: LiabilityEntry[];
   budgetLimits: BudgetLimit[];
+  recurringObligations?: RecurringObligation[];
 };
 
 export type RemoteWorkspaceRecord = {

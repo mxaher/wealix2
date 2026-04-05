@@ -22,6 +22,7 @@ import {
   PiggyBank,
   FileText,
   Settings,
+  CalendarRange,
 } from 'lucide-react';
 import { getStartPageHref } from '@/lib/start-page';
 
@@ -41,6 +42,7 @@ const allNavItems = [
   { href: '/fire', label: { en: 'FIRE Tracker', ar: 'متعقب FIRE' }, icon: Flame },
   { href: '/retirement', label: { en: 'Retirement', ar: 'التقاعد' }, icon: PiggyBank },
   { href: '/budget', label: { en: 'Budget', ar: 'الميزانية' }, icon: Wallet },
+  { href: '/planning', label: { en: 'Planning', ar: 'التخطيط' }, icon: CalendarRange },
   { href: '/advisor', label: { en: 'AI Advisor', ar: 'المستشار المالي' }, icon: Bot, pro: true },
   { href: '/reports', label: { en: 'Reports', ar: 'التقارير' }, icon: FileText },
   { href: '/settings', label: { en: 'Settings', ar: 'الإعدادات' }, icon: Settings },

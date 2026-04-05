@@ -8,6 +8,9 @@ import {
   Flame,
   Receipt,
   Sparkles,
+  Calendar,
+  AlertTriangle,
+  ChevronRight,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,6 +19,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { DashboardShell } from '@/components/layout';
 import { StatCard, DashboardSkeleton } from '@/components/shared';
 import { useAppStore, formatCurrency } from '@/store/useAppStore';
+import { getUpcomingOccurrences, buildForecastSummary } from '@/lib/recurring-obligations';
 import {
   XAxis,
   YAxis,
@@ -28,7 +32,7 @@ import {
   Pie,
   Cell,
 } from 'recharts';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 
 const mockNetWorthData = [
   { month: 'Jan', value: 525000 },
@@ -95,6 +99,7 @@ export default function DashboardPage() {
     portfolioHoldings,
     assets,
     liabilities,
+    recurringObligations,
   } = useAppStore();
   const isArabic = locale === 'ar';
   const [isLoading, setIsLoading] = useState(true);
@@ -176,6 +181,26 @@ export default function DashboardPage() {
     : totalIncome > 0
       ? Math.min(100, Math.round((totalExpenses / totalIncome) * 100))
       : 0;
+
+  const monthlyIncomeNormalized = incomeEntries.reduce((sum, e) => {
+    if (!e.isRecurring) return sum;
+    switch (e.frequency) {
+      case 'weekly': return sum + e.amount * 52 / 12;
+      case 'quarterly': return sum + e.amount / 3;
+      case 'yearly': return sum + e.amount / 12;
+      default: return sum + e.amount;
+    }
+  }, 0);
+
+  const activeObligations = isDemoMode ? recurringObligations : recurringObligations;
+  const upcomingObligations = useMemo(
+    () => getUpcomingOccurrences(activeObligations, 30).slice(0, 4),
+    [activeObligations]
+  );
+  const forecastSummary3 = useMemo(
+    () => buildForecastSummary(activeObligations, 3, monthlyIncomeNormalized),
+    [activeObligations, monthlyIncomeNormalized]
+  );
 
   return (
     <DashboardShell>
@@ -426,6 +451,103 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           </div>
+        </div>
+
+        {/* Upcoming Obligations + 3-Month Forecast */}
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+          <Card className="card-hover">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-primary" />
+                  {isArabic ? 'الالتزامات القادمة (30 يوماً)' : 'Upcoming Obligations (30 days)'}
+                </CardTitle>
+                <Button asChild variant="ghost" size="sm" className="gap-1 text-xs">
+                  <Link href="/planning">
+                    {isArabic ? 'كل التوقعات' : 'Full forecast'}
+                    <ChevronRight className="w-3 h-3" />
+                  </Link>
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {upcomingObligations.length === 0 ? (
+                <div className="rounded-xl border border-dashed p-4 text-center text-sm text-muted-foreground">
+                  {isArabic ? 'لا توجد التزامات مستحقة في الـ 30 يوماً القادمة.' : 'No obligations due in the next 30 days.'}
+                  <div className="mt-2">
+                    <Button asChild variant="link" size="sm" className="text-xs">
+                      <Link href="/budget">{isArabic ? 'إضافة التزامات' : 'Add obligations'}</Link>
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {upcomingObligations.map((occ) => (
+                    <div key={`${occ.obligationId}-${occ.dueDate}`} className="flex items-center justify-between rounded-xl bg-secondary/60 px-3 py-2.5">
+                      <div>
+                        <p className="font-medium text-sm">{occ.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {occ.dueDate} · {occ.daysUntilDue === 0 ? (isArabic ? 'اليوم' : 'Today') : occ.daysUntilDue < 0 ? (isArabic ? 'متأخر' : 'Overdue') : (isArabic ? `خلال ${occ.daysUntilDue} يوم` : `in ${occ.daysUntilDue}d`)}
+                        </p>
+                      </div>
+                      <span className={`font-semibold text-sm ${occ.status === 'overdue' ? 'text-rose-500' : occ.status === 'due_soon' ? 'text-amber-500' : ''}`}>
+                        {formatCurrency(occ.amount, occ.currency, locale)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="card-hover">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-primary" />
+                  {isArabic ? 'توقعات 3 أشهر' : '3-Month Forecast'}
+                </CardTitle>
+                <Button asChild variant="ghost" size="sm" className="gap-1 text-xs">
+                  <Link href="/planning">
+                    {isArabic ? 'التخطيط الكامل' : 'Full plan'}
+                    <ChevronRight className="w-3 h-3" />
+                  </Link>
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl bg-rose-500/10 p-3">
+                  <p className="text-xs text-muted-foreground">{isArabic ? 'إجمالي الالتزامات' : 'Total Obligations'}</p>
+                  <p className="text-lg font-bold text-rose-500">
+                    -{formatCurrency(forecastSummary3.totalObligations, 'SAR', locale)}
+                  </p>
+                </div>
+                <div className={`rounded-xl p-3 ${forecastSummary3.projectedSurplus >= 0 ? 'bg-emerald-500/10' : 'bg-rose-500/10'}`}>
+                  <p className="text-xs text-muted-foreground">{isArabic ? 'الفائض المتوقع' : 'Projected Surplus'}</p>
+                  <p className={`text-lg font-bold ${forecastSummary3.projectedSurplus >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                    {forecastSummary3.projectedSurplus >= 0 ? '+' : ''}{formatCurrency(forecastSummary3.projectedSurplus, 'SAR', locale)}
+                  </p>
+                </div>
+              </div>
+              {forecastSummary3.projectedSurplus < 0 && (
+                <div className="flex gap-2 rounded-lg bg-rose-500/10 border border-rose-500/20 p-3 text-sm text-rose-600">
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                  <span>{isArabic ? 'الالتزامات تتجاوز الدخل المتوقع في الـ 3 أشهر القادمة.' : 'Obligations exceed expected income in the next 3 months.'}</span>
+                </div>
+              )}
+              <div className="space-y-2">
+                {forecastSummary3.periods.map((period) => (
+                  <div key={period.month} className="flex items-center justify-between rounded-xl border px-3 py-2">
+                    <span className="text-sm font-medium">{period.label}</span>
+                    <span className="text-sm text-rose-500 font-medium">
+                      {period.totalAmount > 0 ? `-${formatCurrency(period.totalAmount, 'SAR', locale)}` : '—'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </DashboardShell>

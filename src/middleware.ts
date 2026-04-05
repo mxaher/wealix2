@@ -24,7 +24,8 @@ const isAppRoute = createRouteMatcher([
   '/net-worth(.*)',
   '/fire(.*)',
   '/retirement(.*)',
-  '/onboarding(.*)'
+  '/onboarding(.*)',
+  '/planning(.*)'
 ]);
 
 // ─── Clerk instance guard ──────────────────────────────────────────────────────
