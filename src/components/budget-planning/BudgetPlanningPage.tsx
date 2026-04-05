@@ -13,7 +13,6 @@ import {
   Home,
   Landmark,
   Lightbulb,
-  MessageSquareMore,
   MoreHorizontal,
   PiggyBank,
   Plus,
@@ -339,9 +338,6 @@ export function BudgetPlanningPage({
       : notificationPreferences.push
         ? isArabic ? 'داخل التطبيق' : 'In-app'
         : 'Email';
-  const effectiveWhatsAppNumber = notificationPreferences.useSamePhoneNumberForWhatsApp
-    ? notificationPreferences.phoneNumber
-    : notificationPreferences.whatsappNumber;
   const cardProps = cardDirectionProps(isArabic);
 
   return (
@@ -500,7 +496,7 @@ export function BudgetPlanningPage({
           </TabsList>
 
           <TabsContent value="digest" className="space-y-6">
-            <div className="grid gap-6 xl:grid-cols-[1.35fr_0.9fr]">
+            <div className="grid gap-6">
               <Card {...cardProps} className={`overflow-hidden border-primary/20 bg-gradient-to-br from-primary/10 via-background to-background ${cardProps.className}`}>
                 <CardHeader className={isArabic ? 'text-right' : ''}>
                   <div className="flex items-center justify-between gap-3">
@@ -531,35 +527,6 @@ export function BudgetPlanningPage({
                   <div dir={isArabic ? 'rtl' : 'ltr'} className="rounded-2xl border bg-background/70 p-4">
                     <p className="text-sm text-muted-foreground">{isArabic ? 'قناة الإشعار الأساسية' : 'Primary Channel'}</p>
                     <p className="mt-2 text-xl font-semibold">{notificationChannelSummary}</p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card {...cardProps}>
-                <CardHeader className={isArabic ? 'text-right' : ''}>
-                  <CardTitle className="flex items-center gap-2">
-                    <MessageSquareMore className="h-5 w-5 text-primary" />
-                    {isArabic ? 'جاهزية التنبيهات' : 'Notification Readiness'}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className={`space-y-4 ${isArabic ? 'text-right' : ''}`}>
-                  <div dir={isArabic ? 'rtl' : 'ltr'} className="rounded-2xl border p-4">
-                    <p className="text-sm text-muted-foreground">{isArabic ? 'رقم SMS' : 'SMS number'}</p>
-                    <p className="mt-1 font-medium">{notificationPreferences.phoneNumber || (isArabic ? 'غير مضبوط' : 'Not set')}</p>
-                  </div>
-                  <div dir={isArabic ? 'rtl' : 'ltr'} className="rounded-2xl border p-4">
-                    <p className="text-sm text-muted-foreground">{isArabic ? 'رقم واتساب' : 'WhatsApp number'}</p>
-                    <p className="mt-1 font-medium">{effectiveWhatsAppNumber || (isArabic ? 'غير مضبوط' : 'Not set')}</p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      notificationPreferences.push && 'Push',
-                      notificationPreferences.email && 'Email',
-                      notificationPreferences.sms && 'SMS',
-                      notificationPreferences.whatsapp && 'WhatsApp',
-                    ].filter((channel): channel is string => Boolean(channel)).map((channel) => (
-                      <Badge key={channel} variant="outline">{channel}</Badge>
-                    ))}
                   </div>
                 </CardContent>
               </Card>
