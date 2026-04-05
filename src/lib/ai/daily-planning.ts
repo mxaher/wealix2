@@ -228,14 +228,16 @@ export function buildDailyPlanningSnapshot({
     });
   }
 
-  const notifications = upcomingObligations
+  const notifications: DailyPlanningSnapshot['notifications'] = upcomingObligations
     .filter((item) => item.daysUntilDue <= 3)
     .slice(0, 3)
     .map((item, index) => ({
       notification_id: `notif-${snapshotDate}-${index + 1}`,
       urgency: (item.daysUntilDue <= 1 ? 'critical' : 'high') as 'critical' | 'high',
       deliver_at: new Date().toISOString(),
-      channel: notificationPreferences.push ? ['push', 'in_app'] as Array<'push' | 'in_app'> : ['in_app'],
+      channel: notificationPreferences.push
+        ? (['push', 'in_app'] as Array<'push' | 'in_app'>)
+        : (['in_app'] as Array<'push' | 'in_app'>),
       title: locale === 'ar' ? `التزام قريب: ${item.title}` : `Upcoming obligation: ${item.title}`,
       body: locale === 'ar'
         ? `${item.amount.toLocaleString('ar-SA')} ${item.currency} مستحقة في ${item.dueDate}. راجعها الآن.`
