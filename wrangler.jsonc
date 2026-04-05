@@ -53,6 +53,7 @@
     "AI_PORTFOLIO_AB_TEST_PROVIDER": "gemma",
     "AI_PORTFOLIO_AB_PERCENT": "0",
     "NVIDIA_OCR_MODEL": "meta/llama-3.2-90b-vision-instruct",
-    "SAHMK_API_BASE": "https://app.sahmk.sa/api/v1"
+    "SAHMK_API_BASE": "https://app.sahmk.sa/api/v1",
+    "SENTDM_BASE_URL": "https://api.sent.dm"
   }
 }

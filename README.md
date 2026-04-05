@@ -660,6 +660,10 @@ CLERK_SECRET_KEY=
 DATALAB_API_KEY=
 SAHMK_API_KEY=
 TWELVEDATA_API_KEY=
+SENTDM_API_KEY=
+SENTDM_SMS_FROM=
+SENTDM_WHATSAPP_FROM=
+SENTDM_WEBHOOK_SIGNING_SECRET=
 ```
 
 Optional:
@@ -670,6 +674,7 @@ CHANDRA_API_KEY=
 SAHMK_API_BASE=https://app.sahmk.sa/api/v1
 TWELVEDATA_API_BASE=https://api.twelvedata.com
 NEXT_PUBLIC_APP_URL=https://your-domain.example
+SENTDM_BASE_URL=https://api.sent.dm
 ```
 
 Recommended scope:
@@ -718,6 +723,10 @@ CLERK_SECRET_KEY=
 DATALAB_API_KEY=
 SAHMK_API_KEY=
 TWELVEDATA_API_KEY=
+SENTDM_API_KEY=
+SENTDM_SMS_FROM=
+SENTDM_WHATSAPP_FROM=
+SENTDM_WEBHOOK_SIGNING_SECRET=
 ```
 
 ## Deploy to Cloudflare Workers
@@ -813,6 +822,7 @@ CHANDRA_API_KEY=
 SAHMK_API_BASE=https://app.sahmk.sa/api/v1
 TWELVEDATA_API_BASE=https://api.twelvedata.com
 NEXT_PUBLIC_APP_URL=https://your-domain.example
+SENTDM_BASE_URL=https://api.sent.dm
 ```
 
 Important:
