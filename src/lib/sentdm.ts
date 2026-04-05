@@ -21,13 +21,16 @@ export interface BudgetPlanningMessage {
 
 function getChannelTargets(message: BudgetPlanningMessage) {
   const targets: Array<{ channel: SentDmChannel; to: string }> = [];
+  const resolvedWhatsAppNumber = message.preferences.useSamePhoneNumberForWhatsApp
+    ? message.phoneNumber?.trim()
+    : message.whatsappNumber?.trim();
 
   if (message.preferences.sms && message.phoneNumber?.trim()) {
     targets.push({ channel: 'sms', to: message.phoneNumber.trim() });
   }
 
-  if (message.preferences.whatsapp && message.whatsappNumber?.trim()) {
-    targets.push({ channel: 'whatsapp', to: message.whatsappNumber.trim() });
+  if (message.preferences.whatsapp && resolvedWhatsAppNumber) {
+    targets.push({ channel: 'whatsapp', to: resolvedWhatsAppNumber });
   }
 
   return targets;
@@ -65,12 +68,12 @@ export async function sendBudgetPlanningMessage(message: BudgetPlanningMessage) 
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${env.SENTDM_API_KEY}`,
+          'x-api-key': env.SENTDM_API_KEY,
+          'x-sender-id': env.SENTDM_SENDER_ID,
         },
         body: JSON.stringify({
           channel: target.channel,
           to: target.to,
-          from: target.channel === 'whatsapp' ? env.SENTDM_WHATSAPP_FROM : env.SENTDM_SMS_FROM,
           message: `${message.title}\n${message.body}`,
           metadata: {
             userId: message.userId,

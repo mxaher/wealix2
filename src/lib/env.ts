@@ -10,9 +10,8 @@ const publicClerkEnvSchema = z.object({
 
 const sentDmEnvSchema = z.object({
   SENTDM_API_KEY: z.string().min(1, 'SENTDM_API_KEY is required'),
+  SENTDM_SENDER_ID: z.string().min(1, 'SENTDM_SENDER_ID is required'),
   SENTDM_BASE_URL: z.string().url().default('https://api.sent.dm'),
-  SENTDM_SMS_FROM: z.string().min(1, 'SENTDM_SMS_FROM is required'),
-  SENTDM_WHATSAPP_FROM: z.string().min(1, 'SENTDM_WHATSAPP_FROM is required'),
   SENTDM_WEBHOOK_SIGNING_SECRET: z.string().min(1, 'SENTDM_WEBHOOK_SIGNING_SECRET is required'),
 });
 
@@ -51,9 +50,8 @@ export function getSentDmEnv() {
 
   cachedSentDmEnv = sentDmEnvSchema.parse({
     SENTDM_API_KEY: process.env.SENTDM_API_KEY,
+    SENTDM_SENDER_ID: process.env.SENTDM_SENDER_ID,
     SENTDM_BASE_URL: process.env.SENTDM_BASE_URL || 'https://api.sent.dm',
-    SENTDM_SMS_FROM: process.env.SENTDM_SMS_FROM,
-    SENTDM_WHATSAPP_FROM: process.env.SENTDM_WHATSAPP_FROM,
     SENTDM_WEBHOOK_SIGNING_SECRET: process.env.SENTDM_WEBHOOK_SIGNING_SECRET,
   });
 

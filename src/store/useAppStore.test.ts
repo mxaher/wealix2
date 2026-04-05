@@ -21,6 +21,7 @@ function resetStore() {
       weeklyDigest: false,
       preferredChannel: 'push',
       phoneNumber: '',
+      useSamePhoneNumberForWhatsApp: true,
       whatsappNumber: '',
     },
     notificationFeed: [],

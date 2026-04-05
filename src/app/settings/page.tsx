@@ -512,20 +512,52 @@ function SettingsPageContent() {
                   </div>
                 ))}
                 <Separator />
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>{isArabic ? 'رقم الجوال للرسائل' : 'SMS phone number'}</Label>
-                    <input
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      dir="ltr"
-                      value={notificationPreferences.phoneNumber}
-                      onChange={(event) => updateNotificationPreferences({ phoneNumber: event.target.value })}
-                      disabled={!isSignedIn}
-                      placeholder="+9665XXXXXXXX"
-                    />
+                <div className="space-y-2">
+                  <Label>{isArabic ? 'رقم الجوال الأساسي' : 'Primary phone number'}</Label>
+                  <input
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    dir="ltr"
+                    value={notificationPreferences.phoneNumber}
+                    onChange={(event) =>
+                      updateNotificationPreferences({
+                        phoneNumber: event.target.value,
+                        ...(notificationPreferences.useSamePhoneNumberForWhatsApp
+                          ? { whatsappNumber: event.target.value }
+                          : {}),
+                      })
+                    }
+                    disabled={!isSignedIn}
+                    placeholder="+9665XXXXXXXX"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    {isArabic
+                      ? 'يُستخدم هذا الرقم للرسائل النصية، ويمكن استخدامه أيضاً لواتساب.'
+                      : 'This number is used for SMS and can also be reused for WhatsApp.'}
+                  </p>
+                </div>
+                <div className="flex items-center justify-between rounded-xl border p-4">
+                  <div>
+                    <Label>{isArabic ? 'استخدام نفس الرقم لواتساب' : 'Use same number for WhatsApp'}</Label>
+                    <p className="text-sm text-muted-foreground">
+                      {isArabic
+                        ? 'عند التفعيل، سيتم استخدام رقم الجوال الأساسي نفسه لرسائل واتساب.'
+                        : 'When enabled, WhatsApp will use the same primary phone number.'}
+                    </p>
                   </div>
+                  <Switch
+                    checked={notificationPreferences.useSamePhoneNumberForWhatsApp}
+                    onCheckedChange={(checked) =>
+                      updateNotificationPreferences({
+                        useSamePhoneNumberForWhatsApp: checked,
+                        ...(checked ? { whatsappNumber: notificationPreferences.phoneNumber } : {}),
+                      })
+                    }
+                    disabled={!isSignedIn}
+                  />
+                </div>
+                {!notificationPreferences.useSamePhoneNumberForWhatsApp && (
                   <div className="space-y-2">
-                    <Label>{isArabic ? 'رقم واتساب' : 'WhatsApp number'}</Label>
+                    <Label>{isArabic ? 'رقم واتساب المخصص' : 'Dedicated WhatsApp number'}</Label>
                     <input
                       className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                       dir="ltr"
@@ -535,7 +567,7 @@ function SettingsPageContent() {
                       placeholder="+9665XXXXXXXX"
                     />
                   </div>
-                </div>
+                )}
                 <div className="space-y-2">
                   <Label>{isArabic ? 'القناة المفضلة' : 'Preferred delivery channel'}</Label>
                   <Select

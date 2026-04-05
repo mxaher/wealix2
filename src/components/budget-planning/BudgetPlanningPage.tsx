@@ -62,7 +62,7 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
-import { buildDailyPlanningSnapshot } from '@/lib/ai/daily-planning';
+import { buildDailyPlanningSnapshot, type DailyPlanningSnapshot } from '@/lib/ai/daily-planning';
 import { createOpaqueId } from '@/lib/ids';
 import { buildForecast, buildForecastSummary, getUpcomingOccurrences } from '@/lib/recurring-obligations';
 import {
@@ -158,7 +158,18 @@ function categoryLabel(category: string, isArabic: boolean) {
   return isArabic ? categoryLabels[category]?.ar ?? category : categoryLabels[category]?.en ?? category;
 }
 
-export function BudgetPlanningPage() {
+function cardDirectionProps(isArabic: boolean) {
+  return {
+    dir: isArabic ? 'rtl' as const : 'ltr' as const,
+    className: isArabic ? 'text-right' : '',
+  };
+}
+
+export function BudgetPlanningPage({
+  initialSnapshot,
+}: {
+  initialSnapshot?: DailyPlanningSnapshot | null;
+}) {
   const locale = useAppStore((state) => state.locale);
   const incomeEntries = useAppStore((state) => state.incomeEntries);
   const expenseEntries = useAppStore((state) => state.expenseEntries);
@@ -227,7 +238,7 @@ export function BudgetPlanningPage() {
   const summary3 = useMemo(() => buildForecastSummary(recurringObligations, 3, monthlyIncome), [monthlyIncome, recurringObligations]);
   const summary12 = useMemo(() => buildForecastSummary(recurringObligations, 12, monthlyIncome), [monthlyIncome, recurringObligations]);
 
-  const dailySnapshot = useMemo(
+  const fallbackSnapshot = useMemo(
     () =>
       buildDailyPlanningSnapshot({
         locale,
@@ -240,6 +251,7 @@ export function BudgetPlanningPage() {
       }),
     [budgetLimits, expenseEntries, incomeEntries, locale, notificationPreferences, upcomingObligations, user?.id]
   );
+  const dailySnapshot = initialSnapshot ?? fallbackSnapshot;
 
   const forecastChartData = forecast12.map((period) => ({
     month: period.label.split(' ')[0],
@@ -327,6 +339,10 @@ export function BudgetPlanningPage() {
       : notificationPreferences.push
         ? isArabic ? 'داخل التطبيق' : 'In-app'
         : 'Email';
+  const effectiveWhatsAppNumber = notificationPreferences.useSamePhoneNumberForWhatsApp
+    ? notificationPreferences.phoneNumber
+    : notificationPreferences.whatsappNumber;
+  const cardProps = cardDirectionProps(isArabic);
 
   return (
     <DashboardShell>
@@ -485,8 +501,8 @@ export function BudgetPlanningPage() {
 
           <TabsContent value="digest" className="space-y-6">
             <div className="grid gap-6 xl:grid-cols-[1.35fr_0.9fr]">
-              <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary/10 via-background to-background">
-                <CardHeader>
+              <Card {...cardProps} className={`overflow-hidden border-primary/20 bg-gradient-to-br from-primary/10 via-background to-background ${cardProps.className}`}>
+                <CardHeader className={isArabic ? 'text-right' : ''}>
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <CardTitle>{dailySnapshot.daily_headline.title}</CardTitle>
@@ -497,8 +513,8 @@ export function BudgetPlanningPage() {
                     </Badge>
                   </div>
                 </CardHeader>
-                <CardContent className="grid gap-4 md:grid-cols-3">
-                  <div className="rounded-2xl border bg-background/70 p-4">
+                <CardContent className={`grid gap-4 md:grid-cols-3 ${isArabic ? 'text-right' : ''}`}>
+                  <div dir={isArabic ? 'rtl' : 'ltr'} className="rounded-2xl border bg-background/70 p-4">
                     <p className="text-sm text-muted-foreground">{isArabic ? 'حالة الميزانية' : 'Budget Status'}</p>
                     <p className="mt-2 text-xl font-semibold">
                       {dailySnapshot.budget_status.overall_budget_health === 'on_track'
@@ -508,32 +524,32 @@ export function BudgetPlanningPage() {
                           : (isArabic ? 'متجاوزة' : 'Breached')}
                     </p>
                   </div>
-                  <div className="rounded-2xl border bg-background/70 p-4">
+                  <div dir={isArabic ? 'rtl' : 'ltr'} className="rounded-2xl border bg-background/70 p-4">
                     <p className="text-sm text-muted-foreground">{isArabic ? 'أيام متبقية' : 'Days Remaining'}</p>
                     <p className="mt-2 text-xl font-semibold">{dailySnapshot.budget_status.days_remaining}</p>
                   </div>
-                  <div className="rounded-2xl border bg-background/70 p-4">
+                  <div dir={isArabic ? 'rtl' : 'ltr'} className="rounded-2xl border bg-background/70 p-4">
                     <p className="text-sm text-muted-foreground">{isArabic ? 'قناة الإشعار الأساسية' : 'Primary Channel'}</p>
                     <p className="mt-2 text-xl font-semibold">{notificationChannelSummary}</p>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
+              <Card {...cardProps}>
+                <CardHeader className={isArabic ? 'text-right' : ''}>
                   <CardTitle className="flex items-center gap-2">
                     <MessageSquareMore className="h-5 w-5 text-primary" />
                     {isArabic ? 'جاهزية التنبيهات' : 'Notification Readiness'}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="rounded-2xl border p-4">
+                <CardContent className={`space-y-4 ${isArabic ? 'text-right' : ''}`}>
+                  <div dir={isArabic ? 'rtl' : 'ltr'} className="rounded-2xl border p-4">
                     <p className="text-sm text-muted-foreground">{isArabic ? 'رقم SMS' : 'SMS number'}</p>
                     <p className="mt-1 font-medium">{notificationPreferences.phoneNumber || (isArabic ? 'غير مضبوط' : 'Not set')}</p>
                   </div>
-                  <div className="rounded-2xl border p-4">
+                  <div dir={isArabic ? 'rtl' : 'ltr'} className="rounded-2xl border p-4">
                     <p className="text-sm text-muted-foreground">{isArabic ? 'رقم واتساب' : 'WhatsApp number'}</p>
-                    <p className="mt-1 font-medium">{notificationPreferences.whatsappNumber || (isArabic ? 'غير مضبوط' : 'Not set')}</p>
+                    <p className="mt-1 font-medium">{effectiveWhatsAppNumber || (isArabic ? 'غير مضبوط' : 'Not set')}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {[
@@ -550,21 +566,21 @@ export function BudgetPlanningPage() {
             </div>
 
             <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-              <Card>
-                <CardHeader>
+              <Card {...cardProps}>
+                <CardHeader className={isArabic ? 'text-right' : ''}>
                   <CardTitle className="flex items-center gap-2">
                     <Lightbulb className="h-5 w-5 text-amber-500" />
                     {isArabic ? 'أولويات اليوم' : 'Today’s Priorities'}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className={`space-y-3 ${isArabic ? 'text-right' : ''}`}>
                   {dailySnapshot.tips.length === 0 ? (
                     <div className="rounded-2xl border border-dashed p-6 text-sm text-muted-foreground">
                       {isArabic ? 'سيظهر هنا الموجز اليومي عند توفر بيانات أكثر.' : 'The daily digest will show richer guidance here as more data becomes available.'}
                     </div>
                   ) : (
                     dailySnapshot.tips.map((tip) => (
-                      <div key={tip.tip_id} className="rounded-2xl border p-4">
+                      <div key={tip.tip_id} dir={isArabic ? 'rtl' : 'ltr'} className="rounded-2xl border p-4">
                         <div className="flex items-start justify-between gap-3">
                           <div>
                             <p className="font-semibold">{tip.title}</p>
@@ -583,21 +599,21 @@ export function BudgetPlanningPage() {
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
+              <Card {...cardProps}>
+                <CardHeader className={isArabic ? 'text-right' : ''}>
                   <CardTitle className="flex items-center gap-2">
                     <Clock className="h-5 w-5 text-rose-500" />
                     {isArabic ? 'تنبيهات تتطلب إجراء' : 'Action Notifications'}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className={`space-y-3 ${isArabic ? 'text-right' : ''}`}>
                   {dailySnapshot.notifications.length === 0 ? (
                     <div className="rounded-2xl border border-dashed p-6 text-sm text-muted-foreground">
                       {isArabic ? 'لا توجد إجراءات عاجلة خلال 72 ساعة.' : 'No urgent actions in the next 72 hours.'}
                     </div>
                   ) : (
                     dailySnapshot.notifications.map((item) => (
-                      <div key={item.notification_id} className="rounded-2xl border p-4">
+                      <div key={item.notification_id} dir={isArabic ? 'rtl' : 'ltr'} className="rounded-2xl border p-4">
                         <div className="flex items-center justify-between gap-3">
                           <p className="font-semibold">{item.title}</p>
                           <Badge variant={item.urgency === 'critical' ? 'destructive' : 'outline'}>{item.urgency}</Badge>
@@ -613,14 +629,14 @@ export function BudgetPlanningPage() {
 
           <TabsContent value="budget" className="space-y-6">
             <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-              <Card>
-                <CardHeader>
+              <Card {...cardProps}>
+                <CardHeader className={isArabic ? 'text-right' : ''}>
                   <CardTitle>{isArabic ? 'مؤشر الفئات' : 'Budget by Category'}</CardTitle>
                   <CardDescription>
                     {isArabic ? 'الفلاتر مدمجة هنا حسب الفئة، الحالة، وأثر نهاية الشهر.' : 'Sections, filters, and actions are combined here by category, status, and month-end impact.'}
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className={`space-y-4 ${isArabic ? 'text-right' : ''}`}>
                   {chartBudget.length === 0 ? (
                     <div className="rounded-2xl border border-dashed p-6 text-sm text-muted-foreground">
                       {isArabic ? 'أضف حدود الميزانية لرؤية التحليل.' : 'Add budget limits to unlock category analysis.'}
@@ -632,7 +648,7 @@ export function BudgetPlanningPage() {
                       const Icon = categoryIcons[item.category] ?? MoreHorizontal;
 
                       return (
-                        <div key={item.category} className="rounded-2xl border p-4">
+                        <div key={item.category} dir={isArabic ? 'rtl' : 'ltr'} className="rounded-2xl border p-4">
                           <div className="flex items-center justify-between gap-3">
                             <div className="flex items-center gap-3">
                               <div className="flex h-10 w-10 items-center justify-center rounded-2xl" style={{ backgroundColor: `${item.color}18` }}>
@@ -655,11 +671,11 @@ export function BudgetPlanningPage() {
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
+              <Card {...cardProps}>
+                <CardHeader className={isArabic ? 'text-right' : ''}>
                   <CardTitle>{isArabic ? 'إعداد الحدود' : 'Budget Setup'}</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className={`space-y-4 ${isArabic ? 'text-right' : ''}`}>
                   {budgetLimits.map((item) => (
                     <div key={item.category} className="space-y-2">
                       <div className="flex items-center justify-between">
@@ -678,11 +694,11 @@ export function BudgetPlanningPage() {
               </Card>
             </div>
 
-            <Card>
-              <CardHeader>
+            <Card {...cardProps}>
+              <CardHeader className={isArabic ? 'text-right' : ''}>
                 <CardTitle>{isArabic ? 'سجل المصروفات' : 'Expense Log'}</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className={isArabic ? 'text-right' : ''}>
                 {expenseEntries.length === 0 ? (
                   <div className="rounded-2xl border border-dashed p-6 text-sm text-muted-foreground">
                     {isArabic ? 'لا توجد مصروفات حتى الآن.' : 'No expenses yet.'}
@@ -691,7 +707,7 @@ export function BudgetPlanningPage() {
                   <ScrollArea className="h-96">
                     <div className="space-y-3">
                       {expenseEntries.map((expense) => (
-                        <div key={expense.id} className="flex items-center gap-4 rounded-2xl border p-4">
+                        <div key={expense.id} dir={isArabic ? 'rtl' : 'ltr'} className="flex items-center gap-4 rounded-2xl border p-4">
                           <div className="min-w-0 flex-1">
                             <p className="font-medium">{expense.description}</p>
                             <p className="text-sm text-muted-foreground">{expense.date} • {categoryLabel(budgetToExpenseCategory[expense.category] ?? expense.category.toLowerCase(), isArabic)}</p>
@@ -711,19 +727,19 @@ export function BudgetPlanningPage() {
 
           <TabsContent value="obligations" className="space-y-6">
             <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-              <Card>
-                <CardHeader>
+              <Card {...cardProps}>
+                <CardHeader className={isArabic ? 'text-right' : ''}>
                   <CardTitle>{isArabic ? 'الالتزامات القادمة' : 'Upcoming Obligations'}</CardTitle>
                   <CardDescription>{isArabic ? 'السلوك التنقلي أصبح أبسط: الإجراءات والدفعات في نفس الصفحة.' : 'Navigation is simpler now: actions and payment schedule live on the same page.'}</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className={`space-y-3 ${isArabic ? 'text-right' : ''}`}>
                   {upcomingObligations.length === 0 ? (
                     <div className="rounded-2xl border border-dashed p-6 text-sm text-muted-foreground">
                       {isArabic ? 'لا توجد التزامات خلال 90 يوماً.' : 'No obligations due in the next 90 days.'}
                     </div>
                   ) : (
                     upcomingObligations.slice(0, 10).map((item) => (
-                      <div key={`${item.obligationId}-${item.dueDate}`} className="flex items-center gap-3 rounded-2xl border p-4">
+                      <div key={`${item.obligationId}-${item.dueDate}`} dir={isArabic ? 'rtl' : 'ltr'} className="flex items-center gap-3 rounded-2xl border p-4">
                         <div className="min-w-0 flex-1">
                           <p className="font-medium">{item.title}</p>
                           <p className="text-sm text-muted-foreground">{item.dueDate} • {item.daysUntilDue <= 0 ? (isArabic ? 'اليوم' : 'Today') : `${item.daysUntilDue}d`}</p>
@@ -742,18 +758,18 @@ export function BudgetPlanningPage() {
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
+              <Card {...cardProps}>
+                <CardHeader className={isArabic ? 'text-right' : ''}>
                   <CardTitle>{isArabic ? 'كل الالتزامات' : 'Recurring Setup'}</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className={`space-y-3 ${isArabic ? 'text-right' : ''}`}>
                   {recurringObligations.length === 0 ? (
                     <div className="rounded-2xl border border-dashed p-6 text-sm text-muted-foreground">
                       {isArabic ? 'أضف الإيجار أو المدارس أو الرسوم الثابتة هنا.' : 'Add rent, school fees, and other recurring commitments here.'}
                     </div>
                   ) : (
                     recurringObligations.map((item) => (
-                      <div key={item.id} className="flex items-center gap-3 rounded-2xl border p-4">
+                      <div key={item.id} dir={isArabic ? 'rtl' : 'ltr'} className="flex items-center gap-3 rounded-2xl border p-4">
                         <div className="min-w-0 flex-1">
                           <p className="font-medium">{item.title}</p>
                           <p className="text-sm text-muted-foreground">
@@ -774,13 +790,13 @@ export function BudgetPlanningPage() {
 
           <TabsContent value="forecast" className="space-y-6">
             <div className="grid gap-4 md:grid-cols-3">
-              <Card><CardContent className="p-5"><p className="text-sm text-muted-foreground">{isArabic ? '3 أشهر' : 'Next 3 Months'}</p><p className="mt-2 text-2xl font-bold text-rose-500">-{formatCurrency(summary3.totalObligations, 'SAR', locale)}</p></CardContent></Card>
-              <Card><CardContent className="p-5"><p className="text-sm text-muted-foreground">{isArabic ? '12 شهراً' : 'Next 12 Months'}</p><p className="mt-2 text-2xl font-bold text-rose-500">-{formatCurrency(summary12.totalObligations, 'SAR', locale)}</p></CardContent></Card>
-              <Card><CardContent className="p-5"><p className="text-sm text-muted-foreground">{isArabic ? 'فائض متوقع' : 'Projected Surplus'}</p><p className={`mt-2 text-2xl font-bold ${summary12.projectedSurplus >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>{summary12.projectedSurplus >= 0 ? '+' : ''}{formatCurrency(summary12.projectedSurplus, 'SAR', locale)}</p></CardContent></Card>
+              <Card {...cardProps}><CardContent className={`p-5 ${isArabic ? 'text-right' : ''}`}><p className="text-sm text-muted-foreground">{isArabic ? '3 أشهر' : 'Next 3 Months'}</p><p className="mt-2 text-2xl font-bold text-rose-500">-{formatCurrency(summary3.totalObligations, 'SAR', locale)}</p></CardContent></Card>
+              <Card {...cardProps}><CardContent className={`p-5 ${isArabic ? 'text-right' : ''}`}><p className="text-sm text-muted-foreground">{isArabic ? '12 شهراً' : 'Next 12 Months'}</p><p className="mt-2 text-2xl font-bold text-rose-500">-{formatCurrency(summary12.totalObligations, 'SAR', locale)}</p></CardContent></Card>
+              <Card {...cardProps}><CardContent className={`p-5 ${isArabic ? 'text-right' : ''}`}><p className="text-sm text-muted-foreground">{isArabic ? 'فائض متوقع' : 'Projected Surplus'}</p><p className={`mt-2 text-2xl font-bold ${summary12.projectedSurplus >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>{summary12.projectedSurplus >= 0 ? '+' : ''}{formatCurrency(summary12.projectedSurplus, 'SAR', locale)}</p></CardContent></Card>
             </div>
 
-            <Card>
-              <CardHeader>
+            <Card {...cardProps}>
+              <CardHeader className={isArabic ? 'text-right' : ''}>
                 <CardTitle>{isArabic ? 'مقارنة الدخل والالتزامات' : 'Income vs Obligations Forecast'}</CardTitle>
               </CardHeader>
               <CardContent>

@@ -2,8 +2,11 @@ import { getCloudflareContext } from '@opennextjs/cloudflare';
 
 export type D1LikeDatabase = {
   prepare: (query: string) => {
+    first: <T = unknown>() => Promise<T | null>;
+    all: <T = unknown>() => Promise<{ results: T[] }>;
     bind: (...values: unknown[]) => {
       first: <T = unknown>() => Promise<T | null>;
+      all: <T = unknown>() => Promise<{ results: T[] }>;
       run: () => Promise<unknown>;
     };
     run: () => Promise<unknown>;

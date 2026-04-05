@@ -20,6 +20,7 @@ describe('saveRemoteWorkspace', () => {
           weeklyDigest: false,
           preferredChannel: 'push',
           phoneNumber: '',
+          useSamePhoneNumberForWhatsApp: true,
           whatsappNumber: '',
         },
         notificationFeed: [],

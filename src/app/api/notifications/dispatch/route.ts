@@ -23,6 +23,7 @@ const dispatchSchema = z.object({
     weeklyDigest: z.boolean(),
     preferredChannel: z.enum(['push', 'email', 'sms', 'whatsapp']),
     phoneNumber: z.string(),
+    useSamePhoneNumberForWhatsApp: z.boolean(),
     whatsappNumber: z.string(),
   }),
 });

@@ -81,6 +81,7 @@ export interface NotificationPreferences {
   weeklyDigest: boolean;
   preferredChannel: 'push' | 'email' | 'sms' | 'whatsapp';
   phoneNumber: string;
+  useSamePhoneNumberForWhatsApp: boolean;
   whatsappNumber: string;
 }
 
@@ -658,6 +659,7 @@ const defaultNotificationPreferences: NotificationPreferences = {
   weeklyDigest: false,
   preferredChannel: 'push',
   phoneNumber: '',
+  useSamePhoneNumberForWhatsApp: true,
   whatsappNumber: '',
 };
 
