@@ -233,6 +233,10 @@ export function BudgetPlanningPage({
     () => getUpcomingOccurrences(recurringObligations, 90),
     [recurringObligations]
   );
+  const actionableUpcomingObligations = useMemo(
+    () => upcomingObligations.filter((item) => item.status !== 'paid'),
+    [upcomingObligations]
+  );
   const forecast12 = useMemo(() => buildForecast(recurringObligations, 12), [recurringObligations]);
   const summary3 = useMemo(() => buildForecastSummary(recurringObligations, 3, monthlyIncome), [monthlyIncome, recurringObligations]);
   const summary12 = useMemo(() => buildForecastSummary(recurringObligations, 12, monthlyIncome), [monthlyIncome, recurringObligations]);
@@ -493,7 +497,7 @@ export function BudgetPlanningPage({
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <StatCard title={isArabic ? 'صحة اليوم المالية' : 'Today’s Financial Health'} value={`${dailySnapshot.daily_headline.health_score_today}/100`} icon={Wallet} iconColor="text-primary bg-primary/10" />
           <StatCard title={isArabic ? 'الرصيد المتوقع' : 'Projected Month-End'} value={formatCurrency(dailySnapshot.budget_status.projected_month_end_balance, 'SAR', locale)} icon={TrendingUp} iconColor="text-emerald-500 bg-emerald-500/10" />
-          <StatCard title={isArabic ? 'التزامات 30 يوماً' : '30-Day Obligations'} value={formatCurrency(upcomingObligations.filter((item) => item.daysUntilDue <= 30).reduce((sum, item) => sum + item.amount, 0), 'SAR', locale)} icon={Calendar} iconColor="text-amber-500 bg-amber-500/10" />
+          <StatCard title={isArabic ? 'التزامات 30 يوماً' : '30-Day Obligations'} value={formatCurrency(actionableUpcomingObligations.filter((item) => item.daysUntilDue <= 30).reduce((sum, item) => sum + item.amount, 0), 'SAR', locale)} icon={Calendar} iconColor="text-amber-500 bg-amber-500/10" />
           <StatCard title={isArabic ? 'معدل الادخار' : 'Savings Rate'} value={`${savingsRate.toFixed(1)}%`} icon={PiggyBank} iconColor="text-sky-500 bg-sky-500/10" />
         </div>
 
@@ -750,12 +754,12 @@ export function BudgetPlanningPage({
                   <CardDescription>{isArabic ? 'السلوك التنقلي أصبح أبسط: الإجراءات والدفعات في نفس الصفحة.' : 'Navigation is simpler now: actions and payment schedule live on the same page.'}</CardDescription>
                 </CardHeader>
                 <CardContent className={`space-y-3 ${isArabic ? 'text-right' : ''}`}>
-                  {upcomingObligations.length === 0 ? (
+                  {actionableUpcomingObligations.length === 0 ? (
                     <div className="rounded-2xl border border-dashed p-6 text-sm text-muted-foreground">
                       {isArabic ? 'لا توجد التزامات خلال 90 يوماً.' : 'No obligations due in the next 90 days.'}
                     </div>
                   ) : (
-                    upcomingObligations.slice(0, 10).map((item) => (
+                    actionableUpcomingObligations.slice(0, 10).map((item) => (
                       <div key={`${item.obligationId}-${item.dueDate}`} dir={isArabic ? 'rtl' : 'ltr'} className="flex items-center gap-3 rounded-2xl border p-4">
                         <div className="min-w-0 flex-1">
                           <p className="font-medium">{item.title}</p>
@@ -765,7 +769,20 @@ export function BudgetPlanningPage({
                           {item.daysUntilDue <= 7 ? (isArabic ? 'قريب' : 'Soon') : (isArabic ? 'قادم' : 'Upcoming')}
                         </Badge>
                         <p className="font-semibold">{formatCurrency(item.amount, item.currency, locale)}</p>
-                        <Button variant="outline" size="sm" disabled={!isSignedIn} onClick={() => markObligationPaid(item.obligationId, new Date().toISOString().slice(0, 10))}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={!isSignedIn}
+                          onClick={() => {
+                            markObligationPaid(item.obligationId, item.dueDate);
+                            toast({
+                              title: isArabic ? 'تم تسجيل السداد' : 'Payment recorded',
+                              description: isArabic
+                                ? `تم تحديث ${item.title} كمدفوع وسيختفي من الالتزامات القادمة.`
+                                : `${item.title} was marked as paid and removed from upcoming obligations.`,
+                            });
+                          }}
+                        >
                           <CheckCircle className="me-2 h-4 w-4" />
                           {isArabic ? 'تم الدفع' : 'Mark Paid'}
                         </Button>
