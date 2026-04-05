@@ -180,9 +180,10 @@ export function getOccurrencesInRange(
  * Compute upcoming occurrences across all obligations, within the next `days` days.
  */
 export function getUpcomingOccurrences(
-  obligations: RecurringObligation[],
+  obligations: RecurringObligation[] | undefined | null,
   days = 90
 ): UpcomingOccurrence[] {
+  if (!obligations?.length) return [];
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const rangeEnd = new Date(today);
@@ -242,9 +243,10 @@ function resolveOccurrenceStatus(
  * Build a monthly forecast for the next `months` months.
  */
 export function buildForecast(
-  obligations: RecurringObligation[],
+  obligations: RecurringObligation[] | undefined | null,
   months = 12
 ): ForecastPeriod[] {
+  if (!obligations) obligations = [];
   const today = new Date();
   const periods: ForecastPeriod[] = [];
 
@@ -293,7 +295,7 @@ export function buildForecast(
  * Summarize forecast over a period window (3, 6, or 12 months).
  */
 export function buildForecastSummary(
-  obligations: RecurringObligation[],
+  obligations: RecurringObligation[] | undefined | null,
   windowMonths: 3 | 6 | 12,
   monthlyIncome: number
 ): {

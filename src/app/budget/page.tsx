@@ -169,7 +169,7 @@ export default function BudgetPage() {
   const incomeEntries = useAppStore((state) => state.incomeEntries);
   const expenseEntries = useAppStore((state) => state.expenseEntries);
   const budgetLimits = useAppStore((state) => state.budgetLimits);
-  const recurringObligations = useAppStore((state) => state.recurringObligations);
+  const recurringObligations = useAppStore((state) => state.recurringObligations) ?? [];
   const addExpenseEntry = useAppStore((state) => state.addExpenseEntry);
   const deleteExpenseEntry = useAppStore((state) => state.deleteExpenseEntry);
   const setBudgetLimits = useAppStore((state) => state.setBudgetLimits);

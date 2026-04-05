@@ -120,7 +120,7 @@ function PeriodCard({ period, locale, isArabic }: { period: ForecastPeriod; loca
 export default function PlanningPage() {
   const locale = useAppStore((s) => s.locale);
   const incomeEntries = useAppStore((s) => s.incomeEntries);
-  const recurringObligations = useAppStore((s) => s.recurringObligations);
+  const recurringObligations = useAppStore((s) => s.recurringObligations) ?? [];
   const isArabic = locale === 'ar';
 
   const monthlyIncome = useMemo(() => {

@@ -192,7 +192,7 @@ export default function DashboardPage() {
     }
   }, 0);
 
-  const activeObligations = isDemoMode ? recurringObligations : recurringObligations;
+  const activeObligations = recurringObligations ?? [];
   const upcomingObligations = useMemo(
     () => getUpcomingOccurrences(activeObligations, 30).slice(0, 4),
     [activeObligations]
