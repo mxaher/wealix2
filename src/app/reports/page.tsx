@@ -556,7 +556,7 @@ function buildReport({
     <meta charset="UTF-8" />
     <title>${name}</title>
     <style>
-      body { font-family: ${isArabic ? 'Tajawal, Arial, sans-serif' : 'Arial, sans-serif'}; padding: 40px; color: #14213d; background: #f8fafc; }
+      body { font-family: 'Tajawal', Arial, sans-serif; padding: 40px; color: #14213d; background: #f8fafc; }
       .sheet { max-width: 860px; margin: 0 auto; background: white; border: 1px solid #e5e7eb; border-radius: 16px; padding: 32px; }
       h1 { margin: 0 0 4px; }
       p { line-height: 1.7; }

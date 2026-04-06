@@ -228,6 +228,10 @@ export function BudgetPlanningPage({
     actual: spendingByCategory[item.category] || 0,
     color: item.color || categoryColors[item.category] || '#6B7280',
   }));
+  const visibleBudgetRows = useMemo(
+    () => chartBudget.filter((item) => item.budget > 0 || item.actual > 0),
+    [chartBudget]
+  );
 
   const upcomingObligations = useMemo(
     () => getUpcomingOccurrences(recurringObligations, 90),
@@ -240,6 +244,14 @@ export function BudgetPlanningPage({
   const forecast12 = useMemo(() => buildForecast(recurringObligations, 12), [recurringObligations]);
   const summary3 = useMemo(() => buildForecastSummary(recurringObligations, 3, monthlyIncome), [monthlyIncome, recurringObligations]);
   const summary12 = useMemo(() => buildForecastSummary(recurringObligations, 12, monthlyIncome), [monthlyIncome, recurringObligations]);
+  const configuredBudgetCategories = useMemo(
+    () => budgetLimits.filter((item) => item.limit > 0).length,
+    [budgetLimits]
+  );
+  const totalBudgetCapacity = useMemo(
+    () => budgetLimits.reduce((sum, item) => sum + item.limit, 0),
+    [budgetLimits]
+  );
 
   const fallbackSnapshot = useMemo(
     () =>
@@ -361,7 +373,7 @@ export function BudgetPlanningPage({
                 <Badge variant="outline">{isArabic ? 'تجربة موحدة' : 'Unified Experience'}</Badge>
                 <Badge variant="outline">{isArabic ? 'موجز يومي ثابت' : 'Static Daily Digest'}</Badge>
                 {!hasAiSnapshot && (
-                  <Badge variant="secondary">{isArabic ? 'التحليل قيد المعالجة' : 'AI analysis in progress'}</Badge>
+                  <Badge variant="secondary">{isArabic ? 'يعتمد على بياناتك الحالية' : 'Using your current data'}</Badge>
                 )}
               </div>
               <h1 className="text-3xl font-bold">
@@ -518,18 +530,18 @@ export function BudgetPlanningPage({
                       <CardTitle>
                         {hasAiSnapshot
                           ? dailySnapshot.daily_headline.title
-                          : (isArabic ? 'التحليل اليومي الذكي قيد الإعداد' : 'Your AI daily analysis is being prepared')}
+                          : (isArabic ? 'ملخص التخطيط اليومي' : 'Today’s planning summary')}
                       </CardTitle>
                       <CardDescription className="mt-2">
                         {hasAiSnapshot
                           ? dailySnapshot.daily_headline.subtitle
                           : isArabic
-                            ? `نعالج بيانات الموازنة والالتزامات الآن. سننبهك داخل التطبيق${notificationPreferences.whatsapp && notificationPreferences.planningUpdates ? ' وعبر واتساب' : ''} فور اكتمال التحليل.`
-                            : `We are processing your budget and planning data now. We’ll notify you in-app${notificationPreferences.whatsapp && notificationPreferences.planningUpdates ? ' and on WhatsApp' : ''} as soon as the analysis is ready.`}
+                            ? 'هذا العرض يستخدم الدخل والمصروفات والالتزامات المحفوظة حالياً حتى يصبح لديك موجز ذكي أحدث.'
+                            : 'This view already uses your saved income, spending, budgets, and obligations while a newer AI digest is unavailable.'}
                       </CardDescription>
                     </div>
                     <Badge variant={!hasAiSnapshot ? 'secondary' : dailySnapshot.daily_headline.sentiment === 'alert' ? 'destructive' : 'outline'}>
-                      {!hasAiSnapshot ? (isArabic ? 'جاري التشغيل' : 'Running') : dailySnapshot.daily_headline.sentiment}
+                      {!hasAiSnapshot ? (isArabic ? 'جاهز' : 'Ready') : dailySnapshot.daily_headline.sentiment}
                     </Badge>
                   </div>
                 </CardHeader>
@@ -548,11 +560,11 @@ export function BudgetPlanningPage({
                       </>
                     ) : (
                       <>
-                        <p className="text-sm text-muted-foreground">{isArabic ? 'حالة التحليل' : 'Analysis Status'}</p>
-                        <div className="mt-2 flex items-center gap-2 text-xl font-semibold">
-                          <RefreshCw className="h-5 w-5 animate-spin text-primary" />
-                          <span>{isArabic ? 'جاري التحضير' : 'Processing'}</span>
-                        </div>
+                        <p className="text-sm text-muted-foreground">{isArabic ? 'مصدر التخطيط' : 'Planning Source'}</p>
+                        <p className="mt-2 text-xl font-semibold">{isArabic ? 'بياناتك الحالية' : 'Saved workspace data'}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {isArabic ? 'أضف أو حدّث البنود لرؤية صورة أدق لليوم.' : 'Add or update entries to sharpen today’s view.'}
+                        </p>
                       </>
                     )}
                   </div>
@@ -625,8 +637,8 @@ export function BudgetPlanningPage({
                   {!hasAiSnapshot ? (
                     <div className="rounded-2xl border border-dashed p-6 text-sm text-muted-foreground">
                       {isArabic
-                        ? `عند اكتمال التحليل سنضيف التنبيه داخل التطبيق${notificationPreferences.whatsapp && notificationPreferences.planningUpdates ? ' ونرسل تحديث واتساب' : ''} إذا احتاج اليوم إلى إجراء.`
-                        : `When the analysis completes, we’ll add any needed in-app alert${notificationPreferences.whatsapp && notificationPreferences.planningUpdates ? ' and send a WhatsApp update' : ''} if today needs action.`}
+                        ? `ستظهر هنا التنبيهات اليومية عند توفر شيء يحتاج انتباهك. التوصيل الحالي: داخل التطبيق${notificationPreferences.whatsapp && notificationPreferences.planningUpdates ? ' + واتساب' : ''}.`
+                        : `Action alerts will appear here whenever something needs attention. Current delivery setup: in-app${notificationPreferences.whatsapp && notificationPreferences.planningUpdates ? ' + WhatsApp' : ''}.`}
                     </div>
                   ) : dailySnapshot.notifications.length === 0 ? (
                     <div className="rounded-2xl border border-dashed p-6 text-sm text-muted-foreground">
@@ -654,16 +666,27 @@ export function BudgetPlanningPage({
                 <CardHeader className={isArabic ? 'text-right' : ''}>
                   <CardTitle>{isArabic ? 'مؤشر الفئات' : 'Budget by Category'}</CardTitle>
                   <CardDescription>
-                    {isArabic ? 'الفلاتر مدمجة هنا حسب الفئة، الحالة، وأثر نهاية الشهر.' : 'Sections, filters, and actions are combined here by category, status, and month-end impact.'}
+                    {isArabic ? 'راقب كل فئة مقابل حدها الحالي وتأثيرها على نهاية الشهر.' : 'Track each category against its current limit and month-end pressure.'}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className={`space-y-4 ${isArabic ? 'text-right' : ''}`}>
-                  {chartBudget.length === 0 ? (
+                  {visibleBudgetRows.length === 0 ? (
                     <div className="rounded-2xl border border-dashed p-6 text-sm text-muted-foreground">
-                      {isArabic ? 'أضف حدود الميزانية لرؤية التحليل.' : 'Add budget limits to unlock category analysis.'}
+                      <p className="font-medium text-foreground">
+                        {isArabic ? 'ابدأ بتحديد حدود الفئات.' : 'Start by setting category limits.'}
+                      </p>
+                      <p className="mt-2">
+                        {isArabic ? 'بمجرد إدخال أي حد ستظهر هنا المقارنة بين الإنفاق الفعلي والحد الشهري لكل فئة.' : 'As soon as you add a limit, this section will compare actual spending against each monthly cap.'}
+                      </p>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <Button variant="outline" size="sm" onClick={() => setShowAddExpense(true)} disabled={!isSignedIn}>
+                          <Plus className="me-2 h-4 w-4" />
+                          {isArabic ? 'إضافة مصروف' : 'Add expense'}
+                        </Button>
+                      </div>
                     </div>
                   ) : (
-                    chartBudget.map((item) => {
+                    visibleBudgetRows.map((item) => {
                       const percentage = item.budget > 0 ? Math.min(100, (item.actual / item.budget) * 100) : 0;
                       const overBudget = item.actual > item.budget && item.budget > 0;
                       const Icon = categoryIcons[item.category] ?? MoreHorizontal;
@@ -695,8 +718,28 @@ export function BudgetPlanningPage({
               <Card {...cardProps}>
                 <CardHeader className={isArabic ? 'text-right' : ''}>
                   <CardTitle>{isArabic ? 'إعداد الحدود' : 'Budget Setup'}</CardTitle>
+                  <CardDescription>
+                    {isArabic ? 'حدّث الحدود الشهرية هنا لتفعيل المقارنات والتنبيهات حسب الفئة.' : 'Update monthly limits here to power category comparisons and alerts.'}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className={`space-y-4 ${isArabic ? 'text-right' : ''}`}>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-2xl border bg-background/70 p-4">
+                      <p className="text-sm text-muted-foreground">{isArabic ? 'فئات مفعلة' : 'Active Categories'}</p>
+                      <p className="mt-2 text-2xl font-semibold">{configuredBudgetCategories}/{budgetLimits.length}</p>
+                    </div>
+                    <div className="rounded-2xl border bg-background/70 p-4">
+                      <p className="text-sm text-muted-foreground">{isArabic ? 'إجمالي الحدود' : 'Total Budgeted'}</p>
+                      <p className="mt-2 text-2xl font-semibold">{formatCurrency(totalBudgetCapacity, 'SAR', locale)}</p>
+                    </div>
+                  </div>
+                  {configuredBudgetCategories === 0 && (
+                    <div className="rounded-2xl border border-dashed p-4 text-sm text-muted-foreground">
+                      {isArabic
+                        ? 'أدخل حدّاً شهرياً واحداً على الأقل لتبدأ قراءة الالتزام لكل فئة.'
+                        : 'Enter at least one monthly limit to start reading category pacing and overages.'}
+                    </div>
+                  )}
                   {budgetLimits.map((item) => (
                     <div key={item.category} className="space-y-2">
                       <div className="flex items-center justify-between">
