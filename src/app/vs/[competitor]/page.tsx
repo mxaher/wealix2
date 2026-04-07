@@ -36,8 +36,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { competitor } = await params;
   const data = metaData[competitor];
   if (!data) return { title: 'Not Found' };
+  const seoTitles: Record<string, string> = {
+    empower: 'Wealix vs Empower | Better for Global Investors?',
+    mint: 'Wealix vs Mint | Best Mint Alternative',
+    wealthica: 'Wealix vs Wealthica | Global vs Canada-First',
+    spreadsheet: 'Wealix vs Spreadsheets | Portfolio Tracking Compared',
+  };
   return {
-    title: `${data.tagline} | Wealix`,
+    title: seoTitles[competitor] ?? `${data.tagline} | Wealix`,
     description: data.description,
     alternates: { canonical: `https://wealix.app/vs/${competitor}` },
     openGraph: {
@@ -45,7 +51,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description: data.description,
       url: `https://wealix.app/vs/${competitor}`,
       type: 'website',
-      images: [{ url: 'https://wealix.app/og/og-default.png', width: 1200, height: 630 }],
+      images: [{ url: 'https://wealix.app/og-default.svg', width: 1200, height: 630 }],
     },
   };
 }

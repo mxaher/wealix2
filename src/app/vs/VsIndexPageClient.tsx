@@ -52,6 +52,16 @@ export function VsIndexPageClient() {
             ? 'قارنّا Wealix بكل أداة مالية شخصية رئيسية متاحة للمستثمرين حول العالم. إليك التقييم الصادق.'
             : 'We compared Wealix to every major personal finance tool available to investors worldwide. Here is the honest breakdown.'}
         </p>
+        <div className="mb-10 rounded-2xl border border-border bg-card/60 p-6">
+          <h2 className="text-xl font-semibold text-foreground mb-3">
+            {isArabic ? 'كيف نقيّم البدائل' : 'How we evaluate alternatives'}
+          </h2>
+          <p className="text-sm leading-7 text-muted-foreground">
+            {isArabic
+              ? 'لا تركز هذه المقارنات على التسعير فقط. نحن نقارن مدى دعم الأسواق الدولية، والعملات الإقليمية، وتجميع الحسابات، وتحليل المحافظ، ومدى ملاءمة كل أداة للمستثمرين في الخليج وخارجه.'
+              : 'These comparisons do not focus on pricing alone. We look at international market support, regional currencies, account aggregation, portfolio analysis, and how well each tool serves investors in the Gulf and beyond.'}
+          </p>
+        </div>
         <div className="grid gap-4">
           {comparisons.map((c) => (
             <Link

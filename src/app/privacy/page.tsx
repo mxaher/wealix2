@@ -3,7 +3,10 @@ import { LegalPageLayout, LegalSection, LegalSubsection } from '@/components/sha
 
 export const metadata: Metadata = {
   title: 'Privacy Policy | Wealix',
-  description: 'Wealix Privacy Policy',
+  description: 'Read how Wealix collects, processes, stores, and protects personal and financial data.',
+  alternates: {
+    canonical: 'https://wealix.app/privacy',
+  },
 };
 
 export default function PrivacyPage() {

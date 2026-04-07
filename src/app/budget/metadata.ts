@@ -21,6 +21,6 @@ export const budgetMetadata: Metadata = {
     description: 'Category-based monthly budgets with visual progress and alerts. Built for SAR, EGP & AED.',
     url: `${siteUrl}/budget`,
     type: 'website',
-    images: [{ url: '/og/og-default.png', width: 1200, height: 630, alt: 'Wealix Budget Tracker' }],
+    images: [{ url: '/og-default.svg', width: 1200, height: 630, alt: 'Wealix Budget Tracker' }],
   },
 };

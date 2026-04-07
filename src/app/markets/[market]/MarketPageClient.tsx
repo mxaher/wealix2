@@ -47,6 +47,16 @@ export function MarketPageClient({ data, market }: Props) {
         <p className="text-lg text-muted-foreground mb-10">
           {isArabic ? data.descriptionAr : data.description}
         </p>
+        <div className="mb-12 rounded-2xl border border-border bg-card/60 p-6">
+          <h2 className="text-xl font-semibold text-foreground mb-3">
+            {isArabic ? 'كيف نكيّف التجربة لهذا السوق' : 'How We tailor the experience for this market'}
+          </h2>
+          <p className="text-sm leading-7 text-muted-foreground">
+            {isArabic
+              ? `هذه الصفحة تشرح كيف يكيّف Wealix تجربة ${data.nameAr} عبر العملة الأساسية، وتغطية السوق المحلي، وربط المحافظ العالمية، ومنطق التخطيط المالي المناسب لهذا السياق. الفكرة ليست عرض شعارات عامة، بل توضيح ما الذي يمكن للمستثمر في هذا السوق تتبعه وتحليله فعلاً داخل المنتج.`
+              : `This page explains how Wealix adapts the experience for ${data.name} investors across base currency, local market coverage, global portfolio aggregation, and planning assumptions that fit this context. The goal is not generic positioning, but a clear picture of what an investor in this market can actually track and analyze inside the product.`}
+          </p>
+        </div>
 
         <div className="mb-12">
           <h2 className="text-xl font-semibold text-foreground mb-4">
@@ -80,6 +90,17 @@ export function MarketPageClient({ data, market }: Props) {
               </div>
             ))}
           </div>
+        </section>
+
+        <section className="mt-12 rounded-2xl border border-border bg-muted/30 p-6">
+          <h2 className="text-xl font-semibold text-foreground mb-3">
+            {isArabic ? 'ما الذي يجب أن يراجعه المستثمر قبل اختيار أداة التتبع؟' : 'What investors should review before choosing a tracker'}
+          </h2>
+          <p className="text-sm leading-7 text-muted-foreground">
+            {isArabic
+              ? 'اختر أداة تدعم عملتك الأساسية، وتغطي البورصات التي تستثمر فيها فعلاً، وتجمع الحسابات المختلفة في رؤية واحدة، وتربط الأداء بالأهداف طويلة المدى مثل الاستقلال المالي أو التقاعد. عندما تغيب هذه العناصر تصبح الأرقام مبعثرة بين الوسطاء وجداول البيانات.'
+              : 'Choose a tracker that supports your base currency, covers the exchanges you actually invest in, consolidates accounts into one view, and connects performance to long-term goals like financial independence or retirement. Without those pieces, your numbers stay scattered across brokers and spreadsheets.'}
+          </p>
         </section>
 
         <div className="mt-12 p-6 bg-primary/5 border border-primary/20 rounded-xl">

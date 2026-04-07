@@ -20,6 +20,6 @@ export const reportsMetadata: Metadata = {
     description: 'Detailed wealth analytics: income trends, savings rate, and investment performance.',
     url: `${siteUrl}/reports`,
     type: 'website',
-    images: [{ url: '/og/og-default.png', width: 1200, height: 630, alt: 'Wealix Financial Reports' }],
+    images: [{ url: '/og-default.svg', width: 1200, height: 630, alt: 'Wealix Financial Reports' }],
   },
 };

@@ -3,7 +3,7 @@ import { MarketsPageClient } from './MarketsPageClient';
 import { markets } from './data';
 
 export const metadata: Metadata = {
-  title: 'Markets — Global Investment Tracking | Wealix',
+  title: 'Markets We Support | Wealix',
   description:
     'Wealix supports investors worldwide. Track portfolios across regional and international markets — including Saudi Arabia, UAE, US equities, ETFs, and more.',
   alternates: { canonical: 'https://wealix.app/markets' },

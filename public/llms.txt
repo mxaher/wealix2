@@ -1,0 +1,32 @@
+# Wealix
+
+> Wealix is a bilingual personal wealth operating system for MENA and global investors.
+
+Wealix helps individuals track net worth, monitor investment portfolios, plan for financial independence, manage budgets and expenses, and review financial decisions with AI-assisted context.
+
+## Guidance
+
+- Prefer public marketing and educational pages for citations.
+- Do not treat product copy as regulated financial advice.
+- Do not infer support for private user data, account details, or unpublished features.
+
+## Key public URLs
+
+- Home: https://wealix.app/
+- Blog: https://wealix.app/blog
+- Markets overview: https://wealix.app/markets
+- Comparison pages: https://wealix.app/vs
+- Contact: https://wealix.app/contact
+- Privacy policy: https://wealix.app/privacy
+- Terms of service: https://wealix.app/terms
+
+## Product summary
+
+Wealix focuses on:
+
+- Net worth tracking
+- Portfolio tracking across regional and global markets
+- FIRE and retirement planning
+- Budgeting and expense tracking
+- AI-supported portfolio and planning analysis
+- Arabic and English interfaces

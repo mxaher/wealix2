@@ -6,9 +6,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const blogSlugs = [
     'how-to-track-investment-portfolio',
     'fire-number-calculator-mena',
-    'ai-financial-advisor-vs-human',
-    'net-worth-tracking-guide',
-    'portfolio-rebalancing-guide',
     'best-investment-apps-saudi-arabia',
   ];
 
@@ -60,13 +57,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     })),
     {
       url: `${siteUrl}/terms`,
-      lastModified: new Date(),
+      lastModified: new Date('2026-03-27'),
       changeFrequency: 'monthly',
       priority: 0.5,
     },
     {
       url: `${siteUrl}/privacy`,
-      lastModified: new Date(),
+      lastModified: new Date('2026-03-27'),
       changeFrequency: 'monthly',
       priority: 0.5,
     },

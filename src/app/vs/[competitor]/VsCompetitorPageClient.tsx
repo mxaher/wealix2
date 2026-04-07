@@ -202,6 +202,16 @@ export function VsCompetitorPageClient({ competitor }: Props) {
         <p className="text-lg text-muted-foreground mb-10">
           {isArabic ? data.descriptionAr : data.description}
         </p>
+        <div className="mb-12 rounded-2xl border border-border bg-card/60 p-6">
+          <h2 className="text-xl font-semibold text-foreground mb-3">
+            {isArabic ? 'ما الذي يهم فعلاً في هذه المقارنة؟' : 'What matters most in this comparison?'}
+          </h2>
+          <p className="text-sm leading-7 text-muted-foreground">
+            {isArabic
+              ? 'أفضل أداة ليست بالضرورة الأشهر، بل الأداة التي تناسب المستثمر الذي يستخدمها فعلاً. لذلك نركز هنا على دعم العملات المحلية، والأسواق خارج أمريكا الشمالية، وتجميع الحسابات، وجودة تحليل المحفظة، ومدى وضوح المنتج في ما يمكنه فعله وما لا يمكنه فعله.'
+              : 'The best tool is not always the most famous one, but the one that actually fits the investor using it. That is why this comparison focuses on local currencies, markets beyond North America, account aggregation, portfolio analysis quality, and how honest each product is about what it can and cannot do.'}
+          </p>
+        </div>
 
         {/* Feature Comparison Table */}
         <div className="overflow-x-auto mb-12">
@@ -258,6 +268,17 @@ export function VsCompetitorPageClient({ competitor }: Props) {
               </div>
             ))}
           </div>
+        </section>
+
+        <section className="mt-12 rounded-2xl border border-border bg-muted/30 p-6">
+          <h2 className="text-xl font-semibold text-foreground mb-3">
+            {isArabic ? 'متى يكون Wealix مناسباً أكثر؟' : 'When Wealix is the better fit'}
+          </h2>
+          <p className="text-sm leading-7 text-muted-foreground">
+            {isArabic
+              ? 'يكون Wealix خياراً أقوى عندما تحتاج إلى رؤية موحدة للمحفظة، ودعماً للعربية أو العملات الخليجية، وربطاً بين تتبع الاستثمارات وصافي الثروة وخطط FIRE داخل منتج واحد. إذا كانت الأداة الأخرى تركّز على سوق واحد فقط، فغالباً ستضطر إلى حلول يدوية لسد الفجوات.'
+              : 'Wealix is a stronger fit when you need one portfolio view, Arabic or Gulf-currency support, and a product that connects investment tracking with net worth and FIRE planning in one workflow. If the alternative focuses on a single market, you usually end up stitching together manual workarounds.'}
+          </p>
         </section>
 
         {/* CTA */}

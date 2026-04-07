@@ -3,7 +3,10 @@ import { LegalPageLayout, LegalSection, LegalSubsection } from '@/components/sha
 
 export const metadata: Metadata = {
   title: 'Terms of Service | Wealix',
-  description: 'Wealix Terms of Service',
+  description: 'Read the Wealix Terms of Service, including account rules, billing terms, and product limitations.',
+  alternates: {
+    canonical: 'https://wealix.app/terms',
+  },
 };
 
 export default function TermsPage() {

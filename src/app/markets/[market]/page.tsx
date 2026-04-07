@@ -9,8 +9,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { market } = await params;
   const data = marketData[market];
   if (!data) return { title: 'Not Found' };
+  const seoTitles: Record<string, string> = {
+    global: 'Global Portfolio Tracker | Wealix',
+    'saudi-arabia': 'Portfolio Tracking for Saudi Investors | Wealix',
+    uae: 'Portfolio Tracking for UAE Investors | Wealix',
+  };
   return {
-    title: data.headline,
+    title: seoTitles[market] ?? data.headline,
     description: data.description,
     alternates: { canonical: `https://wealix.app/markets/${market}` },
     openGraph: {
@@ -18,7 +23,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description: data.description,
       url: `https://wealix.app/markets/${market}`,
       type: 'website',
-      images: [{ url: 'https://wealix.app/og/og-default.png', width: 1200, height: 630 }],
+      images: [{ url: 'https://wealix.app/og-default.svg', width: 1200, height: 630 }],
     },
   };
 }

@@ -21,6 +21,6 @@ export const expensesMetadata: Metadata = {
     description: 'Scan receipts with AI-OCR, review data, and log expenses instantly. Built for MENA.',
     url: `${siteUrl}/expenses`,
     type: 'website',
-    images: [{ url: '/og/og-default.png', width: 1200, height: 630, alt: 'Wealix Expense Tracker' }],
+    images: [{ url: '/og-default.svg', width: 1200, height: 630, alt: 'Wealix Expense Tracker' }],
   },
 };

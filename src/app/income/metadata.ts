@@ -20,6 +20,6 @@ export const incomeMetadata: Metadata = {
     description: 'Track all income streams in one place. Salary, dividends, freelance — Saudi Arabia & MENA.',
     url: `${siteUrl}/income`,
     type: 'website',
-    images: [{ url: '/og/og-default.png', width: 1200, height: 630, alt: 'Wealix Income Tracker' }],
+    images: [{ url: '/og-default.svg', width: 1200, height: 630, alt: 'Wealix Income Tracker' }],
   },
 };

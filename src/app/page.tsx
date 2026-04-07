@@ -27,6 +27,33 @@ export const metadata: Metadata = {
   },
 };
 
+const softwareAppSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'Wealix',
+  url: siteUrl,
+  applicationCategory: 'FinanceApplication',
+  operatingSystem: 'Web',
+  description:
+    'Wealix is a bilingual personal wealth operating system for MENA investors with portfolio tracking, FIRE planning, budgeting, and AI-guided financial analysis.',
+  offers: {
+    '@type': 'Offer',
+    price: '0',
+    priceCurrency: 'USD',
+    description: 'Start with a 14-day free trial on Core or Pro.',
+  },
+  inLanguage: ['en', 'ar'],
+  featureList: [
+    'Investment portfolio tracking',
+    'Net worth tracking',
+    'FIRE planning',
+    'Retirement planning',
+    'Budgeting and expense tracking',
+    'AI portfolio analysis',
+  ],
+  image: `${siteUrl}/og-default.svg`,
+};
+
 // FAQPage schema — injected at page level so it's specific to the homepage
 const faqSchema = {
   '@context': 'https://schema.org',
@@ -86,6 +113,11 @@ const faqSchema = {
 export default function LandingPage() {
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareAppSchema) }}
+      />
+
       {/* FAQPage schema — server-rendered, immediately visible to Googlebot */}
       <script
         type="application/ld+json"
@@ -127,7 +159,7 @@ export default function LandingPage() {
           <nav>
             <a href="/blog">Financial Insights Blog</a>
             <a href="/vs/mint">Wealix vs Mint</a>
-            <a href="/vs/personal-capital">Wealix vs Personal Capital</a>
+            <a href="/vs/empower">Wealix vs Empower</a>
             <a href="/markets">Regional market coverage</a>
             <a href="/contact">Contact Wealix</a>
           </nav>

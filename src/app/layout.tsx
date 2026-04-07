@@ -108,25 +108,29 @@ export const metadata: Metadata = {
   },
 };
 
-// Global SoftwareApplication schema
-const softwareAppSchema = {
+const websiteSchema = {
   "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
+  "@type": "WebSite",
   name: "Wealix",
   url: siteUrl,
-  applicationCategory: "FinanceApplication",
-  operatingSystem: "Web, iOS, Android",
   description:
     "AI-powered personal wealth OS for MENA investors. Track net worth, portfolios, FIRE, and expenses in Arabic and English.",
-  offers: {
-    "@type": "Offer",
-    price: "0",
-    priceCurrency: "USD",
-    description: "14-day free trial. Core and Pro plans available.",
-  },
   inLanguage: ["en", "ar"],
-  availableOnDevice: "Desktop, Mobile",
-  screenshot: ogImageUrl,
+  publisher: {
+    "@type": "Organization",
+    name: "Wealix",
+    url: siteUrl,
+    logo: `${siteUrl}/brand/wealix-mark.svg`,
+  },
+};
+
+const organizationSchema = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "Wealix",
+  url: siteUrl,
+  logo: `${siteUrl}/brand/wealix-mark.svg`,
+  sameAs: ["https://x.com/WealixApp"],
 };
 
 export default function RootLayout({
@@ -139,7 +143,11 @@ export default function RootLayout({
       <head>
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareAppSchema) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
         />
       </head>
       <body className="antialiased bg-background text-foreground font-sans">

@@ -47,48 +47,6 @@ export const posts: BlogPostSummary[] = [
     tagAr: 'الاستقلال المالي',
   },
   {
-    slug: 'ai-financial-advisor-vs-human',
-    title: 'AI Financial Advisor vs. Human Advisor — Which One Actually Makes You Richer?',
-    titleAr: 'المستشار المالي بالذكاء الاصطناعي مقابل المستشار البشري — أيهما يجعلك أغنى؟',
-    description:
-      'The honest answer is: it depends on what question you are asking. Humans win on tax strategy and estate planning. AI wins on real-time data, 24/7 availability, and zero emotional bias.',
-    descriptionAr:
-      'الإجابة الصادقة هي: يعتمد على السؤال الذي تطرحه. البشر يفوزون في الاستراتيجية الضريبية والتخطيط العقاري. الذكاء الاصطناعي يفوز في البيانات الفورية والتوفر على مدار الساعة وعدم التحيز العاطفي.',
-    date: '2025-04-01',
-    readTime: '7 min read',
-    readTimeAr: '7 دقائق قراءة',
-    tag: 'AI',
-    tagAr: 'الذكاء الاصطناعي',
-  },
-  {
-    slug: 'net-worth-tracking-guide',
-    title: 'Net Worth Tracking — The One Number That Tells You If You Are Actually Getting Wealthier',
-    titleAr: 'تتبع صافي الثروة — الرقم الوحيد الذي يخبرك إذا كنت تزداد ثراءً فعلاً',
-    description:
-      'Income is vanity, net worth is sanity. Learn how to calculate, track, and grow your net worth using a system that updates automatically every day.',
-    descriptionAr:
-      'الدخل غرور، صافي الثروة عقل. تعلم كيفية حساب وتتبع وتنمية صافي ثروتك باستخدام نظام يتحدث تلقائياً كل يوم.',
-    date: '2025-04-10',
-    readTime: '6 min read',
-    readTimeAr: '6 دقائق قراءة',
-    tag: 'Net Worth',
-    tagAr: 'صافي الثروة',
-  },
-  {
-    slug: 'portfolio-rebalancing-guide',
-    title: 'Portfolio Rebalancing: When to Do It, How Often, and What AI Gets Right',
-    titleAr: 'إعادة توازن المحفظة: متى ومع أي تكرار وما يفهمه الذكاء الاصطناعي بشكل صحيح',
-    description:
-      'Rebalancing too often destroys returns through transaction costs. Rebalancing too rarely lets you drift into dangerous concentration. There is a sweet spot, and AI found it.',
-    descriptionAr:
-      'إعادة التوازن بشكل متكرر تدمر العوائد من خلال تكاليف المعاملات. إعادة التوازن بشكل نادر تجعلك تنجرف إلى تركيز خطير. هناك نقطة مثالية، والذكاء الاصطناعي وجدها.',
-    date: '2025-04-18',
-    readTime: '9 min read',
-    readTimeAr: '9 دقائق قراءة',
-    tag: 'Investing',
-    tagAr: 'الاستثمار',
-  },
-  {
     slug: 'best-investment-apps-saudi-arabia',
     title: 'Best Investment Tracking Apps in Saudi Arabia (2025 Honest Review)',
     titleAr: 'أفضل تطبيقات تتبع الاستثمار في السعودية (مراجعة صادقة 2025)',
@@ -211,7 +169,7 @@ Wealix applies this calculation automatically and adjusts for your currency, loc
     ],
   },
   'best-investment-apps-saudi-arabia': {
-    ...posts[5],
+    ...posts[2],
     content: `## The Problem With Most Investment Apps in Saudi Arabia
 Most investment apps available to Saudi users are either brokerage apps (showing you only their own assets) or US-centric tools that do not support SAR, Tadawul stocks, or Gulf-specific financial realities.
 We evaluated 12 apps across five criteria: multi-account aggregation, Arabic language support, FIRE planning, AI analysis quality, and regional asset coverage.

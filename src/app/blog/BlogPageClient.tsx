@@ -20,7 +20,7 @@ export function BlogPageClient({ posts }: Props) {
       <main className="min-h-screen bg-background" dir={isArabic ? 'rtl' : 'ltr'}>
       <section className="max-w-4xl mx-auto px-4 pt-28 pb-20">
         <Link
-          href="/app"
+          href="/"
           className="text-sm text-muted-foreground hover:text-primary mb-8 inline-flex items-center gap-2"
         >
           <ArrowLeft className={`h-4 w-4 ${isArabic ? 'rotate-180' : ''}`} />
@@ -34,6 +34,16 @@ export function BlogPageClient({ posts }: Props) {
             ? 'أدلة عملية وموضوعية حول التمويل الشخصي وإدارة المحفظة وتخطيط FIRE والاستثمار بالذكاء الاصطناعي — مكتوبة للمستثمرين في جميع أنحاء العالم.'
             : 'Practical, opinionated guides on personal finance, portfolio management, FIRE planning, and AI-powered investing — written for investors worldwide.'}
         </p>
+        <div className="mb-12 rounded-2xl border border-border bg-card/60 p-6">
+          <h2 className="text-xl font-semibold text-foreground mb-3">
+            {isArabic ? 'ما الذي ستجده هنا' : 'What you will find here'}
+          </h2>
+          <p className="text-sm leading-7 text-muted-foreground">
+            {isArabic
+              ? 'تغطي مقالات Wealix تتبع المحافظ، وصافي الثروة، وتخطيط FIRE، وإدارة المخاطر، وأدوات الاستثمار المناسبة للمستثمرين في الخليج والأسواق العالمية. الهدف ليس نشر محتوى عام، بل تقديم شروحات عملية تساعدك على اتخاذ قرارات مالية أوضح.'
+              : 'The Wealix blog covers portfolio tracking, net worth, FIRE planning, risk management, and investing workflows that matter to Gulf and international investors. The goal is not generic content, but practical explainers that help you make clearer financial decisions.'}
+          </p>
+        </div>
         <div className="grid gap-8">
           {posts.map((post) => (
             <article
