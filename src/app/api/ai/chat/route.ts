@@ -5,6 +5,7 @@ import { buildAiRouteHeaders, getAiProviderEndpoint, getAiProviderModel, getAiRo
 import { buildRateLimitHeaders, enforceRateLimit } from '@/lib/rate-limit';
 import { isRemotePersistenceConfigured, loadRemoteWorkspace } from '@/lib/remote-user-data';
 import { requirePaidTier } from '@/lib/server-auth';
+import { buildDeterministicAdvisorResponse, buildFinancialPersonaFromWorkspace } from '@/lib/financial-brain-surface';
 import { buildCompactWealixAIContext, buildWealixAIContext } from '@/lib/wealix-ai-context';
 import { extractNvidiaAdvisorText } from './provider-response';
 
@@ -701,15 +702,22 @@ export async function POST(request: NextRequest) {
 
     let userContext: AdvisorUserContext | undefined;
     let unifiedContextText: string | undefined;
+    let deterministicResponse: string | null = null;
     try {
       userContext = (await loadAdvisorUserContext(authResult.userId!)) ?? undefined;
       if (isRemotePersistenceConfigured()) {
         const remote = await loadRemoteWorkspace(authResult.userId!);
         if (remote.workspace) {
+          const liveWealixContext = buildWealixAIContext(authResult.userId!, remote.workspace);
           unifiedContextText = buildCompactWealixAIContext(
-            buildWealixAIContext(authResult.userId!, remote.workspace),
+            liveWealixContext,
             locale === 'ar' ? 'ar' : 'en'
           );
+          const latestMessage = [...messages].reverse().find((message) => message.role === 'user')?.content ?? '';
+          deterministicResponse = buildDeterministicAdvisorResponse({
+            message: latestMessage,
+            persona: buildFinancialPersonaFromWorkspace(authResult.userId!, remote.workspace, liveWealixContext),
+          });
         }
       }
     } catch (error) {
@@ -783,6 +791,29 @@ export async function POST(request: NextRequest) {
       apiMessages.push({
         role: message.role === 'user' ? 'user' : 'assistant',
         content: result.sanitized,
+      });
+    }
+
+    if (deterministicResponse) {
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream({
+        async start(controller) {
+          const words = deterministicResponse!.split(' ');
+          for (let i = 0; i < words.length; i++) {
+            const chunk = words[i] + (i < words.length - 1 ? ' ' : '');
+            controller.enqueue(encoder.encode(JSON.stringify({ content: chunk }) + '\n'));
+            await new Promise((resolve) => setTimeout(resolve, 20));
+          }
+          controller.close();
+        },
+      });
+
+      return new Response(stream, {
+        headers: {
+          'Content-Type': 'application/x-ndjson',
+          'Transfer-Encoding': 'chunked',
+          ...buildRateLimitHeaders(rateLimit),
+        },
       });
     }
 

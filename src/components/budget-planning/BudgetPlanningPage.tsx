@@ -62,6 +62,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
 import { buildDailyPlanningSnapshot, type DailyPlanningSnapshot } from '@/lib/ai/daily-planning';
+import { buildBudgetCriticalAlerts, buildDashboardInsightLines, buildFinancialPersonaFromClientContext } from '@/lib/financial-brain-surface';
 import { buildWealixAIContextFromClientContext } from '@/lib/wealix-ai-context';
 import { createOpaqueId } from '@/lib/ids';
 import { buildForecast, buildForecastSummary, getUpcomingOccurrences } from '@/lib/recurring-obligations';
@@ -308,6 +309,37 @@ export function BudgetPlanningPage({
     }),
     [user?.id, portfolioHoldings, assets, liabilities, incomeEntries, expenseEntries, budgetLimits, recurringObligations, oneTimeExpenses, savingsAccounts]
   );
+  const financialBrainPersona = useMemo(
+    () => buildFinancialPersonaFromClientContext(user?.id ?? 'guest', {
+      currency: 'SAR',
+      holdings: portfolioHoldings,
+      assets,
+      liabilities,
+      incomeEntries,
+      expenseEntries,
+      budgetLimits,
+      recurringObligations,
+      oneTimeExpenses,
+      savingsAccounts,
+    }, wealixContext),
+    [user?.id, portfolioHoldings, assets, liabilities, incomeEntries, expenseEntries, budgetLimits, recurringObligations, oneTimeExpenses, savingsAccounts, wealixContext]
+  );
+  const financialBrainInsightLines = useMemo(
+    () => buildDashboardInsightLines(financialBrainPersona, wealixContext),
+    [financialBrainPersona, wealixContext]
+  );
+  const financialBrainAlerts = useMemo(() => {
+    const upgraded = buildBudgetCriticalAlerts(financialBrainPersona);
+    if (upgraded.length > 0) {
+      return upgraded;
+    }
+    return wealixContext.alerts.map((alert) => ({
+      severity: alert.severity.toUpperCase() as 'INFO' | 'WARNING' | 'CRITICAL',
+      category: alert.category.toUpperCase() as 'OBLIGATION' | 'CASH_FLOW' | 'BUFFER' | 'ONE-TIME',
+      title: alert.title,
+      detail: alert.description,
+    }));
+  }, [financialBrainPersona, wealixContext.alerts]);
   const unfundedOneTimeExpenses = useMemo(
     () => oneTimeExpenses.filter((item) => item.status !== 'paid'),
     [oneTimeExpenses]
@@ -1222,19 +1254,19 @@ export function BudgetPlanningPage({
           </TabsContent>
 
           <TabsContent value="forecast" className="space-y-6">
-            <Card {...cardProps}>
-              <CardHeader className={isArabic ? 'text-right' : ''}>
-                <CardTitle>{isArabic ? 'محرك Wealix المالي' : 'Wealix Financial Brain'}</CardTitle>
-                <CardDescription>{wealixContext.narrativeSummary}</CardDescription>
-              </CardHeader>
+              <Card {...cardProps}>
+                <CardHeader className={isArabic ? 'text-right' : ''}>
+                  <CardTitle>{isArabic ? 'محرك Wealix المالي' : 'Wealix Financial Brain'}</CardTitle>
+                  <CardDescription>{financialBrainInsightLines.join(' ')}</CardDescription>
+                </CardHeader>
               <CardContent className={`space-y-3 ${isArabic ? 'text-right' : ''}`}>
-                {wealixContext.alerts.slice(0, 4).map((alert) => (
+                {financialBrainAlerts.slice(0, 4).map((alert) => (
                   <div key={`${alert.category}-${alert.title}`} className="rounded-2xl border p-4">
                     <div className="flex items-center justify-between gap-3">
                       <p className="font-medium">{alert.title}</p>
-                      <Badge variant={alert.severity === 'critical' ? 'destructive' : 'outline'}>{alert.severity}</Badge>
+                      <Badge variant={alert.severity === 'CRITICAL' ? 'destructive' : 'outline'}>{alert.severity}</Badge>
                     </div>
-                    <p className="mt-2 text-sm text-muted-foreground">{alert.description}</p>
+                    <p className="mt-2 text-sm text-muted-foreground">{alert.detail}</p>
                   </div>
                 ))}
               </CardContent>

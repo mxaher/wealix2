@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { buildAiRouteHeaders, getAiProviderEndpoint, getAiProviderModel, getAiRouteDecision, getGemmaApiMode, hasAiProviderApiKey, type AiProvider } from '@/lib/llm-routing';
+import { buildFinancialPersonaFromWorkspace, buildPortfolioAnalysisOverride } from '@/lib/financial-brain-surface';
 import { buildRateLimitHeaders, enforceRateLimit } from '@/lib/rate-limit';
 import { isRemotePersistenceConfigured, loadRemoteWorkspace } from '@/lib/remote-user-data';
 import { requirePaidTier } from '@/lib/server-auth';
@@ -1045,18 +1046,30 @@ export async function POST(request: NextRequest) {
 
     const systemPrompt = buildSystemPrompt(locale);
     let unifiedContextText: string | undefined;
+    let portfolioOverride;
     if (isRemotePersistenceConfigured()) {
       try {
         const remote = await loadRemoteWorkspace(authResult.userId!);
         if (remote.workspace) {
+          const liveWealixContext = buildWealixAIContext(authResult.userId!, remote.workspace);
           unifiedContextText = buildCompactWealixAIContext(
-            buildWealixAIContext(authResult.userId!, remote.workspace),
+            liveWealixContext,
             locale
+          );
+          portfolioOverride = buildPortfolioAnalysisOverride(
+            buildFinancialPersonaFromWorkspace(authResult.userId!, remote.workspace, liveWealixContext)
           );
         }
       } catch (error) {
         console.error('[portfolio/analyze] failed to load unified Wealix context', error);
       }
+    }
+
+    if (portfolioOverride) {
+      return Response.json(
+        portfolioOverride,
+        { headers: responseHeaders }
+      );
     }
     const userPrompt = buildUserPrompt(holdings, locale, unifiedContextText);
 

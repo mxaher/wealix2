@@ -19,6 +19,7 @@ import { DashboardShell } from '@/components/layout';
 import { StatCard, DashboardSkeleton } from '@/components/shared';
 import { useAppStore, formatCurrency } from '@/store/useAppStore';
 import { buildWealixAIContextFromClientContext } from '@/lib/wealix-ai-context';
+import { buildDashboardInsightLines, buildFinancialPersonaFromClientContext } from '@/lib/financial-brain-surface';
 import { getUpcomingOccurrences, buildForecastSummary } from '@/lib/recurring-obligations';
 import {
  XAxis,
@@ -217,25 +218,23 @@ export default function DashboardPage() {
  }),
  [portfolioHoldings, assets, liabilities, incomeEntries, expenseEntries, activeObligations, oneTimeExpenses, savingsAccounts]
  );
+ const financialBrainPersona = useMemo(
+ () => buildFinancialPersonaFromClientContext('dashboard', {
+ currency: 'SAR',
+ holdings: portfolioHoldings,
+ assets,
+ liabilities,
+ incomeEntries,
+ expenseEntries,
+ oneTimeExpenses,
+ savingsAccounts,
+ recurringObligations: activeObligations,
+ }, wealixContext),
+ [portfolioHoldings, assets, liabilities, incomeEntries, expenseEntries, oneTimeExpenses, savingsAccounts, activeObligations, wealixContext]
+ );
  const aiInsightSentences = useMemo(() => {
- const topAlert = wealixContext.alerts[0];
- const nearestObligation = wealixContext.obligations[0];
- const firstAtRiskMonth = wealixContext.firstAtRiskMonth;
- return [
- topAlert
- ? topAlert.description
- : `Monthly surplus is ${formatCurrency(wealixContext.monthlySurplus, 'SAR', locale)} with a ${wealixContext.savingsRate.toFixed(1)}% savings rate.`,
- nearestObligation
- ? `${nearestObligation.title} is due on ${nearestObligation.dueDate} for ${formatCurrency(nearestObligation.amount, 'SAR', locale)} with ${nearestObligation.coverageRatio.toFixed(2)}x projected coverage.`
- : `No obligation is due in the next 90 days.`,
- wealixContext.largestExpenseCategory
- ? `${wealixContext.largestExpenseCategory.category} is your biggest expense lever at ${formatCurrency(wealixContext.largestExpenseCategory.amount, 'SAR', locale)}.`
- : `Your expense mix will sharpen as more transactions are logged.`,
- firstAtRiskMonth
- ? `If nothing changes, ${firstAtRiskMonth.label} is the first forecast stress point at ${formatCurrency(firstAtRiskMonth.closingBalance, 'SAR', locale)}.`
- : `The 12-month forecast stays above the monthly-expense floor with current data.`,
- ];
- }, [wealixContext, locale]);
+ return buildDashboardInsightLines(financialBrainPersona, wealixContext);
+ }, [financialBrainPersona, wealixContext]);
 
  if (isLoading) {
  return (

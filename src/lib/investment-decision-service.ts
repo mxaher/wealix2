@@ -383,6 +383,9 @@ function buildFallbackDecision(input: InvestmentDecisionInput, snapshot: Financi
   const { assetClass, dimensions, monthsToAfford, comfortableAmount, liquidImpactPct, netWorthImpactPct } = buildDimensions(input, snapshot, wealixContext);
   const totalScore = dimensions.reduce((sum, dimension) => sum + dimension.score, 0);
   const nearestAtRiskObligation = wealixContext?.obligations.find((item) => item.daysUntilDue <= 90 && item.fundingGap > 0);
+  const totalObligationGap = wealixContext?.obligations.reduce((sum, item) => sum + item.fundingGap, 0) ?? 0;
+  const obligationsAtRiskCount = wealixContext?.obligations.filter((item) => item.fundingGap > 0).length ?? 0;
+  const portfolioToLiquidRatio = wealixContext?.portfolioToLiquidRatio ?? (snapshot.liquidReserves > 0 ? snapshot.portfolioValue / snapshot.liquidReserves : 0);
   const savingsRate = wealixContext?.savingsRate ?? snapshot.savingsRate;
   const suggestedAmount = roundMoney(Math.max(0, Math.min(
     input.price,
@@ -396,7 +399,8 @@ function buildFallbackDecision(input: InvestmentDecisionInput, snapshot: Financi
     liquidImpactPct > 30 ||
     netWorthImpactPct > 30 ||
     snapshot.monthlySavings <= 0 ||
-    Boolean(nearestAtRiskObligation)
+    Boolean(nearestAtRiskObligation) ||
+    totalObligationGap > 0
   ) {
     verdict = 'do_not_proceed';
   } else if (monthsToAfford > 0 || liquidImpactPct > 25 || totalScore < 1 || savingsRate < 10) {
@@ -416,8 +420,10 @@ function buildFallbackDecision(input: InvestmentDecisionInput, snapshot: Financi
 
   const alternative = assetClass === 'vehicle'
     ? 'Preserve capital for liquidity or a diversified investment instead of a depreciating asset.'
-    : nearestAtRiskObligation
-      ? `Fund ${nearestAtRiskObligation.title} first. Closing the ${nearestAtRiskObligation.fundingGap.toLocaleString()} SAR gap is financially stronger than opening this position now.`
+    : totalObligationGap > 0
+      ? `Fund obligations first. Total unfunded gaps equal ${totalObligationGap.toLocaleString()} SAR across ${obligationsAtRiskCount} obligations, which is financially stronger than opening this position now.`
+      : nearestAtRiskObligation
+        ? `Fund ${nearestAtRiskObligation.title} first. Closing the ${nearestAtRiskObligation.fundingGap.toLocaleString()} SAR gap is financially stronger than opening this position now.`
     : snapshot.watchlistAlternatives[0]?.reason
       ? `${snapshot.watchlistAlternatives[0].name}: ${snapshot.watchlistAlternatives[0].reason}`
       : 'Favor a smaller initial allocation so you gain exposure without stressing liquidity.';
@@ -426,8 +432,10 @@ function buildFallbackDecision(input: InvestmentDecisionInput, snapshot: Financi
     proceed_now: `This can fit your finances now. The size is manageable, liquidity stays intact, and the asset does not materially derail current goals.`,
     proceed_with_caution: `The idea is financially workable, but the size should stay controlled. A smaller allocation is safer than taking the full position immediately.`,
     postpone: `The investment is not wrong, but the timing is early for your current liquidity and savings path. Waiting until your reserves are stronger gives you a cleaner entry.`,
-    do_not_proceed: nearestAtRiskObligation
-      ? `This should be blocked for now because your near-term obligation plan is already underfunded. Protecting cash and closing that gap is the higher-priority move.`
+    do_not_proceed: totalObligationGap > 0
+      ? `This should be blocked for now because obligation funding gaps total ${totalObligationGap.toLocaleString()} SAR, ${obligationsAtRiskCount} obligations are still at risk, and your portfolio-to-liquid ratio is ${portfolioToLiquidRatio.toFixed(1)}x. Protecting cash and closing those gaps is the higher-priority move.`
+      : nearestAtRiskObligation
+        ? `This should be blocked for now because your near-term obligation plan is already underfunded. Protecting cash and closing that gap is the higher-priority move.`
       : `This conflicts with your current financial health more than it helps. The opportunity cost and balance-sheet strain are too high relative to the benefit.`,
   };
 
