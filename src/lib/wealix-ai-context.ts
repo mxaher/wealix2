@@ -113,8 +113,30 @@ const DISCRETIONARY_EXPENSE_CATEGORIES = new Set<ExpenseCategory>([
   'Shopping',
 ]);
 
+const FALLBACK_BUDGET_LIMIT_COLORS: Record<string, string> = {
+  housing: '#D4A843',
+  food: '#10B981',
+  transport: '#3B82F6',
+  entertainment: '#8B5CF6',
+  utilities: '#F59E0B',
+  investment: '#06B6D4',
+  zakat: '#EC4899',
+  other: '#6B7280',
+};
+
 function roundMoney(value: number) {
   return Number(value.toFixed(2));
+}
+
+function normalizeBudgetLimits(
+  budgetLimits: Array<BudgetLimit | Pick<BudgetLimit, 'category' | 'limit'>>
+): BudgetLimit[] {
+  return budgetLimits.map((budget) => ({
+    ...budget,
+    color: 'color' in budget && typeof budget.color === 'string'
+      ? budget.color
+      : FALLBACK_BUDGET_LIMIT_COLORS[budget.category.toLowerCase()] ?? '#6B7280',
+  }));
 }
 
 function monthKey(date: Date) {
@@ -178,7 +200,7 @@ function buildObligationFundingView(params: {
   upcomingOccurrences: UpcomingOccurrence[];
   liquidReserves: number;
   monthlySurplus: number;
-}) {
+}): WealixAIContext['obligations'] {
   const { upcomingOccurrences, liquidReserves, monthlySurplus } = params;
   const sorted = [...upcomingOccurrences].sort((a, b) => a.dueDate.localeCompare(b.dueDate));
   let reservedEarlier = 0;
@@ -203,7 +225,7 @@ function buildObligationFundingView(params: {
           : item.daysUntilDue <= 180
             ? 'MEDIUM'
             : 'LOW',
-      status: item.status,
+      status: item.status ?? 'upcoming',
       availableFunding: roundMoney(availableFunding),
       fundingGap: roundMoney(fundingGap),
       coverageRatio: Number(coverageRatio.toFixed(2)),
@@ -358,7 +380,7 @@ function buildAlerts(context: {
   }
 
   for (const expense of context.oneTimeExpenses.filter((item) => item.status !== 'paid')) {
-    const daysUntilDue = Math.round((new Date(item.dueDate).getTime() - new Date().setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24));
+    const daysUntilDue = Math.round((new Date(expense.dueDate).getTime() - new Date().setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24));
     if (daysUntilDue <= 60) {
       alerts.push({
         severity: daysUntilDue <= 30 ? 'critical' : 'warning',
@@ -370,9 +392,9 @@ function buildAlerts(context: {
   }
 
   for (const account of context.savingsAccounts.filter((item) => item.status === 'active')) {
-    const daysUntilMaturity = Math.round((new Date(item.maturityDate).getTime() - new Date().setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24));
-    if (daysUntilMaturity <= 30 && item.type !== 'current') {
-      const maturityValue = item.principal + (item.principal * (item.annualProfitRate / 100) * (item.termMonths / 12));
+    const daysUntilMaturity = Math.round((new Date(account.maturityDate).getTime() - new Date().setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24));
+    if (daysUntilMaturity <= 30 && account.type !== 'current') {
+      const maturityValue = account.principal + (account.principal * (account.annualProfitRate / 100) * (account.termMonths / 12));
       alerts.push({
         severity: 'warning',
         category: 'liquidity',
@@ -656,7 +678,7 @@ export function buildWealixAIContextFromClientContext(userId: string, context: C
     snapshot: buildFinancialSnapshotFromClientContext(context),
     incomeEntries: context.incomeEntries ?? [],
     expenseEntries: context.expenseEntries ?? [],
-    budgetLimits: context.budgetLimits ?? [],
+    budgetLimits: normalizeBudgetLimits(context.budgetLimits ?? []),
     recurringObligations: context.recurringObligations ?? [],
     oneTimeExpenses: context.oneTimeExpenses ?? [],
     savingsAccounts: context.savingsAccounts ?? [],
