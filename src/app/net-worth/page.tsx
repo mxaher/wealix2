@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useUser } from '@clerk/nextjs';
 import { motion } from 'framer-motion';
 import {
   Plus,
@@ -74,6 +73,7 @@ import {
 import { useFinancialSnapshot } from '@/hooks/useFinancialSnapshot';
 import { toast } from '@/hooks/use-toast';
 import { createOpaqueId } from '@/lib/ids';
+import { useRuntimeUser } from '@/hooks/useRuntimeUser';
 
 const assetIcons: Record<string, React.ReactNode> = {
   cash: <Landmark className="w-5 h-5" />,
@@ -110,7 +110,7 @@ export default function NetWorthPage() {
   const deleteLiability = useAppStore((state) => state.deleteLiability);
   const { snapshot } = useFinancialSnapshot();
   const isArabic = locale === 'ar';
-  const { isSignedIn } = useUser();
+  const { isSignedIn } = useRuntimeUser();
 
   const [showAddAsset, setShowAddAsset] = useState(false);
   const [showAddLiability, setShowAddLiability] = useState(false);
@@ -378,7 +378,7 @@ export default function NetWorthPage() {
         )}
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          <Card className="border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 to-emerald-500/5">
+          <Card className="border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 to-emerald-500/5" data-testid="networth-liquid">
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
                 <div className="rounded-full bg-emerald-500/20 p-3">
@@ -391,7 +391,7 @@ export default function NetWorthPage() {
               </div>
             </CardContent>
           </Card>
-          <Card className="border-sky-500/20 bg-gradient-to-br from-sky-500/10 to-sky-500/5">
+          <Card className="border-sky-500/20 bg-gradient-to-br from-sky-500/10 to-sky-500/5" data-testid="networth-locked">
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
                 <div className="rounded-full bg-sky-500/20 p-3">
@@ -404,7 +404,7 @@ export default function NetWorthPage() {
               </div>
             </CardContent>
           </Card>
-          <Card className="border-violet-500/20 bg-gradient-to-br from-violet-500/10 to-violet-500/5">
+          <Card className="border-violet-500/20 bg-gradient-to-br from-violet-500/10 to-violet-500/5" data-testid="networth-investments">
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
                 <div className="rounded-full bg-violet-500/20 p-3">
@@ -430,7 +430,7 @@ export default function NetWorthPage() {
               </div>
             </CardContent>
           </Card>
-          <Card className="border-gold/20 bg-gradient-to-br from-gold/10 to-gold/5">
+          <Card className="border-gold/20 bg-gradient-to-br from-gold/10 to-gold/5" data-testid="networth-net">
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
                 <div className="rounded-full bg-gold/20 p-3">

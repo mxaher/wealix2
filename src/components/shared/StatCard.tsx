@@ -15,6 +15,7 @@ interface StatCardProps {
   iconColor?: string;
   isLoading?: boolean;
   variant?: 'default' | 'large' | 'compact';
+  testId?: string;
 }
 
 export function StatCard({
@@ -26,6 +27,7 @@ export function StatCard({
   iconColor = 'text-gold',
   isLoading = false,
   variant = 'default',
+  testId,
 }: StatCardProps) {
   const isPositive = change !== undefined && change > 0;
   const isNegative = change !== undefined && change < 0;
@@ -52,7 +54,7 @@ export function StatCard({
       transition={{ duration: 0.3 }}
       className="h-full"
     >
-      <Card className="stat-card h-full overflow-hidden border-0 py-0">
+      <Card className="stat-card h-full overflow-hidden border-0 py-0" data-testid={testId}>
         <CardContent
           className={cn(
             variant === 'large' ? 'p-6' : variant === 'compact' ? 'p-3' : 'p-4',

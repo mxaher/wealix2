@@ -196,6 +196,7 @@ export function InvestmentDecisionCheck() {
                 value={investmentName}
                 onChange={(event) => setInvestmentName(event.target.value)}
                 placeholder={isArabic ? 'مثل: ذهب، NVIDIA، شقة في الرياض' : 'Ex: Gold, NVIDIA stock, Riyadh apartment'}
+                data-testid="decision-input-name"
               />
             </div>
             <div className="space-y-2">
@@ -205,10 +206,11 @@ export function InvestmentDecisionCheck() {
                 value={price}
                 onChange={(event) => setPrice(event.target.value)}
                 placeholder="32000"
+                data-testid="decision-input-amount"
               />
             </div>
           </div>
-          <Button className="gap-2" onClick={runDecision} disabled={isLoading}>
+          <Button className="gap-2" onClick={runDecision} disabled={isLoading} data-testid="decision-run">
             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Target className="h-4 w-4" />}
             {isArabic ? 'افحص القرار' : 'Run Decision Check'}
           </Button>
@@ -226,7 +228,7 @@ export function InvestmentDecisionCheck() {
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="outline" className={verdictMeta.badgeClass}>
+                  <Badge variant="outline" className={verdictMeta.badgeClass} data-testid="decision-verdict">
                     <VerdictIcon className="mr-1 h-3.5 w-3.5" />
                     {result.decision.verdictLabel}
                   </Badge>
@@ -234,7 +236,7 @@ export function InvestmentDecisionCheck() {
                     {result.investmentName}
                   </Badge>
                 </div>
-                <CardTitle className="text-xl">{result.decision.summary}</CardTitle>
+                <CardTitle className="text-xl" data-testid="decision-reason">{result.decision.summary}</CardTitle>
                 <CardDescription>
                   {isArabic ? 'فحص القرار اعتمد على صافي الثروة، السيولة، مسار الادخار، والأهداف الحالية.' : 'The verdict was built from net worth, liquidity, savings trajectory, and active goals.'}
                 </CardDescription>

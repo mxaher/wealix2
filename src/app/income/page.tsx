@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useUser } from '@clerk/nextjs';
 import { Plus, Trash2, TrendingUp, Wallet } from 'lucide-react';
 import { DashboardShell } from '@/components/layout';
 import { StatCard } from '@/components/shared';
@@ -16,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAppStore, formatCurrency, type IncomeEntry, type IncomeFrequency, type IncomeSource } from '@/store/useAppStore';
 import { toast } from '@/hooks/use-toast';
 import { createOpaqueId } from '@/lib/ids';
+import { useRuntimeUser } from '@/hooks/useRuntimeUser';
 
 const incomeSources: Array<{ value: IncomeSource; en: string; ar: string }> = [
   { value: 'salary', en: 'Salary', ar: 'راتب' },
@@ -50,7 +50,7 @@ export default function IncomePage() {
   const addIncomeEntry = useAppStore((state) => state.addIncomeEntry);
   const deleteIncomeEntry = useAppStore((state) => state.deleteIncomeEntry);
   const isArabic = locale === 'ar';
-  const { isSignedIn } = useUser();
+  const { isSignedIn } = useRuntimeUser();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(defaultForm);
 

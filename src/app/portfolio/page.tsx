@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useUser } from '@clerk/nextjs';
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -81,6 +80,7 @@ import {
   type PortfolioTradeRecommendation,
   type PortfolioUnderperformer,
 } from '@/store/useAppStore';
+import { useRuntimeUser } from '@/hooks/useRuntimeUser';
 
 type FxRateMap = Partial<Record<'USD_SAR' | 'EGP_SAR', {
   symbol: string;
@@ -281,7 +281,7 @@ export default function PortfolioPage() {
     replacePortfolioHoldings,
   } = useAppStore();
   const isArabic = locale === 'ar';
-  const { isSignedIn } = useUser();
+  const { isSignedIn } = useRuntimeUser();
 
   const [showAddHolding, setShowAddHolding] = useState(false);
   const [showImportDialog, setShowImportDialog] = useState(false);
@@ -1249,6 +1249,7 @@ export default function PortfolioPage() {
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: index * 0.04 }}
+                          data-testid={index === 0 ? 'portfolio-analysis-output' : undefined}
                         >
                           <Collapsible defaultOpen={index === 0}>
                             <div className="overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-br from-background via-background to-secondary/20 shadow-sm">

@@ -257,6 +257,7 @@ export default function DashboardPage() {
  changeLabel={isDemoMode ? (isArabic ? 'هذا الشهر' : 'this month') : undefined}
  icon={Wallet}
  iconColor="text-primary bg-primary/10"
+ testId="dashboard-net-worth"
  />
  <StatCard
  title={isArabic ? 'قيمة المحفظة' : 'Portfolio Value'}
@@ -271,6 +272,7 @@ export default function DashboardPage() {
  value={`${fireProgress.toFixed(1)}%`}
  icon={Flame}
  iconColor="text-orange-500 bg-orange-500/10"
+ testId="dashboard-fire-progress"
  />
  <StatCard
  title={isArabic ? 'الميزانية الشهرية' : 'Monthly Budget'}
@@ -279,6 +281,33 @@ export default function DashboardPage() {
  changeLabel={isDemoMode ? (isArabic ? 'متبقي' : 'remaining') : undefined}
  icon={Receipt}
  iconColor="text-cyan-500 bg-cyan-500/10"
+ />
+ </div>
+
+ <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+ <StatCard
+ title={isArabic ? 'الدخل الشهري' : 'Monthly Income'}
+ value={formatCurrency(monthlyIncome, 'SAR', locale)}
+ icon={TrendingUp}
+ iconColor="text-emerald-500 bg-emerald-500/10"
+ variant="compact"
+ testId="dashboard-monthly-income"
+ />
+ <StatCard
+ title={isArabic ? 'المصروفات الشهرية' : 'Monthly Expenses'}
+ value={formatCurrency(monthlyExpenses, 'SAR', locale)}
+ icon={Receipt}
+ iconColor="text-rose-500 bg-rose-500/10"
+ variant="compact"
+ testId="dashboard-monthly-expenses"
+ />
+ <StatCard
+ title={isArabic ? 'الفائض الشهري' : 'Monthly Surplus'}
+ value={`${monthlySurplus >= 0 ? '+' : ''}${formatCurrency(monthlySurplus, 'SAR', locale)}`}
+ icon={Wallet}
+ iconColor={monthlySurplus >= 0 ? 'text-emerald-500 bg-emerald-500/10' : 'text-rose-500 bg-rose-500/10'}
+ variant="compact"
+ testId="dashboard-monthly-surplus"
  />
  </div>
 

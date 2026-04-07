@@ -1,7 +1,6 @@
 'use client';
 
 import { useId, useMemo, useState } from 'react';
-import { useUser } from '@clerk/nextjs';
 import { ArrowDownCircle, ArrowUpCircle, Camera, CreditCard, FileSpreadsheet, Info, Landmark, Plus, Receipt, ScanSearch, Trash2 } from 'lucide-react';
 import { DashboardShell } from '@/components/layout';
 import { StatCard } from '@/components/shared';
@@ -32,6 +31,7 @@ import {
 } from '@/store/useAppStore';
 import { toast } from '@/hooks/use-toast';
 import { createOpaqueId } from '@/lib/ids';
+import { useRuntimeUser } from '@/hooks/useRuntimeUser';
 
 const expenseCategories: ExpenseCategory[] = [
   'Food',
@@ -107,7 +107,7 @@ export default function ExpensesPage() {
   const addReceiptScan = useAppStore((state) => state.addReceiptScan);
   const { canAccess, tier } = useSubscription();
   const isArabic = locale === 'ar';
-  const { isSignedIn } = useUser();
+  const { isSignedIn } = useRuntimeUser();
   const canScanReceipts = canAccess('expenses.receipt_scan');
   const canImportStatements = canAccess('expenses.statement_import');
   const uploadInputId = useId();

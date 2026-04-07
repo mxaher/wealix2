@@ -1,9 +1,9 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { useUser } from '@clerk/nextjs';
 import { getBillingState } from '@/lib/billing-state';
 import { createOpaqueId } from '@/lib/ids';
 import { DEFAULT_START_PAGE, isStartPage, type StartPage } from '@/lib/start-page';
+import { useRuntimeUser } from '@/hooks/useRuntimeUser';
 
 const APP_STORAGE_KEY = 'wealix-storage-v4';
 const LEGACY_STORAGE_KEYS = ['wealthos-storage', 'wealix-storage-v3'];
@@ -1981,7 +1981,7 @@ export function getPersistableWorkspaceSnapshot(state: Pick<
 // Feature gating based on subscription
 export const useSubscription = () => {
   const user = useAppStore((state) => state.user);
-  const { user: clerkUser } = useUser();
+  const { user: clerkUser } = useRuntimeUser();
   const tier = user?.subscriptionTier || 'none';
   const metadata = clerkUser?.publicMetadata as Record<string, unknown> | undefined;
   const billingState = getBillingState(metadata);

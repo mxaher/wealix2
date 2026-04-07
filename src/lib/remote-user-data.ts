@@ -1,4 +1,5 @@
 import { getD1Database, type D1LikeDatabase } from '@/lib/d1';
+import { getE2EStorageDir, isE2EAuthEnabled } from '@/lib/e2e-auth';
 import type {
   AppMode,
   AssetEntry,
@@ -48,7 +49,56 @@ type WorkspaceRow = {
 };
 
 export function isRemotePersistenceConfigured() {
-  return Boolean(getD1Database());
+  return Boolean(getD1Database()) || isE2EAuthEnabled();
+}
+
+async function readE2EWorkspace(clerkUserId: string): Promise<RemoteWorkspaceRecord> {
+  const fs = await import('node:fs/promises');
+  const path = await import('node:path');
+  const baseDir = path.join(process.cwd(), getE2EStorageDir());
+  const filePath = path.join(baseDir, `${clerkUserId}.json`);
+
+  try {
+    const raw = await fs.readFile(filePath, 'utf8');
+    const parsed = JSON.parse(raw) as RemoteWorkspaceRecord;
+    return {
+      workspace: parsed.workspace ?? null,
+      updatedAt: parsed.updatedAt ?? null,
+    };
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return {
+        workspace: null,
+        updatedAt: null,
+      };
+    }
+    throw error;
+  }
+}
+
+async function writeE2EWorkspace(
+  clerkUserId: string,
+  workspace: RemoteUserWorkspace,
+  knownUpdatedAt?: string | null
+): Promise<RemoteWorkspaceRecord> {
+  const fs = await import('node:fs/promises');
+  const path = await import('node:path');
+  const baseDir = path.join(process.cwd(), getE2EStorageDir());
+  const filePath = path.join(baseDir, `${clerkUserId}.json`);
+  const existing = await readE2EWorkspace(clerkUserId);
+
+  if (knownUpdatedAt && existing.updatedAt && existing.updatedAt !== knownUpdatedAt) {
+    return existing;
+  }
+
+  const nextRecord: RemoteWorkspaceRecord = {
+    workspace,
+    updatedAt: new Date().toISOString(),
+  };
+
+  await fs.mkdir(baseDir, { recursive: true });
+  await fs.writeFile(filePath, JSON.stringify(nextRecord, null, 2), 'utf8');
+  return nextRecord;
 }
 
 async function ensureWorkspaceTable(db: D1LikeDatabase) {
@@ -66,6 +116,10 @@ export async function loadRemoteWorkspace(clerkUserId: string): Promise<RemoteWo
   const db = getD1Database();
 
   if (!db) {
+    if (isE2EAuthEnabled()) {
+      return readE2EWorkspace(clerkUserId);
+    }
+
     throw new Error('Cloudflare D1 binding WEALIX_DB is not configured.');
   }
 
@@ -105,6 +159,10 @@ export async function saveRemoteWorkspace(
   const db = getD1Database();
 
   if (!db) {
+    if (isE2EAuthEnabled()) {
+      return writeE2EWorkspace(clerkUserId, workspace, knownUpdatedAt);
+    }
+
     throw new Error('Cloudflare D1 binding WEALIX_DB is not configured.');
   }
 

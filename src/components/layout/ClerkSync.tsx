@@ -1,12 +1,12 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useUser } from '@clerk/nextjs';
 import { useAppStore } from '@/store/useAppStore';
 import { getBillingState } from '@/lib/billing-state';
+import { useRuntimeUser } from '@/hooks/useRuntimeUser';
 
 export function ClerkSync() {
-  const { isLoaded, isSignedIn, user } = useUser();
+  const { isLoaded, isSignedIn, user } = useRuntimeUser();
   const syncClerkUser = useAppStore((state) => state.syncClerkUser);
   const clearClerkUser = useAppStore((state) => state.clearClerkUser);
 

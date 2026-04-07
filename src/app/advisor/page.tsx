@@ -425,7 +425,7 @@ export default function AdvisorPage() {
             </CardHeader>
 
             {/* Messages */}
-            <ScrollArea className="min-w-0 min-h-0 flex-1">
+            <ScrollArea className="min-w-0 min-h-0 flex-1" data-testid="advisor-message-list">
               <div className="p-4">
               {activeSession?.messages.length === 0 && !isLoading ? (
                 <div className="h-full flex flex-col items-center justify-center text-center">
@@ -473,6 +473,7 @@ export default function AdvisorPage() {
                         key={message.id}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
+                        data-testid={message.role === 'assistant' ? 'advisor-message-assistant' : 'advisor-message-user'}
                         className={`flex min-w-0 gap-3 ${
                           message.role === 'user' ? 'flex-row-reverse' : ''
                         }`}
@@ -576,6 +577,7 @@ export default function AdvisorPage() {
                   placeholder={isArabic ? 'اكتب رسالتك...' : 'Type your message...'}
                   className="flex-1"
                   disabled={isLoading}
+                  data-testid="advisor-input"
                 />
                 <Button type="submit" disabled={isLoading || !input.trim()}>
                   {isLoading ? (

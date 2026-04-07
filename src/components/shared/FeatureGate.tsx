@@ -1,7 +1,7 @@
 'use client';
 
 import { useAppStore, useSubscription, type SubscriptionTier } from '@/store/useAppStore';
-import { useUser } from '@clerk/nextjs';
+import { useRuntimeUser } from '@/hooks/useRuntimeUser';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -27,7 +27,7 @@ export function FeatureGate({ feature, children, fallback }: FeatureGateProps) {
   const locale = useAppStore((state) => state.locale);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const isArabic = locale === 'ar';
-  const { isSignedIn } = useUser();
+  const { isSignedIn } = useRuntimeUser();
   const router = useRouter();
 
   const handleGoToBilling = async (_tier?: SubscriptionTier) => {

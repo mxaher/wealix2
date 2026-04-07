@@ -1,5 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { type NextRequest, NextResponse } from 'next/server';
+import { isE2ERequestAuthenticated } from '@/lib/e2e-auth';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://wealix.app';
 const APP_ORIGIN = new URL(APP_URL);
@@ -201,6 +202,10 @@ export default function middleware(req: NextRequest) {
   // 3. Hand off to Clerk for all remaining requests
   const clerkHandler = clerkMiddleware(async (auth, request) => {
     if (isPublicRoute(request)) {
+      return NextResponse.next({ request: { headers: requestHeaders } });
+    }
+
+    if (isE2ERequestAuthenticated(request)) {
       return NextResponse.next({ request: { headers: requestHeaders } });
     }
 

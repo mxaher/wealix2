@@ -1,0 +1,104 @@
+name: E2E Financial Brain
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run lint
+
+  unit:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun test
+
+  integration:
+    runs-on: ubuntu-latest
+    needs: unit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun test src/lib/financial-snapshot.test.ts src/lib/financial-brain-surface.test.ts src/store/useAppStore.test.ts
+
+  e2e-smoke:
+    runs-on: ubuntu-latest
+    needs: integration
+    timeout-minutes: 30
+    env:
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+      PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_E2E_AUTH_ENABLED: "true"
+      E2E_AUTH_SECRET: ${{ secrets.E2E_AUTH_SECRET }}
+      E2E_AUTH_USER_ID: e2e-user
+      E2E_AUTH_USER_EMAIL: e2e@wealix.local
+      E2E_AUTH_USER_NAME: Wealix E2E
+      E2E_AUTH_SUBSCRIPTION_TIER: pro
+      E2E_STORAGE_DIR: .e2e/.runtime
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+      NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+      GEMMA_API_KEY: ${{ secrets.GEMMA_API_KEY }}
+      DATALAB_API_KEY: ${{ secrets.DATALAB_API_KEY }}
+      SAHMK_API_KEY: ${{ secrets.SAHMK_API_KEY }}
+      TWELVEDATA_API_KEY: ${{ secrets.TWELVEDATA_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run e2e:install
+      - run: bun run e2e:smoke
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-smoke
+          path: |
+            playwright-report
+            test-results
+
+  e2e-financial-brain:
+    runs-on: ubuntu-latest
+    needs: e2e-smoke
+    timeout-minutes: 45
+    env:
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+      PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_E2E_AUTH_ENABLED: "true"
+      E2E_AUTH_SECRET: ${{ secrets.E2E_AUTH_SECRET }}
+      E2E_AUTH_USER_ID: e2e-user
+      E2E_AUTH_USER_EMAIL: e2e@wealix.local
+      E2E_AUTH_USER_NAME: Wealix E2E
+      E2E_AUTH_SUBSCRIPTION_TIER: pro
+      E2E_STORAGE_DIR: .e2e/.runtime
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+      NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+      GEMMA_API_KEY: ${{ secrets.GEMMA_API_KEY }}
+      DATALAB_API_KEY: ${{ secrets.DATALAB_API_KEY }}
+      SAHMK_API_KEY: ${{ secrets.SAHMK_API_KEY }}
+      TWELVEDATA_API_KEY: ${{ secrets.TWELVEDATA_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run e2e:install
+      - run: bun run e2e:financial-brain
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-financial-brain
+          path: |
+            playwright-report
+            test-results

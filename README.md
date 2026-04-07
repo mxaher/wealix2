@@ -90,6 +90,10 @@ bun run build
 bun run start
 ```
 
+## Engineering Rule
+
+Any bug that causes Dashboard, FIRE, Net Worth, Planning, Wael, or Decision Check to disagree on shared financial truth must first be reproduced as a Playwright test before the fix is considered complete.
+
 ## Environment Variables
 
 Create a `.env.local` file for local development.
@@ -664,6 +668,14 @@ SENTDM_API_KEY=
 SENTDM_SENDER_ID=
 SENTDM_WEBHOOK_SIGNING_SECRET=
 AGENTS_SECRET_KEY=
+NEXT_PUBLIC_E2E_AUTH_ENABLED=false
+E2E_AUTH_SECRET=
+E2E_AUTH_USER_ID=e2e-user
+E2E_AUTH_USER_EMAIL=e2e@wealix.local
+E2E_AUTH_USER_NAME=Wealix E2E
+E2E_AUTH_SUBSCRIPTION_TIER=pro
+E2E_STORAGE_DIR=.e2e/.runtime
+PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000
 ```
 
 Optional:

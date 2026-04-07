@@ -1,15 +1,15 @@
 'use client';
 
 import { useEffect, useMemo, useRef } from 'react';
-import { useUser } from '@clerk/nextjs';
 import {
   getPersistableWorkspaceSnapshot,
   useAppStore,
   type RemoteWorkspaceSnapshot,
 } from '@/store/useAppStore';
+import { useRuntimeUser } from '@/hooks/useRuntimeUser';
 
 export function RemoteProfileSync() {
-  const { isLoaded, isSignedIn, user } = useUser();
+  const { isLoaded, isSignedIn, user } = useRuntimeUser();
   const hydrateRemoteWorkspace = useAppStore((state) => state.hydrateRemoteWorkspace);
   const stashRemoteWorkspace = useAppStore((state) => state.stashRemoteWorkspace);
   const appMode = useAppStore((state) => state.appMode);

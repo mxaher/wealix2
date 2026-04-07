@@ -1,4 +1,5 @@
 import { auth, clerkClient } from '@clerk/nextjs/server';
+import { cookies } from 'next/headers';
 import {
   getBillingState,
   normalizePlanTier,
@@ -6,6 +7,7 @@ import {
   type BillingState,
   type PlanTier,
 } from '@/lib/billing-state';
+import { getE2ETestUser, isE2ECookieStoreAuthenticated } from '@/lib/e2e-auth';
 
 const TIER_RANK: Record<PlanTier, number> = {
   none: 0,
@@ -39,6 +41,14 @@ export function getEffectiveTierFromMetadata(metadata: BillingMetadata): PlanTie
 }
 
 export async function requireAuthenticatedUser() {
+  const cookieStore = await cookies();
+  if (isE2ECookieStoreAuthenticated(cookieStore)) {
+    return {
+      userId: getE2ETestUser().id,
+      error: null,
+    };
+  }
+
   const { userId } = await auth();
 
   if (!userId) {
@@ -52,6 +62,11 @@ export async function requireAuthenticatedUser() {
 }
 
 export async function getUserBillingState(userId: string): Promise<BillingState> {
+  const e2eUser = getE2ETestUser();
+  if (userId === e2eUser.id) {
+    return getBillingState(e2eUser.publicMetadata);
+  }
+
   const client = await clerkClient();
   const user = await client.users.getUser(userId);
   return getBillingState(extractBillingMetadata(user));

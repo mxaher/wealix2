@@ -222,6 +222,7 @@ export default function FirePage() {
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 className="text-5xl md:text-6xl font-bold text-gold mb-4"
+                data-testid="fire-number"
               >
                 {formatCurrency(adjustedFireNumber, 'SAR', locale)}
               </motion.p>
@@ -250,11 +251,12 @@ export default function FirePage() {
             value={`${progress.toFixed(1)}%`}
             icon={Target}
             iconColor="text-emerald-500 bg-emerald-500/10"
+            testId="fire-progress"
           />
           <Card>
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">{isArabic ? 'سنوات حتى FIRE' : 'Years to FIRE'}</p>
-              <p className="text-2xl font-bold mt-1">
+              <p className="text-2xl font-bold mt-1" data-testid="fire-years">
                 {scenarioIssue
                   ? (isArabic ? 'غير ممكن' : 'Not viable')
                   : yearsToFire === 0 
@@ -277,7 +279,7 @@ export default function FirePage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
               <span className="text-sm text-muted-foreground">{isArabic ? 'تقدم FIRE' : 'FIRE Progress'}</span>
-              <span className="font-medium">{progress.toFixed(1)}%</span>
+              <span className="font-medium" data-testid="fire-progress-bar-label">{progress.toFixed(1)}%</span>
             </div>
             <div className="relative">
               <Progress value={progress} className="h-4" />

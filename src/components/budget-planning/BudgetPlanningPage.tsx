@@ -2,7 +2,6 @@
 
 import type { ComponentType } from 'react';
 import { useMemo, useState } from 'react';
-import { useUser } from '@clerk/nextjs';
 import { useSearchParams } from 'next/navigation';
 import {
   AlertCircle,
@@ -66,6 +65,8 @@ import { buildBudgetCriticalAlerts, buildDashboardInsightLines, buildFinancialPe
 import { buildWealixAIContextFromClientContext } from '@/lib/wealix-ai-context';
 import { createOpaqueId } from '@/lib/ids';
 import { buildForecast, buildForecastSummary, getUpcomingOccurrences } from '@/lib/recurring-obligations';
+import { useFinancialSnapshot } from '@/hooks/useFinancialSnapshot';
+import { useRuntimeUser } from '@/hooks/useRuntimeUser';
 import {
   formatCurrency,
   type ExpenseEntry,
@@ -219,9 +220,10 @@ export function BudgetPlanningPage({
   const deleteOneTimeExpense = useAppStore((state) => state.deleteOneTimeExpense);
   const addSavingsAccount = useAppStore((state) => state.addSavingsAccount);
   const deleteSavingsAccount = useAppStore((state) => state.deleteSavingsAccount);
-  const { isSignedIn, user } = useUser();
+  const { isSignedIn, user } = useRuntimeUser();
   const searchParams = useSearchParams();
   const isArabic = locale === 'ar';
+  const { snapshot } = useFinancialSnapshot();
   const defaultSection = searchParams.get('section');
   const initialSection = sectionOrder.includes(defaultSection as BudgetPlanningSection)
     ? (defaultSection as BudgetPlanningSection)
@@ -1167,7 +1169,7 @@ export function BudgetPlanningPage({
                     </div>
                   ) : (
                     recurringObligations.map((item) => (
-                      <div key={item.id} dir={isArabic ? 'rtl' : 'ltr'} className="flex items-center gap-3 rounded-2xl border p-4">
+                      <div key={item.id} dir={isArabic ? 'rtl' : 'ltr'} className="flex items-center gap-3 rounded-2xl border p-4" data-testid={`obligation-card-${item.id}`}>
                         <div className="min-w-0 flex-1">
                           <p className="font-medium">{item.title}</p>
                           <p className="text-sm text-muted-foreground">
@@ -1225,7 +1227,7 @@ export function BudgetPlanningPage({
                     </div>
                   ) : (
                     savingsAccounts.map((account) => (
-                      <div key={account.id} dir={isArabic ? 'rtl' : 'ltr'} className="rounded-2xl border p-4">
+                      <div key={account.id} dir={isArabic ? 'rtl' : 'ltr'} className="rounded-2xl border p-4" data-testid={`savings-account-card-${account.id}`}>
                         <div className="flex items-center justify-between gap-3">
                           <div>
                             <p className="font-medium">{account.name}</p>
@@ -1299,6 +1301,57 @@ export function BudgetPlanningPage({
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card {...cardProps} data-testid="planning-forecast-table">
+              <CardHeader className={isArabic ? 'text-right' : ''}>
+                <CardTitle>{isArabic ? 'تفصيل التوقع الشهري' : 'Monthly Forecast Detail'}</CardTitle>
+                <CardDescription>
+                  {isArabic
+                    ? 'الدخل والمصروفات والالتزامات والعوائد الظاهرة هنا تأتي من نفس اللقطة المالية الموحدة.'
+                    : 'Income, expenses, obligations, and maturities here come from the same unified financial snapshot.'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {snapshot.forecast.monthlyRows.map((period) => (
+                  <div
+                    key={period.month}
+                    className="grid gap-2 rounded-2xl border p-4 md:grid-cols-7"
+                    data-testid={`planning-forecast-row-${period.month}`}
+                  >
+                    <div>
+                      <p className="text-xs text-muted-foreground">{isArabic ? 'الشهر' : 'Month'}</p>
+                      <p className="font-medium">{period.label}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">{isArabic ? 'الدخل' : 'Income'}</p>
+                      <p className="font-medium">{formatCurrency(period.income, 'SAR', locale)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">{isArabic ? 'مصروفات متكررة' : 'Recurring Expenses'}</p>
+                      <p className="font-medium">{formatCurrency(period.recurringExpenses, 'SAR', locale)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">{isArabic ? 'التزامات' : 'Obligations'}</p>
+                      <p className="font-medium">{formatCurrency(period.obligationPayments, 'SAR', locale)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">{isArabic ? 'مرة واحدة' : 'One-Time'}</p>
+                      <p className="font-medium">{formatCurrency(period.oneTimeExpenses, 'SAR', locale)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">{isArabic ? 'استحقاق عوائد' : 'Maturity Inflow'}</p>
+                      <p className="font-medium">{formatCurrency(period.maturityInflows, 'SAR', locale)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">{isArabic ? 'الرصيد الختامي' : 'Closing Balance'}</p>
+                      <p className={`font-medium ${period.closingBalance >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                        {formatCurrency(period.closingBalance, 'SAR', locale)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </CardContent>
             </Card>
           </TabsContent>
