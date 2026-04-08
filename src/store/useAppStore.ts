@@ -1479,10 +1479,10 @@ export const useAppStore = create<AppState>()(
           });
         }
 
-        const restoredState = activeProfile
+        const restoredState: PersistedWorkspaceState = activeProfile
           ? {
               ...profileToState(activeProfile),
-              appMode: 'live',
+              appMode: 'live' as const,
               user: activeProfile.user
                 ? {
                     ...activeProfile.user,
