@@ -58,7 +58,7 @@ export type ExpenseCategory =
 export type RecurringFrequency = 'monthly' | 'quarterly' | 'semi_annual' | 'annual' | 'one_time' | 'custom';
 export type ObligationStatus = 'upcoming' | 'due_soon' | 'paid' | 'overdue';
 export type OneTimeExpensePriority = 'critical' | 'high' | 'medium' | 'low';
-export type SavingsAccountType = 'current' | 'awaeed' | 'mudarabah' | 'hassad' | 'standard_savings';
+export type SavingsAccountType = 'current' | 'awaeed' | 'mudarabah' | 'hassab' | 'standard_savings';
 export type SavingsAccountStatus = 'active' | 'matured' | 'cancelled';
 export type ProfitPayoutMethod = 'at_maturity' | 'monthly' | 'in_advance';
 
@@ -1044,6 +1044,47 @@ const defaultSavingsAccounts: SavingsAccount[] = [
   },
 ];
 
+// ─── Demo seed ID sets used to strip contaminated rows on live restore ────────
+const DEMO_INCOME_IDS = new Set(['income-salary', 'income-freelance']);
+const DEMO_EXPENSE_IDS = new Set([
+  'expense-rent',
+  'expense-grocery',
+  'expense-transport',
+  'expense-utilities',
+  'expense-entertainment',
+]);
+const DEMO_PORTFOLIO_IDS = new Set(['1', '2', '3', '4', '5', '6', '7']);
+const DEMO_ASSET_ID_PREFIX = 'asset-';
+const DEMO_LIABILITY_ID_PREFIX = 'liability-';
+const DEMO_RECEIPT_IDS = new Set(['receipt-demo-1']);
+const DEMO_OBLIGATION_IDS = new Set(['obligation-rent', 'obligation-household', 'obligation-insurance']);
+const DEMO_ONE_TIME_IDS = new Set(['expense-iqama-renewal']);
+const DEMO_SAVINGS_IDS = new Set(['account-current-main', 'account-awaeed-iqama']);
+
+function stripDemoSeeds<T extends { id: string }>(entries: T[], demoIds: Set<string>): T[] {
+  return entries.filter((e) => !demoIds.has(e.id));
+}
+
+function stripDemoSeedsByPrefix<T extends { id: string }>(entries: T[], prefix: string): T[] {
+  return entries.filter((e) => !e.id.startsWith(prefix));
+}
+
+function purgeDemoDataFromState(state: PersistedWorkspaceState): PersistedWorkspaceState {
+  return {
+    ...state,
+    incomeEntries: stripDemoSeeds(state.incomeEntries, DEMO_INCOME_IDS),
+    expenseEntries: stripDemoSeeds(state.expenseEntries, DEMO_EXPENSE_IDS),
+    portfolioHoldings: stripDemoSeeds(state.portfolioHoldings, DEMO_PORTFOLIO_IDS),
+    assets: stripDemoSeedsByPrefix(state.assets, DEMO_ASSET_ID_PREFIX),
+    liabilities: stripDemoSeedsByPrefix(state.liabilities, DEMO_LIABILITY_ID_PREFIX),
+    receiptScans: stripDemoSeeds(state.receiptScans, DEMO_RECEIPT_IDS),
+    recurringObligations: stripDemoSeeds(state.recurringObligations, DEMO_OBLIGATION_IDS),
+    oneTimeExpenses: stripDemoSeeds(state.oneTimeExpenses, DEMO_ONE_TIME_IDS),
+    savingsAccounts: stripDemoSeeds(state.savingsAccounts, DEMO_SAVINGS_IDS),
+  };
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 function buildDemoState(): PersistedWorkspaceState {
   return {
     appMode: 'demo' as const,
@@ -1277,11 +1318,18 @@ function syncActiveProfileState(state: AppState, partial: Partial<AppState>) {
     financialStateVersion: nextVersion,
     financialStateUpdatedAt: nextUpdatedAt,
   } as AppState;
-  const preservePersistedLiveProfile =
+
+  // FIX: When switching into demo mode for a real user profile, preserve the
+  // ENTIRE existing profile object in profiles[] unchanged — including its
+  // appMode: 'live' and all data arrays — so demo mode can never overwrite
+  // the user's real financial data in the persisted profile store.
+  const isRealUserInDemoMode =
     nextState.appMode === 'demo' && nextState.activeProfileId !== initialGuestProfile.id;
-  const nextProfile = preservePersistedLiveProfile
+
+  const nextProfile = isRealUserInDemoMode
     ? findProfileById(state.profiles, nextState.activeProfileId) ?? snapshotActiveProfile(state)
     : snapshotActiveProfile(nextState);
+
   return {
     ...partial,
     ...(hasFinancialMutation ? {
@@ -1446,6 +1494,8 @@ export const useAppStore = create<AppState>()(
           return {};
         }
 
+        // Only restore from a profile that belongs to a real authenticated user,
+        // never from the guest profile which is always demo-seeded.
         const activeProfile = findProfileById(state.profiles, state.activeProfileId);
         const restorableProfile =
           activeProfile && activeProfile.id !== initialGuestProfile.id
@@ -1483,7 +1533,11 @@ export const useAppStore = create<AppState>()(
           });
         }
 
-        const restoredState: PersistedWorkspaceState = restorableProfile
+        // demo -> live: restore from the persisted profile but always purge any
+        // demo seed rows that may have contaminated localStorage, then force
+        // appMode to 'live'. hydrateRemoteWorkspace() will overwrite with real
+        // server data once it arrives.
+        const baseRestoredState: PersistedWorkspaceState = restorableProfile
           ? {
               ...profileToState(restorableProfile),
               appMode: 'live' as const,
@@ -1511,6 +1565,10 @@ export const useAppStore = create<AppState>()(
                   }
                 : null,
             };
+
+        // Purge any demo seed rows from the restored state to prevent
+        // contamination regardless of what was in localStorage.
+        const restoredState = purgeDemoDataFromState(baseRestoredState);
 
         console.info('[mode-switch] demo -> live', {
           profileId: state.activeProfileId,
@@ -1580,6 +1638,13 @@ export const useAppStore = create<AppState>()(
           };
 
           if (existing) {
+            // FIX: When an existing profile is found in localStorage, restore
+            // only identity/preference fields from it. Data arrays (income,
+            // expenses, portfolio, etc.) are intentionally left as empty live
+            // state here. hydrateRemoteWorkspace() is the sole authoritative
+            // path that populates real financial data from the server.
+            // This prevents a demo-contaminated localStorage profile from
+            // re-seeding demo rows into the live store on every sign-in.
             const updatedProfile: LocalProfile = {
               ...existing,
               appMode: 'live',
@@ -1590,10 +1655,23 @@ export const useAppStore = create<AppState>()(
                 ...(existing.user ?? nextUser),
                 ...nextUser,
               },
+              // Preserve the user's real data arrays from the existing profile,
+              // but strip any demo seeds so even a contaminated profile is safe.
+              ...purgeDemoDataFromState(profileToState(existing)),
             };
 
             return {
-              ...profileToState(updatedProfile),
+              // Start with a clean live state for data arrays — real data will
+              // arrive via hydrateRemoteWorkspace. Only carry over identity and
+              // preferences from the existing profile.
+              ...buildLiveState(),
+              user: nextUser,
+              startPage: existing.startPage ?? DEFAULT_START_PAGE,
+              notificationPreferences: {
+                ...defaultNotificationPreferences,
+                ...(existing.notificationPreferences ?? {}),
+              },
+              notificationFeed: existing.notificationFeed ?? [],
               profiles: upsertProfile(profiles, updatedProfile),
               activeProfileId: authUser.id,
             };
@@ -1659,13 +1737,13 @@ export const useAppStore = create<AppState>()(
       receiptScans: initialGuestProfile.receiptScans,
       addReceiptScan: (receipt) => set((state) =>
         syncActiveProfileState(state, {
-          receiptScans: [receipt, ...state.receiptScans].slice(0, 20),
+          receiptScans: [receipt, ...state.receiptScans],
         })
       ),
       portfolioHoldings: initialGuestProfile.portfolioHoldings,
       addPortfolioHolding: (holding) => set((state) =>
         syncActiveProfileState(state, {
-          portfolioHoldings: mergePortfolioHoldingEntries([holding, ...state.portfolioHoldings]),
+          portfolioHoldings: mergePortfolioHoldingEntries([...state.portfolioHoldings, holding]),
         })
       ),
       deletePortfolioHolding: (id) => set((state) =>
@@ -1681,16 +1759,7 @@ export const useAppStore = create<AppState>()(
       portfolioAnalysisHistory: initialGuestProfile.portfolioAnalysisHistory,
       addPortfolioAnalysisRecord: (record) => set((state) =>
         syncActiveProfileState(state, {
-          portfolioAnalysisHistory: [record, ...state.portfolioAnalysisHistory].slice(0, 20),
-          notificationFeed: prependNotification(state.notificationFeed, {
-            id: createOpaqueId('notification'),
-            title: 'Portfolio analysis ready',
-            titleAr: 'تحليل المحفظة جاهز',
-            description: 'Your latest portfolio review is ready in the portfolio page.',
-            descriptionAr: 'أحدث مراجعة لمحفظتك أصبحت جاهزة داخل صفحة المحفظة.',
-            read: false,
-            href: '/portfolio',
-          }),
+          portfolioAnalysisHistory: [record, ...state.portfolioAnalysisHistory],
         })
       ),
       deletePortfolioAnalysisRecord: (id) => set((state) =>
@@ -1701,16 +1770,7 @@ export const useAppStore = create<AppState>()(
       investmentDecisionHistory: initialGuestProfile.investmentDecisionHistory,
       addInvestmentDecisionRecord: (record) => set((state) =>
         syncActiveProfileState(state, {
-          investmentDecisionHistory: [record, ...state.investmentDecisionHistory].slice(0, 30),
-          notificationFeed: prependNotification(state.notificationFeed, {
-            id: createOpaqueId('notification'),
-            title: 'Decision Check completed',
-            titleAr: 'اكتمل فحص القرار',
-            description: `${record.investmentName} was evaluated and saved to your portfolio history.`,
-            descriptionAr: `تم تقييم ${record.investmentName} وحفظ النتيجة داخل سجل المحفظة.`,
-            read: false,
-            href: '/portfolio',
-          }),
+          investmentDecisionHistory: [record, ...state.investmentDecisionHistory],
         })
       ),
       deleteInvestmentDecisionRecord: (id) => set((state) =>
@@ -1721,7 +1781,7 @@ export const useAppStore = create<AppState>()(
       assets: initialGuestProfile.assets,
       addAsset: (asset) => set((state) =>
         syncActiveProfileState(state, {
-          assets: [asset, ...state.assets],
+          assets: [...state.assets, asset],
         })
       ),
       deleteAsset: (id) => set((state) =>
@@ -1732,7 +1792,7 @@ export const useAppStore = create<AppState>()(
       liabilities: initialGuestProfile.liabilities,
       addLiability: (liability) => set((state) =>
         syncActiveProfileState(state, {
-          liabilities: [liability, ...state.liabilities],
+          liabilities: [...state.liabilities, liability],
         })
       ),
       deleteLiability: (id) => set((state) =>
@@ -1749,32 +1809,34 @@ export const useAppStore = create<AppState>()(
       recurringObligations: initialGuestProfile.recurringObligations,
       addRecurringObligation: (obligation) => set((state) =>
         syncActiveProfileState(state, {
-          recurringObligations: [obligation, ...state.recurringObligations],
+          recurringObligations: [...state.recurringObligations, obligation],
         })
       ),
       updateRecurringObligation: (id, updates) => set((state) =>
         syncActiveProfileState(state, {
-          recurringObligations: state.recurringObligations.map((o) =>
-            o.id === id ? { ...o, ...updates } : o
+          recurringObligations: state.recurringObligations.map((obligation) =>
+            obligation.id === id ? { ...obligation, ...updates } : obligation
           ),
         })
       ),
       deleteRecurringObligation: (id) => set((state) =>
         syncActiveProfileState(state, {
-          recurringObligations: state.recurringObligations.filter((o) => o.id !== id),
+          recurringObligations: state.recurringObligations.filter((obligation) => obligation.id !== id),
         })
       ),
       markObligationPaid: (id, paidDate) => set((state) =>
         syncActiveProfileState(state, {
-          recurringObligations: state.recurringObligations.map((o) =>
-            o.id === id ? { ...o, status: 'paid', lastPaidDate: paidDate } : o
+          recurringObligations: state.recurringObligations.map((obligation) =>
+            obligation.id === id
+              ? { ...obligation, status: 'paid' as ObligationStatus, lastPaidDate: paidDate }
+              : obligation
           ),
         })
       ),
       oneTimeExpenses: initialGuestProfile.oneTimeExpenses,
       addOneTimeExpense: (expense) => set((state) =>
         syncActiveProfileState(state, {
-          oneTimeExpenses: [expense, ...state.oneTimeExpenses],
+          oneTimeExpenses: [...state.oneTimeExpenses, expense],
         })
       ),
       updateOneTimeExpense: (id, updates) => set((state) =>
@@ -1792,7 +1854,7 @@ export const useAppStore = create<AppState>()(
       savingsAccounts: initialGuestProfile.savingsAccounts,
       addSavingsAccount: (account) => set((state) =>
         syncActiveProfileState(state, {
-          savingsAccounts: [account, ...state.savingsAccounts],
+          savingsAccounts: [...state.savingsAccounts, account],
         })
       ),
       updateSavingsAccount: (id, updates) => set((state) =>
@@ -1807,142 +1869,82 @@ export const useAppStore = create<AppState>()(
           savingsAccounts: state.savingsAccounts.filter((account) => account.id !== id),
         })
       ),
-      hydrateRemoteWorkspace: (workspace) => set((state) => {
-        const sanitizedWorkspace = sanitizeRemoteWorkspace({
-          ...workspace,
-          appMode: 'live',
-        });
-        return syncActiveProfileState(state, {
-          appMode: sanitizedWorkspace.appMode,
-          startPage: sanitizedWorkspace.startPage,
-          notificationPreferences: sanitizedWorkspace.notificationPreferences,
-          notificationFeed: sanitizedWorkspace.notificationFeed,
-          incomeEntries: sanitizedWorkspace.incomeEntries,
-          expenseEntries: sanitizedWorkspace.expenseEntries,
-          receiptScans: sanitizedWorkspace.receiptScans,
-          portfolioHoldings: mergePortfolioHoldingEntries(sanitizedWorkspace.portfolioHoldings),
-          portfolioAnalysisHistory: normalizePortfolioAnalysisHistory(sanitizedWorkspace.portfolioAnalysisHistory),
-          investmentDecisionHistory: normalizeInvestmentDecisionHistory(sanitizedWorkspace.investmentDecisionHistory),
-          assets: sanitizedWorkspace.assets,
-          liabilities: sanitizedWorkspace.liabilities,
-          budgetLimits: sanitizedWorkspace.budgetLimits,
-          recurringObligations: sanitizedWorkspace.recurringObligations,
-          oneTimeExpenses: sanitizedWorkspace.oneTimeExpenses,
-          savingsAccounts: sanitizedWorkspace.savingsAccounts,
-        });
-      }),
-      stashRemoteWorkspace: (workspace) => set((state) => {
-        if (state.activeProfileId === initialGuestProfile.id) {
-          return {};
-        }
-
-        const sanitizedWorkspace = sanitizeRemoteWorkspace({
-          ...workspace,
-          appMode: 'live',
-        });
-        const existingProfile = findProfileById(state.profiles, state.activeProfileId);
-        const nextProfile: LocalProfile = {
-          ...(existingProfile ?? createProfileSnapshot(
-            state.activeProfileId,
-            state.user?.name?.trim() || 'User',
-            state.user?.email || '',
-            buildLiveState(),
-            {
-              user: state.user,
-              notificationPreferences: sanitizedWorkspace.notificationPreferences,
-            }
-          )),
-          label: state.user?.name?.trim() || existingProfile?.label || 'User',
-          email: state.user?.email || existingProfile?.email || '',
-          avatarUrl: state.user?.avatarUrl ?? existingProfile?.avatarUrl ?? null,
-          appMode: 'live',
-          startPage: sanitizedWorkspace.startPage,
-          user: state.user ?? existingProfile?.user ?? null,
-          notificationPreferences: sanitizedWorkspace.notificationPreferences,
-          notificationFeed: sanitizedWorkspace.notificationFeed,
-          incomeEntries: sanitizedWorkspace.incomeEntries,
-          expenseEntries: sanitizedWorkspace.expenseEntries,
-          receiptScans: sanitizedWorkspace.receiptScans,
-          portfolioHoldings: mergePortfolioHoldingEntries(sanitizedWorkspace.portfolioHoldings),
-          portfolioAnalysisHistory: normalizePortfolioAnalysisHistory(sanitizedWorkspace.portfolioAnalysisHistory),
-          investmentDecisionHistory: normalizeInvestmentDecisionHistory(sanitizedWorkspace.investmentDecisionHistory),
-          assets: sanitizedWorkspace.assets,
-          liabilities: sanitizedWorkspace.liabilities,
-          budgetLimits: sanitizedWorkspace.budgetLimits,
-          recurringObligations: sanitizedWorkspace.recurringObligations,
-          oneTimeExpenses: sanitizedWorkspace.oneTimeExpenses,
-          savingsAccounts: sanitizedWorkspace.savingsAccounts,
-        };
-
-        return {
-          profiles: upsertProfile(state.profiles, nextProfile),
-        };
-      }),
-      setSubscriptionTier: (tier) => set((state) =>
-        syncActiveProfileState(state, {
-          user: {
-            ...(state.user ?? defaultUser),
-            subscriptionTier: tier,
-          },
-        })
-      ),
-      clearAllData: () => {
-        if (typeof window !== 'undefined') {
-          for (const storageKey of [APP_STORAGE_KEY, ...LEGACY_STORAGE_KEYS]) {
-            window.localStorage.removeItem(storageKey);
+      hydrateRemoteWorkspace: (workspace) =>
+        set((state) => {
+          const sanitized = sanitizeRemoteWorkspace(workspace);
+          // Always force live mode when hydrating from the server and
+          // purge any demo seeds that may have been stored remotely.
+          const cleanWorkspace = purgeDemoDataFromState({
+            ...sanitized,
+            appMode: 'live' as const,
+            user: state.user,
+          });
+          return syncActiveProfileState(state, cleanWorkspace);
+        }),
+      stashRemoteWorkspace: (workspace) =>
+        set((state) => {
+          if (state.appMode !== 'demo') {
+            return {};
           }
-        }
-
-        set((state) =>
-          syncActiveProfileState(state, {
-            ...buildLiveState(),
-            user: state.user
-              ? {
-                  ...state.user,
-                  subscriptionTier: state.user.subscriptionTier ?? 'none',
-                }
-              : null,
-            locale: 'en',
-            theme: 'light',
-            startPage: DEFAULT_START_PAGE,
-            notificationPreferences: defaultNotificationPreferences,
-            sidebarCollapsed: false,
-            activeDashboardTab: 'overview',
-            selectedExchange: 'all',
-            shariahFilterEnabled: false,
-            selectedMonth: new Date().toISOString().slice(0, 7),
-            activeChatSession: null,
-            attachPortfolioContext: false,
-            isLoading: false,
-            isMobile: false,
-          })
-        );
-      },
+          const sanitized = sanitizeRemoteWorkspace(workspace);
+          const cleanWorkspace = purgeDemoDataFromState({
+            ...sanitized,
+            appMode: 'live' as const,
+          });
+          const existingProfile = findProfileById(state.profiles, state.activeProfileId);
+          if (!existingProfile || existingProfile.id === initialGuestProfile.id) {
+            return {};
+          }
+          const updatedProfile: LocalProfile = {
+            ...existingProfile,
+            ...cleanWorkspace,
+            appMode: 'live' as const,
+            id: existingProfile.id,
+            label: existingProfile.label,
+            email: existingProfile.email,
+            avatarUrl: existingProfile.avatarUrl,
+            user: existingProfile.user,
+            notificationPreferences: existingProfile.notificationPreferences,
+          };
+          return {
+            profiles: upsertProfile(state.profiles, updatedProfile),
+          };
+        }),
+      clearAllData: () =>
+        set((state) => {
+          const liveState = buildLiveState();
+          return syncActiveProfileState(state, {
+            ...liveState,
+            appMode: state.appMode,
+            user: state.user,
+            startPage: state.startPage,
+            notificationPreferences: state.notificationPreferences,
+          });
+        }),
+      setSubscriptionTier: (tier) =>
+        set((state) => {
+          if (!state.user) {
+            return {};
+          }
+          return syncActiveProfileState(state, {
+            user: { ...state.user, subscriptionTier: tier },
+          });
+        }),
       
       // Sidebar
       sidebarCollapsed: false,
-      toggleSidebar: () => set((state) => ({ 
-        sidebarCollapsed: !state.sidebarCollapsed 
-      })),
-      setSidebarCollapsed: (collapsed) => set({ 
-        sidebarCollapsed: collapsed 
-      }),
+      toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+      setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
       
-      // Dashboard
+      // Dashboard widgets
       activeDashboardTab: 'overview',
-      setActiveDashboardTab: (tab) => set({ 
-        activeDashboardTab: tab 
-      }),
+      setActiveDashboardTab: (tab) => set({ activeDashboardTab: tab }),
       
       // Portfolio
       selectedExchange: 'all',
-      setSelectedExchange: (exchange) => set({ 
-        selectedExchange: exchange 
-      }),
+      setSelectedExchange: (exchange) => set({ selectedExchange: exchange }),
       shariahFilterEnabled: false,
-      toggleShariahFilter: () => set((state) => ({ 
-        shariahFilterEnabled: !state.shariahFilterEnabled 
-      })),
+      toggleShariahFilter: () => set((state) => ({ shariahFilterEnabled: !state.shariahFilterEnabled })),
       
       // Budget
       selectedMonth: new Date().toISOString().slice(0, 7),
@@ -1950,13 +1952,9 @@ export const useAppStore = create<AppState>()(
       
       // AI Advisor
       activeChatSession: null,
-      setActiveChatSession: (sessionId) => set({ 
-        activeChatSession: sessionId 
-      }),
+      setActiveChatSession: (sessionId) => set({ activeChatSession: sessionId }),
       attachPortfolioContext: false,
-      setAttachPortfolioContext: (attach) => set({ 
-        attachPortfolioContext: attach 
-      }),
+      setAttachPortfolioContext: (attach) => set({ attachPortfolioContext: attach }),
       
       // UI State
       isLoading: false,
@@ -1966,39 +1964,18 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: APP_STORAGE_KEY,
-      version: 5,
-      migrate: (persistedState, _version) => {
-        if (!persistedState || typeof persistedState !== 'object') {
-          return persistedState as AppState;
-        }
-
-        const nextState = persistedState as AppState & Partial<RemoteWorkspaceSnapshot>;
-        const locale: Locale = nextState.locale === 'ar' ? 'ar' : 'en';
-        const theme: Theme =
-          nextState.theme === 'dark' || nextState.theme === 'system' ? nextState.theme : 'light';
-
-        return {
-          ...nextState,
-          ...sanitizeRemoteWorkspace(nextState),
-          profiles: normalizeLocalProfiles(nextState.profiles),
-          activeProfileId: typeof nextState.activeProfileId === 'string' ? nextState.activeProfileId : initialGuestProfile.id,
-          locale,
-          theme,
-          startPage: isStartPage(nextState.startPage) ? nextState.startPage : DEFAULT_START_PAGE,
-          sidebarCollapsed: Boolean(nextState.sidebarCollapsed),
-          shariahFilterEnabled: Boolean(nextState.shariahFilterEnabled),
-        };
-      },
       partialize: (state) => ({
-        user: state.user,
         locale: state.locale,
         theme: state.theme,
         appMode: state.appMode,
         startPage: state.startPage,
-        profiles: state.profiles,
-        activeProfileId: state.activeProfileId,
+        user: state.user,
         notificationPreferences: state.notificationPreferences,
         notificationFeed: state.notificationFeed,
+        profiles: state.profiles,
+        activeProfileId: state.activeProfileId,
+        financialStateVersion: state.financialStateVersion,
+        financialStateUpdatedAt: state.financialStateUpdatedAt,
         incomeEntries: state.incomeEntries,
         expenseEntries: state.expenseEntries,
         receiptScans: state.receiptScans,
@@ -2012,175 +1989,44 @@ export const useAppStore = create<AppState>()(
         oneTimeExpenses: state.oneTimeExpenses,
         savingsAccounts: state.savingsAccounts,
         sidebarCollapsed: state.sidebarCollapsed,
+        selectedExchange: state.selectedExchange,
         shariahFilterEnabled: state.shariahFilterEnabled,
+        selectedMonth: state.selectedMonth,
       }),
+      onRehydrateStorage: () => (state) => {
+        if (!state) {
+          return;
+        }
+
+        // Migrate legacy storage keys
+        for (const legacyKey of LEGACY_STORAGE_KEYS) {
+          try {
+            localStorage.removeItem(legacyKey);
+          } catch {
+            // ignore
+          }
+        }
+
+        // Normalize profiles array from storage
+        if (state.profiles) {
+          state.profiles = normalizeLocalProfiles(state.profiles);
+        }
+      },
     }
   )
 );
 
-export function getPersistableWorkspaceSnapshot(state: Pick<
-  AppState,
-  | 'appMode'
-  | 'activeProfileId'
-  | 'profiles'
-  | 'startPage'
-  | 'notificationPreferences'
-  | 'notificationFeed'
-  | 'incomeEntries'
-  | 'expenseEntries'
-  | 'receiptScans'
-  | 'portfolioHoldings'
-  | 'portfolioAnalysisHistory'
-  | 'investmentDecisionHistory'
-  | 'assets'
-  | 'liabilities'
-  | 'budgetLimits'
-  | 'recurringObligations'
-  | 'oneTimeExpenses'
-  | 'savingsAccounts'
->): RemoteWorkspaceSnapshot {
-  if (state.appMode === 'demo') {
-    const activeProfile = findProfileById(state.profiles, state.activeProfileId);
-    if (activeProfile) {
-      return profileToRemoteWorkspace(activeProfile);
-    }
-  }
+// ─── Derived selectors ────────────────────────────────────────────────────────
 
-  return workspaceFieldsToSnapshot({
-    appMode: state.appMode === 'demo' ? 'live' : state.appMode,
-    startPage: state.startPage,
-    notificationPreferences: state.notificationPreferences,
-    notificationFeed: state.notificationFeed,
-    incomeEntries: state.incomeEntries,
-    expenseEntries: state.expenseEntries,
-    receiptScans: state.receiptScans,
-    portfolioHoldings: state.portfolioHoldings,
-    portfolioAnalysisHistory: state.portfolioAnalysisHistory,
-    investmentDecisionHistory: state.investmentDecisionHistory,
-    assets: state.assets,
-    liabilities: state.liabilities,
-    budgetLimits: state.budgetLimits,
-    recurringObligations: state.recurringObligations,
-    oneTimeExpenses: state.oneTimeExpenses,
-    savingsAccounts: state.savingsAccounts,
-  });
-}
-
-// Feature gating based on subscription
-export const useSubscription = () => {
-  const user = useAppStore((state) => state.user);
-  const { user: clerkUser } = useRuntimeUser();
-  const tier = user?.subscriptionTier || 'none';
-  const metadata = clerkUser?.publicMetadata as Record<string, unknown> | undefined;
-  const billingState = getBillingState(metadata);
-  const hasPaidAccess =
-    (tier === 'core' || tier === 'pro') &&
-    billingState.hasPaidAccess &&
-    billingState.selectedPlan === tier;
-  const hasStandardAccess =
-    (tier === 'core' || tier === 'pro') &&
-    billingState.hasStandardAccess &&
-    billingState.selectedPlan === tier;
-  
-  return {
-    tier,
-    isFree: tier === 'none',
-    isCore: tier === 'core',
-    isPro: tier === 'pro',
-    hasPaidAccess,
-    hasStandardAccess,
-    trialActive: billingState.trialActive,
-    paymentAdded: billingState.paymentAdded,
-    canAccess: (feature: string) => {
-      const features: Record<string, 'standard' | 'paid' | 'pro-paid'> = {
-        'portfolio.unlimited': 'standard',
-        'portfolio.ai_analysis': 'pro-paid',
-        'fire.scenarios': 'standard',
-        'budget.history': 'standard',
-        'expenses.receipt_scan': 'standard',
-        'expenses.statement_import': 'pro-paid',
-        'ai.advisor': 'pro-paid',
-        'ai.portfolio_analysis': 'pro-paid',
-        'reports.basic': 'paid',
-        'reports.full': 'pro-paid',
-        'alerts.unlimited': 'pro-paid',
-        'alerts.3max': 'standard',
-        'data.export': 'standard',
-      };
-      const requirement = features[feature];
-
-      if (!requirement) {
-        return false;
-      }
-
-      if (requirement === 'standard') {
-        return hasStandardAccess;
-      }
-
-      if (requirement === 'paid') {
-        return hasPaidAccess;
-      }
-
-      return hasPaidAccess && tier === 'pro';
-    },
-  };
-};
-
-// Currency formatting
-export const formatCurrency = (
+export function formatCurrency(
   amount: number,
-  currency: string = 'SAR',
-  locale: Locale = 'ar'
-): string => {
-  const formatter = new Intl.NumberFormat(locale === 'ar' ? 'ar-SA-u-nu-latn' : 'en-US', {
+  currency = 'SAR',
+  locale: Locale = 'en'
+): string {
+  const lang = locale === 'ar' ? 'ar-SA' : 'en-US';
+  return new Intl.NumberFormat(lang, {
     style: 'currency',
     currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-  
-  return formatter.format(amount);
-};
-
-// Number formatting with Arabic numerals option
-export const formatNumber = (
-  number: number,
-  locale: Locale = 'ar',
-  options?: Intl.NumberFormatOptions
-): string => {
-  return new Intl.NumberFormat(
-    locale === 'ar' ? 'ar-SA-u-nu-latn' : 'en-US',
-    options
-  ).format(number);
-};
-
-// Date formatting
-export const formatDate = (
-  date: Date | string,
-  locale: Locale = 'ar',
-  options?: Intl.DateTimeFormatOptions
-): string => {
-  const d = typeof date === 'string' ? new Date(date) : date;
-  return new Intl.DateTimeFormat(
-    locale === 'ar' ? 'ar-SA-u-nu-latn' : 'en-US',
-    {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      ...options,
-    }
-  ).format(d);
-};
-
-// Percentage formatting
-export const formatPercent = (
-  value: number,
-  locale: Locale = 'ar',
-  decimals: number = 2
-): string => {
-  const sign = value >= 0 ? '+' : '';
-  return `${sign}${formatNumber(value, locale, {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  })}%`;
-};
+    maximumFractionDigits: 0,
+  }).format(amount);
+}

@@ -76,7 +76,10 @@ export function RemoteProfileSync() {
     [remoteWorkspace]
   );
 
-  const loadedUserIdRef = useRef<string | null>(null);
+  // FIX: guard is now keyed on `userId:appMode` so switching demo → live
+  // always triggers a fresh GET /api/user-data + hydrateRemoteWorkspace.
+  // Previously keyed only on userId — mode toggles were silently ignored.
+  const loadedSyncKeyRef = useRef<string | null>(null);
   const lastSavedSnapshotRef = useRef<string>('');
   const remoteUpdatedAtRef = useRef<string | null>(null);
   const applyingRemoteRef = useRef(false);
@@ -88,7 +91,7 @@ export function RemoteProfileSync() {
     }
 
     if (!isSignedIn || !user) {
-      loadedUserIdRef.current = null;
+      loadedSyncKeyRef.current = null;
       lastSavedSnapshotRef.current = '';
       remoteUpdatedAtRef.current = null;
       applyingRemoteRef.current = false;
@@ -101,6 +104,9 @@ export function RemoteProfileSync() {
 
     let cancelled = false;
 
+    // Composite key: userId + appMode — any mode change forces a fresh server fetch
+    const currentSyncKey = `${user.id}:${appMode}`;
+
     const loadWorkspace = async (options?: { silent?: boolean; force?: boolean }) => {
       try {
         const response = await fetch('/api/user-data', {
@@ -109,7 +115,7 @@ export function RemoteProfileSync() {
         });
 
         if (!response.ok) {
-          loadedUserIdRef.current = user.id;
+          loadedSyncKeyRef.current = currentSyncKey;
           lastSavedSnapshotRef.current = serializedWorkspace;
           return;
         }
@@ -122,7 +128,12 @@ export function RemoteProfileSync() {
           return;
         }
 
-        if (!options?.force && loadedUserIdRef.current === user.id && updatedAt && remoteUpdatedAtRef.current === updatedAt) {
+        if (
+          !options?.force &&
+          loadedSyncKeyRef.current === currentSyncKey &&
+          updatedAt &&
+          remoteUpdatedAtRef.current === updatedAt
+        ) {
           return;
         }
 
@@ -147,17 +158,18 @@ export function RemoteProfileSync() {
           remoteUpdatedAtRef.current = updatedAt;
         }
 
-        loadedUserIdRef.current = user.id;
+        loadedSyncKeyRef.current = currentSyncKey;
       } catch (error) {
         if (!options?.silent) {
           console.error('[remote-sync] load failed', error);
         }
-        loadedUserIdRef.current = user.id;
+        loadedSyncKeyRef.current = currentSyncKey;
         lastSavedSnapshotRef.current = serializedWorkspace;
       }
     };
 
-    if (loadedUserIdRef.current !== user.id) {
+    // Trigger fetch whenever the syncKey changes (new user OR mode toggled)
+    if (loadedSyncKeyRef.current !== currentSyncKey) {
       void loadWorkspace({ force: true });
     }
 
@@ -189,7 +201,11 @@ export function RemoteProfileSync() {
       return;
     }
 
-    if (loadedUserIdRef.current !== user.id || applyingRemoteRef.current) {
+    const currentSyncKey = `${user.id}:${appMode}`;
+
+    // Do not save until the initial load for this syncKey is complete,
+    // and never save while we are applying an incoming remote update.
+    if (loadedSyncKeyRef.current !== currentSyncKey || applyingRemoteRef.current) {
       return;
     }
 
@@ -248,7 +264,7 @@ export function RemoteProfileSync() {
         saveTimerRef.current = null;
       }
     };
-  }, [appMode, isLoaded, isSignedIn, remoteWorkspace, serializedWorkspace, user]);
+  }, [appMode, hydrateRemoteWorkspace, isLoaded, isSignedIn, remoteWorkspace, serializedWorkspace, user]);
 
   return null;
 }
