@@ -85,6 +85,15 @@ export function RemoteProfileSync() {
   const applyingRemoteRef = useRef(false);
   const saveTimerRef = useRef<number | null>(null);
 
+  // FIX: stable ref so async callbacks always read the live appMode,
+  // not the stale closure-captured value from effect dispatch time.
+  // This closes the race where a fetch started in demo mode would call
+  // stashRemoteWorkspace after the user had already toggled back to live.
+  const appModeRef = useRef(appMode);
+  useEffect(() => {
+    appModeRef.current = appMode;
+  }, [appMode]);
+
   useEffect(() => {
     if (!isLoaded) {
       return;
@@ -128,6 +137,9 @@ export function RemoteProfileSync() {
           return;
         }
 
+        // FIX: when force=true (mode toggle path), bypass the updatedAt equality
+        // guard entirely. This guarantees hydrateRemoteWorkspace is always called
+        // on demo→live toggle even when the server data has not changed.
         if (
           !options?.force &&
           loadedSyncKeyRef.current === currentSyncKey &&
@@ -137,7 +149,14 @@ export function RemoteProfileSync() {
           return;
         }
 
-        if (workspace && appMode === 'live') {
+        // FIX: read appMode from the live ref (appModeRef.current), not the
+        // closure-captured appMode value. This handles the race condition where:
+        //   1. User is in demo mode → fetch starts
+        //   2. User toggles to live mode
+        //   3. Fetch completes — must call hydrateRemoteWorkspace, not stash
+        const currentAppMode = appModeRef.current;
+
+        if (workspace && currentAppMode === 'live') {
           applyingRemoteRef.current = true;
           hydrateRemoteWorkspace(workspace);
           lastSavedSnapshotRef.current = JSON.stringify(workspace);
@@ -146,6 +165,8 @@ export function RemoteProfileSync() {
             applyingRemoteRef.current = false;
           }, 0);
         } else if (workspace) {
+          // Still in demo mode — stash the live workspace so the toggle
+          // can restore it cleanly when the user switches back to live.
           stashRemoteWorkspace(workspace);
           lastSavedSnapshotRef.current = JSON.stringify(workspace);
           remoteUpdatedAtRef.current = updatedAt;

@@ -785,27 +785,27 @@ const defaultNotificationFeed: NotificationItem[] = [
   {
     id: 'rebalance',
     title: 'Portfolio review available',
-    titleAr: 'مراجعة المحفظة جاهزة',
+    titleAr: '\u0645\u0631\u0627\u062c\u0639\u0629 \u0627\u0644\u0645\u062d\u0641\u0638\u0629 \u062c\u0627\u0647\u0632\u0629',
     description: 'Your portfolio allocation changed this week.',
-    descriptionAr: 'توزيع محفظتك تغيّر هذا الأسبوع.',
+    descriptionAr: '\u062a\u0648\u0632\u064a\u0639 \u0645\u062d\u0641\u0638\u062a\u0643 \u062a\u063a\u064a\u0651\u0631 \u0647\u0630\u0627 \u0627\u0644\u0623\u0633\u0628\u0648\u0639.',
     read: false,
     href: '/portfolio',
   },
   {
     id: 'budget',
     title: 'Budget alert triggered',
-    titleAr: 'تم تفعيل تنبيه الميزانية',
+    titleAr: '\u062a\u0645 \u062a\u0641\u0639\u064a\u0644 \u062a\u0646\u0628\u064a\u0647 \u0627\u0644\u0645\u064a\u0632\u0627\u0646\u064a\u0629',
     description: 'Your food budget is close to its monthly cap.',
-    descriptionAr: 'ميزانية الطعام اقتربت من حدها الشهري.',
+    descriptionAr: '\u0645\u064a\u0632\u0627\u0646\u064a\u0629 \u0627\u0644\u0637\u0639\u0627\u0645 \u0627\u0642\u062a\u0631\u0628\u062a \u0645\u0646 \u062d\u062f\u0647\u0627 \u0627\u0644\u0634\u0647\u0631\u064a.',
     read: false,
     href: '/settings?tab=preferences',
   },
   {
     id: 'report',
     title: 'Weekly digest is ready',
-    titleAr: 'الملخص الأسبوعي جاهز',
+    titleAr: '\u0627\u0644\u0645\u0644\u062e\u0635 \u0627\u0644\u0623\u0633\u0628\u0648\u0639\u064a \u062c\u0627\u0647\u0632',
     description: 'Open your latest wealth summary.',
-    descriptionAr: 'افتح أحدث ملخص لثروتك.',
+    descriptionAr: '\u0627\u0641\u062a\u062d \u0623\u062d\u062f\u062b \u0645\u0644\u062e\u0635 \u0644\u062b\u0631\u0648\u062a\u0643.',
     read: true,
     href: '/reports',
   },
@@ -1044,7 +1044,7 @@ const defaultSavingsAccounts: SavingsAccount[] = [
   },
 ];
 
-// ─── Demo seed ID sets used to strip contaminated rows on live restore ────────
+// \u2500\u2500\u2500 Demo seed ID sets used to strip contaminated rows on live restore \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 const DEMO_INCOME_IDS = new Set(['income-salary', 'income-freelance']);
 const DEMO_EXPENSE_IDS = new Set([
   'expense-rent',
@@ -1083,7 +1083,7 @@ function purgeDemoDataFromState(state: PersistedWorkspaceState): PersistedWorksp
     savingsAccounts: stripDemoSeeds(state.savingsAccounts, DEMO_SAVINGS_IDS),
   };
 }
-// ─────────────────────────────────────────────────────────────────────────────
+// \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
 function buildDemoState(): PersistedWorkspaceState {
   return {
@@ -1320,8 +1320,8 @@ function syncActiveProfileState(state: AppState, partial: Partial<AppState>) {
   } as AppState;
 
   // FIX: When switching into demo mode for a real user profile, preserve the
-  // ENTIRE existing profile object in profiles[] unchanged — including its
-  // appMode: 'live' and all data arrays — so demo mode can never overwrite
+  // ENTIRE existing profile object in profiles[] unchanged \u2014 including its
+  // appMode: 'live' and all data arrays \u2014 so demo mode can never overwrite
   // the user's real financial data in the persisted profile store.
   const isRealUserInDemoMode =
     nextState.appMode === 'demo' && nextState.activeProfileId !== initialGuestProfile.id;
@@ -1340,9 +1340,15 @@ function syncActiveProfileState(state: AppState, partial: Partial<AppState>) {
   };
 }
 
+// FIX: profileToState always emits appMode: 'live'.
+// LocalProfile[] entries are snapshots of the user's LIVE workspace state.
+// A profile should never carry appMode: 'demo' into the active store \u2014
+// if it does (e.g. a stale localStorage entry written before this fix),
+// restoring it would put the store into demo mode even though the user
+// is authenticated. Hardcoding 'live' here closes that entire class of bug.
 function profileToState(profile: LocalProfile): PersistedWorkspaceState {
   return {
-    appMode: profile.appMode,
+    appMode: 'live' as const,
     startPage: profile.startPage,
     user: profile.user,
     notificationPreferences: profile.notificationPreferences,
@@ -1661,7 +1667,7 @@ export const useAppStore = create<AppState>()(
             };
 
             return {
-              // Start with a clean live state for data arrays — real data will
+              // Start with a clean live state for data arrays \u2014 real data will
               // arrive via hydrateRemoteWorkspace. Only carry over identity and
               // preferences from the existing profile.
               ...buildLiveState(),
@@ -1883,9 +1889,23 @@ export const useAppStore = create<AppState>()(
         }),
       stashRemoteWorkspace: (workspace) =>
         set((state) => {
+          // FIX: removed the hard early-return `if (state.appMode !== 'demo') return {}`.
+          // If this action is called while the store is already in live mode
+          // (e.g. a race where a fetch started in demo mode resolved after the
+          // user toggled back to live), delegate to hydrateRemoteWorkspace semantics
+          // rather than silently dropping the server data.
           if (state.appMode !== 'demo') {
-            return {};
+            // We're live \u2014 apply the workspace directly as a full hydration.
+            const sanitized = sanitizeRemoteWorkspace(workspace);
+            const cleanWorkspace = purgeDemoDataFromState({
+              ...sanitized,
+              appMode: 'live' as const,
+              user: state.user,
+            });
+            return syncActiveProfileState(state, cleanWorkspace);
           }
+
+          // Demo mode path: stash into profiles[] so the toggle can restore it.
           const sanitized = sanitizeRemoteWorkspace(workspace);
           const cleanWorkspace = purgeDemoDataFromState({
             ...sanitized,
@@ -2016,7 +2036,7 @@ export const useAppStore = create<AppState>()(
   )
 );
 
-// ─── Derived selectors ────────────────────────────────────────────────────────
+// \u2500\u2500\u2500 Derived selectors \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
 export function formatCurrency(
   amount: number,
