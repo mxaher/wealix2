@@ -1656,13 +1656,13 @@ export const useAppStore = create<AppState>()(
               label: authUser.name?.trim() || existing.label || 'User',
               email: authUser.email,
               avatarUrl: authUser.avatarUrl,
+              // Preserve the user's real data arrays from the existing profile,
+              // but strip any demo seeds so even a contaminated profile is safe.
+              ...purgeDemoDataFromState(profileToState(existing)),
               user: {
                 ...(existing.user ?? nextUser),
                 ...nextUser,
               },
-              // Preserve the user's real data arrays from the existing profile,
-              // but strip any demo seeds so even a contaminated profile is safe.
-              ...purgeDemoDataFromState(profileToState(existing)),
               appMode: 'live',
             };
 
