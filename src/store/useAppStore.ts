@@ -58,7 +58,7 @@ export type ExpenseCategory =
 export type RecurringFrequency = 'monthly' | 'quarterly' | 'semi_annual' | 'annual' | 'one_time' | 'custom';
 export type ObligationStatus = 'upcoming' | 'due_soon' | 'paid' | 'overdue';
 export type OneTimeExpensePriority = 'critical' | 'high' | 'medium' | 'low';
-export type SavingsAccountType = 'current' | 'awaeed' | 'mudarabah' | 'hassab' | 'standard_savings';
+export type SavingsAccountType = 'current' | 'awaeed' | 'mudarabah' | 'hassad' | 'standard_savings';
 export type SavingsAccountStatus = 'active' | 'matured' | 'cancelled';
 export type ProfitPayoutMethod = 'at_maturity' | 'monthly' | 'in_advance';
 
