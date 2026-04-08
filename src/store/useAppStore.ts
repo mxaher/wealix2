@@ -1910,6 +1910,7 @@ export const useAppStore = create<AppState>()(
           const cleanWorkspace = purgeDemoDataFromState({
             ...sanitized,
             appMode: 'live' as const,
+            user: state.user,
           });
           const existingProfile = findProfileById(state.profiles, state.activeProfileId);
           if (!existingProfile || existingProfile.id === initialGuestProfile.id) {
