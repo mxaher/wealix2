@@ -1,13 +1,15 @@
 'use client';
 
-import type { ComponentType } from 'react';
-import { useMemo, useState } from 'react';
+import type { ComponentType, ReactNode } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
   AlertCircle,
   Calendar,
+  Check,
   CheckCircle,
   ChevronRight,
+  ChevronsUpDown,
   Clock,
   Home,
   Landmark,
@@ -40,6 +42,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import {
   Dialog,
   DialogContent,
   DialogFooter,
@@ -49,6 +59,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -64,9 +75,10 @@ import { buildDailyPlanningSnapshot, type DailyPlanningSnapshot } from '@/lib/ai
 import { buildBudgetCriticalAlerts, buildDashboardInsightLines, buildFinancialPersonaFromClientContext } from '@/lib/financial-brain-surface';
 import { buildWealixAIContextFromClientContext } from '@/lib/wealix-ai-context';
 import { createOpaqueId } from '@/lib/ids';
-import { buildForecast, buildForecastSummary, getUpcomingOccurrences } from '@/lib/recurring-obligations';
+import { buildForecast, buildForecastSummary, getOccurrencesInRange, getUpcomingOccurrences } from '@/lib/recurring-obligations';
 import { useFinancialSnapshot } from '@/hooks/useFinancialSnapshot';
 import { useRuntimeUser } from '@/hooks/useRuntimeUser';
+import { cn } from '@/lib/utils';
 import {
   formatCurrency,
   type ExpenseEntry,
@@ -76,6 +88,150 @@ import {
   type SavingsAccount,
   useAppStore,
 } from '@/store/useAppStore';
+
+type SavingsOption = {
+  value: string;
+  label: {
+    en: string;
+    ar: string;
+  };
+};
+
+type BankOption = SavingsOption & {
+  country: string;
+};
+
+type ForecastTooltipDatum = {
+  month: string;
+  monthKey: string;
+  fullLabel: string;
+  obligations: number;
+  income: number;
+};
+
+type ForecastTooltipPayload = {
+  dataKey?: string;
+  value?: number;
+  payload?: ForecastTooltipDatum;
+};
+
+type CustomForecastTooltipProps = {
+  active?: boolean;
+  payload?: ForecastTooltipPayload[];
+  isArabic: boolean;
+  locale: 'ar' | 'en';
+  forecastPeriods: ReturnType<typeof buildForecast>;
+};
+
+type SuggestionComboboxProps<TOption extends SavingsOption> = {
+  isArabic: boolean;
+  value: string;
+  searchValue: string;
+  open: boolean;
+  options: TOption[];
+  placeholder: {
+    en: string;
+    ar: string;
+  };
+  emptyText: {
+    en: string;
+    ar: string;
+  };
+  suggestionValue: string | null;
+  groupedOptions?: Array<{
+    heading: string;
+    items: TOption[];
+  }>;
+  onOpenChange: (open: boolean) => void;
+  onSearchValueChange: (value: string) => void;
+  onSelectOption: (option: TOption) => void;
+  onSuggestValue?: (value: string) => void;
+  renderItemMeta?: (option: TOption) => ReactNode;
+};
+
+const SAVINGS_ACCOUNT_NAMES: SavingsOption[] = [
+  { value: 'al_rajhi_awaeed', label: { en: 'Al Rajhi — Awaeed Account', ar: 'الراجحي — حساب عوائد' } },
+  { value: 'al_rajhi_mudarabah', label: { en: 'Al Rajhi — Mudarabah Account', ar: 'الراجحي — حساب المضاربة' } },
+  { value: 'al_rajhi_current', label: { en: 'Al Rajhi — Current Account', ar: 'الراجحي — الحساب الجاري' } },
+  { value: 'snb_saver', label: { en: 'SNB — Savings Account', ar: 'البنك الأهلي — حساب التوفير' } },
+  { value: 'snb_almujdy', label: { en: 'SNB — Al Mujdy Account', ar: 'البنك الأهلي — حساب المجدي' } },
+  { value: 'riyad_hassad', label: { en: 'Riyad Bank — Hassad Account', ar: 'بنك الرياض — حساب الحصاد' } },
+  { value: 'riyad_savings', label: { en: 'Riyad Bank — Savings Account', ar: 'بنك الرياض — حساب التوفير' } },
+  { value: 'albilad_wefak', label: { en: 'Al Bilad — Wefak Account', ar: 'بنك البلاد — حساب وفاق' } },
+  { value: 'albilad_savings', label: { en: 'Al Bilad — Savings Account', ar: 'بنك البلاد — حساب التوفير' } },
+  { value: 'alinma_savings', label: { en: 'Alinma Bank — Savings Account', ar: 'بنك الإنماء — حساب التوفير' } },
+  { value: 'alinma_tawfeer', label: { en: 'Alinma Bank — Tawfeer Account', ar: 'بنك الإنماء — حساب توفير' } },
+  { value: 'samba_savings', label: { en: 'Samba — Savings Account', ar: 'سامبا — حساب التوفير' } },
+  { value: 'anb_savings', label: { en: 'ANB — Savings Account', ar: 'البنك العربي الوطني — حساب التوفير' } },
+  { value: 'saib_savings', label: { en: 'SAIB — Savings Account', ar: 'البنك السعودي للاستثمار — حساب التوفير' } },
+  { value: 'adcb_active_saver', label: { en: 'ADCB — Active Saver', ar: 'أبوظبي التجاري — حساب التوفير' } },
+  { value: 'fab_savings', label: { en: 'FAB — Savings Account', ar: 'بنك أبوظبي الأول — حساب التوفير' } },
+  { value: 'emirates_nbd_savings', label: { en: 'Emirates NBD — Savings Account', ar: 'الإمارات NBD — حساب التوفير' } },
+  { value: 'mashreq_savings', label: { en: 'Mashreq — Savings Account', ar: 'مصرف المشرق — حساب التوفير' } },
+  { value: 'qnb_savings', label: { en: 'QNB — Savings Account', ar: 'بنك قطر الوطني — حساب التوفير' } },
+  { value: 'qatar_islamic_savings', label: { en: 'Qatar Islamic Bank — Savings', ar: 'بنك قطر الإسلامي — حساب التوفير' } },
+  { value: 'nbk_savings', label: { en: 'NBK — Savings Account', ar: 'بنك الكويت الوطني — حساب التوفير' } },
+  { value: 'kfh_savings', label: { en: 'KFH — Savings Account', ar: 'بيت التمويل الكويتي — حساب التوفير' } },
+  { value: 'ahli_bahrain_savings', label: { en: 'Ahli United — Savings Account', ar: 'الأهلي المتحد — حساب التوفير' } },
+  { value: 'arab_bank_savings', label: { en: 'Arab Bank — Savings Account', ar: 'البنك العربي — حساب التوفير' } },
+  { value: 'cairo_amman_savings', label: { en: 'Cairo Amman Bank — Savings', ar: 'بنك القاهرة عمان — حساب التوفير' } },
+  { value: 'nbe_savings', label: { en: 'NBE — Savings Account', ar: 'البنك الأهلي المصري — حساب التوفير' } },
+  { value: 'cib_savings', label: { en: 'CIB — Savings Account', ar: 'البنك التجاري الدولي — حساب التوفير' } },
+  { value: 'qnb_egypt_savings', label: { en: 'QNB Egypt — Savings Account', ar: 'QNB مصر — حساب التوفير' } },
+  { value: 'banque_misr_savings', label: { en: 'Banque Misr — Savings', ar: 'بنك مصر — حساب التوفير' } },
+  { value: 'term_deposit', label: { en: 'Term Deposit (Generic)', ar: 'وديعة لأجل (عام)' } },
+  { value: 'other_savings', label: { en: 'Other / Custom', ar: 'حساب آخر / مخصص' } },
+];
+
+const GULF_BANKS: BankOption[] = [
+  { value: 'Al Rajhi Bank', label: { en: 'Al Rajhi Bank', ar: 'مصرف الراجحي' }, country: 'SA' },
+  { value: 'Saudi National Bank (SNB)', label: { en: 'Saudi National Bank (SNB)', ar: 'البنك الأهلي السعودي (SNB)' }, country: 'SA' },
+  { value: 'Riyad Bank', label: { en: 'Riyad Bank', ar: 'بنك الرياض' }, country: 'SA' },
+  { value: 'Bank AlBilad', label: { en: 'Bank AlBilad', ar: 'بنك البلاد' }, country: 'SA' },
+  { value: 'Alinma Bank', label: { en: 'Alinma Bank', ar: 'بنك الإنماء' }, country: 'SA' },
+  { value: 'Arab National Bank (ANB)', label: { en: 'Arab National Bank (ANB)', ar: 'البنك العربي الوطني' }, country: 'SA' },
+  { value: 'Banque Saudi Fransi', label: { en: 'Banque Saudi Fransi', ar: 'البنك السعودي الفرنسي' }, country: 'SA' },
+  { value: 'SAMBA Financial Group', label: { en: 'SAMBA Financial Group', ar: 'مجموعة سامبا المالية' }, country: 'SA' },
+  { value: 'Saudi Investment Bank (SAIB)', label: { en: 'Saudi Investment Bank (SAIB)', ar: 'البنك السعودي للاستثمار' }, country: 'SA' },
+  { value: 'Gulf International Bank (GIB)', label: { en: 'Gulf International Bank (GIB)', ar: 'بنك الخليج الدولي' }, country: 'SA' },
+  { value: 'Emirates NBD', label: { en: 'Emirates NBD', ar: 'الإمارات NBD' }, country: 'AE' },
+  { value: 'Abu Dhabi Commercial Bank (ADCB)', label: { en: 'Abu Dhabi Commercial Bank (ADCB)', ar: 'بنك أبوظبي التجاري' }, country: 'AE' },
+  { value: 'First Abu Dhabi Bank (FAB)', label: { en: 'First Abu Dhabi Bank (FAB)', ar: 'بنك أبوظبي الأول' }, country: 'AE' },
+  { value: 'Dubai Islamic Bank (DIB)', label: { en: 'Dubai Islamic Bank (DIB)', ar: 'بنك دبي الإسلامي' }, country: 'AE' },
+  { value: 'Mashreq Bank', label: { en: 'Mashreq Bank', ar: 'مصرف المشرق' }, country: 'AE' },
+  { value: 'ENBD Bank', label: { en: 'ENBD Bank', ar: 'بنك الإمارات دبي الوطني' }, country: 'AE' },
+  { value: 'Qatar National Bank (QNB)', label: { en: 'Qatar National Bank (QNB)', ar: 'بنك قطر الوطني' }, country: 'QA' },
+  { value: 'Qatar Islamic Bank (QIB)', label: { en: 'Qatar Islamic Bank (QIB)', ar: 'بنك قطر الإسلامي' }, country: 'QA' },
+  { value: 'Commercial Bank of Qatar', label: { en: 'Commercial Bank of Qatar', ar: 'البنك التجاري القطري' }, country: 'QA' },
+  { value: 'National Bank of Kuwait (NBK)', label: { en: 'National Bank of Kuwait (NBK)', ar: 'بنك الكويت الوطني' }, country: 'KW' },
+  { value: 'Kuwait Finance House (KFH)', label: { en: 'Kuwait Finance House (KFH)', ar: 'بيت التمويل الكويتي' }, country: 'KW' },
+  { value: 'Gulf Bank Kuwait', label: { en: 'Gulf Bank Kuwait', ar: 'بنك الخليج - الكويت' }, country: 'KW' },
+  { value: 'Ahli United Bank (Bahrain)', label: { en: 'Ahli United Bank (Bahrain)', ar: 'بنك الأهلي المتحد - البحرين' }, country: 'BH' },
+  { value: 'Bank of Bahrain and Kuwait (BBK)', label: { en: 'BBK — Bank of Bahrain and Kuwait', ar: 'بنك البحرين والكويت' }, country: 'BH' },
+  { value: 'Bank Muscat', label: { en: 'Bank Muscat', ar: 'بنك مسقط' }, country: 'OM' },
+  { value: 'National Bank of Oman (NBO)', label: { en: 'National Bank of Oman (NBO)', ar: 'البنك الوطني العماني' }, country: 'OM' },
+  { value: 'Arab Bank (Jordan)', label: { en: 'Arab Bank (Jordan)', ar: 'البنك العربي - الأردن' }, country: 'JO' },
+  { value: 'Cairo Amman Bank', label: { en: 'Cairo Amman Bank', ar: 'بنك القاهرة عمان' }, country: 'JO' },
+  { value: 'Jordan Ahli Bank', label: { en: 'Jordan Ahli Bank', ar: 'البنك الأهلي الأردني' }, country: 'JO' },
+  { value: 'National Bank of Egypt (NBE)', label: { en: 'National Bank of Egypt (NBE)', ar: 'البنك الأهلي المصري' }, country: 'EG' },
+  { value: 'Banque Misr', label: { en: 'Banque Misr', ar: 'بنك مصر' }, country: 'EG' },
+  { value: 'Commercial International Bank (CIB)', label: { en: 'Commercial International Bank (CIB)', ar: 'البنك التجاري الدولي - CIB' }, country: 'EG' },
+  { value: 'QNB Egypt', label: { en: 'QNB Egypt', ar: 'QNB مصر' }, country: 'EG' },
+  { value: 'HSBC Egypt', label: { en: 'HSBC Egypt', ar: 'HSBC مصر' }, country: 'EG' },
+  { value: 'Arab African International Bank (AAIB)', label: { en: 'AAIB — Arab African International Bank', ar: 'البنك العربي الأفريقي الدولي' }, country: 'EG' },
+  { value: 'Other', label: { en: 'Other / Custom Bank', ar: 'بنك آخر / مخصص' }, country: '' },
+];
+
+const BANK_GROUP_LABELS: Record<string, string> = {
+  SA: '🇸🇦 السعودية',
+  AE: '🇦🇪 الإمارات',
+  QA: '🇶🇦 قطر',
+  KW: '🇰🇼 الكويت',
+  BH: '🇧🇭 البحرين',
+  OM: '🇴🇲 عُمان',
+  JO: '🇯🇴 الأردن',
+  EG: '🇪🇬 مصر',
+};
 
 const budgetToExpenseCategory: Record<string, ExpenseEntry['category']> = {
   housing: 'Housing',
@@ -194,6 +350,259 @@ function cardDirectionProps(isArabic: boolean) {
   };
 }
 
+function normalizeSearchValue(value: string) {
+  return value.trim().toLocaleLowerCase();
+}
+
+function getLocalizedOptionLabel(option: SavingsOption, isArabic: boolean) {
+  return isArabic ? option.label.ar : option.label.en;
+}
+
+function SuggestionCombobox<TOption extends SavingsOption>({
+  isArabic,
+  value,
+  searchValue,
+  open,
+  options,
+  placeholder,
+  emptyText,
+  suggestionValue,
+  groupedOptions,
+  onOpenChange,
+  onSearchValueChange,
+  onSelectOption,
+  onSuggestValue,
+  renderItemMeta,
+}: SuggestionComboboxProps<TOption>) {
+  const localizedPlaceholder = isArabic ? placeholder.ar : placeholder.en;
+  const displayValue = value.trim() || localizedPlaceholder;
+
+  return (
+    <Popover open={open} onOpenChange={onOpenChange}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          dir={isArabic ? 'rtl' : 'ltr'}
+          className={cn(
+            'w-full justify-between overflow-hidden',
+            !value.trim() && 'text-muted-foreground'
+          )}
+        >
+          <span className="truncate">{displayValue}</span>
+          <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent dir={isArabic ? 'rtl' : 'ltr'} className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+        <Command dir={isArabic ? 'rtl' : 'ltr'} shouldFilter={false}>
+          <CommandInput
+            dir={isArabic ? 'rtl' : 'ltr'}
+            value={searchValue}
+            onValueChange={onSearchValueChange}
+            placeholder={localizedPlaceholder}
+          />
+          <CommandList>
+            {groupedOptions ? (
+              groupedOptions.map((group) => (
+                <CommandGroup key={group.heading} heading={group.heading}>
+                  {group.items.map((option) => (
+                    <CommandItem
+                      key={option.value}
+                      value={`${option.label.en} ${option.label.ar} ${option.value}`}
+                      onSelect={() => onSelectOption(option)}
+                    >
+                      <Check className={cn('h-4 w-4', value === option.value || value === getLocalizedOptionLabel(option, isArabic) ? 'opacity-100' : 'opacity-0')} />
+                      <div className="flex min-w-0 flex-1 items-center justify-between gap-2" dir={isArabic ? 'rtl' : 'ltr'}>
+                        <span className="truncate">{getLocalizedOptionLabel(option, isArabic)}</span>
+                        {renderItemMeta?.(option)}
+                      </div>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              ))
+            ) : (
+              <CommandGroup>
+                {options.map((option) => (
+                  <CommandItem
+                    key={option.value}
+                    value={`${option.label.en} ${option.label.ar} ${option.value}`}
+                    onSelect={() => onSelectOption(option)}
+                  >
+                    <Check className={cn('h-4 w-4', value === option.value || value === getLocalizedOptionLabel(option, isArabic) ? 'opacity-100' : 'opacity-0')} />
+                    <div className="flex min-w-0 flex-1 items-center justify-between gap-2" dir={isArabic ? 'rtl' : 'ltr'}>
+                      <span className="truncate">{getLocalizedOptionLabel(option, isArabic)}</span>
+                      {renderItemMeta?.(option)}
+                    </div>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+            {options.length === 0 && !suggestionValue ? (
+              <CommandEmpty>{isArabic ? emptyText.ar : emptyText.en}</CommandEmpty>
+            ) : null}
+            {suggestionValue && onSuggestValue ? (
+              <CommandGroup>
+                <CommandItem value={suggestionValue} onSelect={() => onSuggestValue(suggestionValue)}>
+                  <Plus className="h-4 w-4" />
+                  <span className="truncate">
+                    {isArabic ? `+ اقتراح: "${suggestionValue}"` : `+ Suggest: "${suggestionValue}"`}
+                  </span>
+                </CommandItem>
+              </CommandGroup>
+            ) : null}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function CustomForecastTooltip({
+  active,
+  payload,
+  isArabic,
+  locale,
+  forecastPeriods,
+}: CustomForecastTooltipProps) {
+  if (!active || !payload?.length) {
+    return null;
+  }
+
+  const activePayload = payload[0] as ForecastTooltipPayload;
+  const chartDatum = activePayload.payload;
+
+  if (!chartDatum) {
+    return null;
+  }
+
+  const value = Number(activePayload.value ?? 0);
+  const monthPeriod = forecastPeriods.find((period) => period.month === chartDatum.monthKey);
+  const topObligations =
+    monthPeriod?.obligations
+      .slice()
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 3) ?? [];
+
+  return (
+    <div
+      dir={isArabic ? 'rtl' : 'ltr'}
+      className="min-w-[220px] rounded-xl border border-border bg-card p-3 text-sm shadow-lg"
+    >
+      <p className="font-medium">{chartDatum.fullLabel}</p>
+      <p className="mt-1 font-semibold">{formatCurrency(value, 'SAR', locale)}</p>
+      {activePayload.dataKey === 'obligations' ? (
+        <div className="mt-3 space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">
+            {isArabic ? 'أعلى 3 التزامات' : 'Top 3 obligations'}
+          </p>
+          {topObligations.length === 0 ? (
+            <p className="text-xs text-muted-foreground">
+              {isArabic ? 'لا توجد التزامات هذا الشهر' : 'No obligations this month'}
+            </p>
+          ) : (
+            topObligations.map((item) => (
+              <div
+                key={item.id}
+                dir={isArabic ? 'rtl' : 'ltr'}
+                className="flex items-center justify-between gap-3 text-xs"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium">{item.title}</p>
+                  <p className="text-muted-foreground">
+                    {isArabic ? 'يوم الاستحقاق' : 'Due day'} {new Date(item.dueDate).getDate()}
+                  </p>
+                </div>
+                <span className="shrink-0">{formatCurrency(item.amount, 'SAR', locale)}</span>
+              </div>
+            ))
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ForecastItemsPopoverCell({
+  isArabic,
+  locale,
+  amount,
+  items,
+}: {
+  isArabic: boolean;
+  locale: 'ar' | 'en';
+  amount: number;
+  items: Array<{ id: string; title: string; amount: number }>;
+}) {
+  const [open, setOpen] = useState(false);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearCloseTimer = () => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  };
+
+  const scheduleClose = () => {
+    clearCloseTimer();
+    closeTimerRef.current = setTimeout(() => setOpen(false), 120);
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          dir={isArabic ? 'rtl' : 'ltr'}
+          className="cursor-help border-b border-dashed border-muted-foreground/40 text-start font-medium"
+          onMouseEnter={() => {
+            clearCloseTimer();
+            setOpen(true);
+          }}
+          onMouseLeave={scheduleClose}
+          onFocus={() => {
+            clearCloseTimer();
+            setOpen(true);
+          }}
+          onBlur={scheduleClose}
+          onClick={() => {
+            clearCloseTimer();
+            setOpen((current) => !current);
+          }}
+        >
+          {formatCurrency(amount, 'SAR', locale)}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        dir={isArabic ? 'rtl' : 'ltr'}
+        align="start"
+        sideOffset={8}
+        className="w-64 rounded-xl border border-border bg-popover p-3 text-xs shadow-lg"
+        onMouseEnter={clearCloseTimer}
+        onMouseLeave={scheduleClose}
+      >
+        <p className="mb-2 font-medium">
+          {isArabic ? 'أبرز المصروفات والالتزامات' : 'Top Expenses & Obligations'}
+        </p>
+        {items.length === 0 ? (
+          <p className="text-muted-foreground">{isArabic ? 'لا توجد بنود' : 'No items'}</p>
+        ) : (
+          <div className="space-y-2">
+            {items.map((item) => (
+              <div key={item.id} dir={isArabic ? 'rtl' : 'ltr'} className="flex items-center justify-between gap-3">
+                <span className="truncate">{item.title}</span>
+                <span className="shrink-0">{formatCurrency(item.amount, 'SAR', locale)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export function BudgetPlanningPage({
   initialSnapshot,
 }: {
@@ -237,6 +646,10 @@ export function BudgetPlanningPage({
   const [obligationForm, setObligationForm] = useState(defaultObligationForm);
   const [oneTimeExpenseForm, setOneTimeExpenseForm] = useState(defaultOneTimeExpenseForm);
   const [savingsAccountForm, setSavingsAccountForm] = useState(defaultSavingsAccountForm);
+  const [accountNameOpen, setAccountNameOpen] = useState(false);
+  const [accountNameQuery, setAccountNameQuery] = useState('');
+  const [providerOpen, setProviderOpen] = useState(false);
+  const [providerQuery, setProviderQuery] = useState('');
 
   const totalIncome = incomeEntries.reduce((sum, entry) => sum + entry.amount, 0);
   const totalExpenses = expenseEntries.reduce((sum, entry) => sum + entry.amount, 0);
@@ -379,6 +792,76 @@ export function BudgetPlanningPage({
     setShowAddOneTimeExpense(false);
   };
 
+  const submitSuggestion = async (
+    endpoint: '/api/suggestions/savings-account-name' | '/api/suggestions/bank-name',
+    payload: Record<string, unknown>
+  ) => {
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        return;
+      }
+
+      toast({
+        title: isArabic
+          ? 'تم إرسال الاقتراح للمراجعة، شكراً لمساهمتك 🙏'
+          : 'Suggestion submitted for review — thank you 🙏',
+      });
+    } catch {
+      // Suggestions are best-effort and should never block the form flow.
+    }
+  };
+
+  const handleSelectSavingsAccountName = (option: SavingsOption) => {
+    const translatedLabel = getLocalizedOptionLabel(option, isArabic);
+    setSavingsAccountForm((current) => ({ ...current, name: translatedLabel }));
+    setAccountNameQuery(translatedLabel);
+    setAccountNameOpen(false);
+  };
+
+  const handleSuggestSavingsAccountName = (suggestedValue: string) => {
+    const trimmed = suggestedValue.trim();
+    if (!trimmed) {
+      return;
+    }
+
+    setSavingsAccountForm((current) => ({ ...current, name: trimmed }));
+    setAccountNameQuery(trimmed);
+    setAccountNameOpen(false);
+    void submitSuggestion('/api/suggestions/savings-account-name', {
+      value: trimmed,
+      locale: isArabic ? 'ar' : 'en',
+    });
+  };
+
+  const handleSelectBankProvider = (option: BankOption) => {
+    setSavingsAccountForm((current) => ({ ...current, provider: option.value }));
+    setProviderQuery(option.value);
+    setProviderOpen(false);
+  };
+
+  const handleSuggestBankProvider = (suggestedValue: string) => {
+    const trimmed = suggestedValue.trim();
+    if (!trimmed) {
+      return;
+    }
+
+    setSavingsAccountForm((current) => ({ ...current, provider: trimmed }));
+    setProviderQuery(trimmed);
+    setProviderOpen(false);
+    void submitSuggestion('/api/suggestions/bank-name', {
+      value: trimmed,
+      country: '',
+    });
+  };
+
   const handleAddSavingsAccount = () => {
     if (!isSignedIn) {
       requireAccount();
@@ -417,6 +900,10 @@ export function BudgetPlanningPage({
       notes: savingsAccountForm.notes.trim() || null,
     });
     setSavingsAccountForm(defaultSavingsAccountForm);
+    setAccountNameQuery('');
+    setProviderQuery('');
+    setAccountNameOpen(false);
+    setProviderOpen(false);
     setShowAddSavingsAccount(false);
   };
 
@@ -442,11 +929,104 @@ export function BudgetPlanningPage({
       : []),
   ];
 
-  const forecastChartData = forecast12.map((period) => ({
-    month: period.label.split(' ')[0],
-    obligations: period.totalAmount,
-    income: monthlyIncome,
-  }));
+  const normalizedAccountNameQuery = normalizeSearchValue(accountNameQuery);
+  const normalizedProviderQuery = normalizeSearchValue(providerQuery);
+  const filteredSavingsAccountNames = useMemo(
+    () =>
+      SAVINGS_ACCOUNT_NAMES.filter((option) => {
+        if (!normalizedAccountNameQuery) {
+          return true;
+        }
+
+        const haystack = `${option.label.en} ${option.label.ar} ${option.value}`.toLocaleLowerCase();
+        return haystack.includes(normalizedAccountNameQuery);
+      }),
+    [normalizedAccountNameQuery]
+  );
+  const accountNameSuggestionValue = useMemo(() => {
+    if (!normalizedAccountNameQuery) {
+      return null;
+    }
+
+    const hasExactMatch = SAVINGS_ACCOUNT_NAMES.some((option) =>
+      [option.label.en, option.label.ar].some(
+        (label) => normalizeSearchValue(label) === normalizedAccountNameQuery
+      )
+    );
+
+    return hasExactMatch ? null : accountNameQuery.trim();
+  }, [accountNameQuery, normalizedAccountNameQuery]);
+  const filteredBanks = useMemo(
+    () =>
+      GULF_BANKS.filter((option) => {
+        if (!normalizedProviderQuery) {
+          return true;
+        }
+
+        const haystack = `${option.label.en} ${option.label.ar} ${option.value}`.toLocaleLowerCase();
+        return haystack.includes(normalizedProviderQuery);
+      }),
+    [normalizedProviderQuery]
+  );
+  const groupedBankOptions = useMemo(() => {
+    if (normalizedProviderQuery) {
+      return null;
+    }
+
+    return Object.entries(BANK_GROUP_LABELS)
+      .map(([country, heading]) => ({
+        heading,
+        items: GULF_BANKS.filter((bank) => bank.country === country),
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [normalizedProviderQuery]);
+  const providerSuggestionValue = useMemo(() => {
+    if (!normalizedProviderQuery) {
+      return null;
+    }
+
+    const hasExactMatch = GULF_BANKS.some((option) =>
+      [option.label.en, option.label.ar].some(
+        (label) => normalizeSearchValue(label) === normalizedProviderQuery
+      )
+    );
+
+    return hasExactMatch ? null : providerQuery.trim();
+  }, [normalizedProviderQuery, providerQuery]);
+  const forecastChartData = useMemo(
+    () =>
+      forecast12.map((period) => ({
+        month: period.label.split(' ')[0],
+        monthKey: period.month,
+        fullLabel: period.label,
+        obligations: period.totalAmount,
+        income: monthlyIncome,
+      })),
+    [forecast12, monthlyIncome]
+  );
+  const monthlyRecurringTopItems = useMemo(() => {
+    const monthMap = new Map<string, Array<{ id: string; title: string; amount: number }>>();
+
+    snapshot.forecast.monthlyRows.forEach((period) => {
+      const [year, month] = period.month.split('-').map(Number);
+      const rangeStart = new Date(year, month - 1, 1);
+      const rangeEnd = new Date(year, month, 0);
+      const monthlyItems = recurringObligations
+        .flatMap((obligation) =>
+          getOccurrencesInRange(obligation, rangeStart, rangeEnd).map((occurrence) => ({
+            id: `${obligation.id}-${occurrence.toISOString().slice(0, 10)}`,
+            title: obligation.title,
+            amount: obligation.amount,
+          }))
+        )
+        .sort((a, b) => b.amount - a.amount)
+        .slice(0, 3);
+
+      monthMap.set(period.month, monthlyItems);
+    });
+
+    return monthMap;
+  }, [recurringObligations, snapshot.forecast.monthlyRows]);
 
   const requireAccount = () => {
     toast({
@@ -561,15 +1141,15 @@ export function BudgetPlanningPage({
                     {isArabic ? 'إضافة مصروف' : 'Add Expense'}
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent dir={isArabic ? 'rtl' : 'ltr'}>
                   <DialogHeader>
                     <DialogTitle>{isArabic ? 'إضافة مصروف جديد' : 'Add New Expense'}</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
-                      <Label>{isArabic ? 'الفئة' : 'Category'}</Label>
-                      <Select value={newExpense.category} onValueChange={(value) => setNewExpense((current) => ({ ...current, category: value }))}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
+                      <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'الفئة' : 'Category'}</Label>
+                      <Select dir={isArabic ? 'rtl' : 'ltr'} value={newExpense.category} onValueChange={(value) => setNewExpense((current) => ({ ...current, category: value }))}>
+                        <SelectTrigger dir={isArabic ? 'rtl' : 'ltr'}><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {Object.entries(categoryLabels).map(([key, label]) => (
                             <SelectItem key={key} value={key}>{isArabic ? label.ar : label.en}</SelectItem>
@@ -578,12 +1158,12 @@ export function BudgetPlanningPage({
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label>{isArabic ? 'الوصف' : 'Description'}</Label>
-                      <Input value={newExpense.description} onChange={(event) => setNewExpense((current) => ({ ...current, description: event.target.value }))} />
+                      <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'الوصف' : 'Description'}</Label>
+                      <Input dir={isArabic ? 'rtl' : 'ltr'} value={newExpense.description} onChange={(event) => setNewExpense((current) => ({ ...current, description: event.target.value }))} />
                     </div>
                     <div className="space-y-2">
-                      <Label>{isArabic ? 'المبلغ (SAR)' : 'Amount (SAR)'}</Label>
-                      <Input type="number" value={newExpense.amount} onChange={(event) => setNewExpense((current) => ({ ...current, amount: event.target.value }))} />
+                      <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'المبلغ (SAR)' : 'Amount (SAR)'}</Label>
+                      <Input dir={isArabic ? 'rtl' : 'ltr'} type="number" value={newExpense.amount} onChange={(event) => setNewExpense((current) => ({ ...current, amount: event.target.value }))} />
                     </div>
                   </div>
                   <DialogFooter>
@@ -605,20 +1185,20 @@ export function BudgetPlanningPage({
                     {isArabic ? 'إضافة التزام' : 'Add Obligation'}
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-h-[90vh] overflow-y-auto">
+                <DialogContent dir={isArabic ? 'rtl' : 'ltr'} className="max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>{isArabic ? 'إضافة التزام متكرر' : 'Add Recurring Obligation'}</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
-                      <Label>{isArabic ? 'العنوان' : 'Title'}</Label>
-                      <Input value={obligationForm.title} onChange={(event) => setObligationForm((current) => ({ ...current, title: event.target.value }))} />
+                      <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'العنوان' : 'Title'}</Label>
+                      <Input dir={isArabic ? 'rtl' : 'ltr'} value={obligationForm.title} onChange={(event) => setObligationForm((current) => ({ ...current, title: event.target.value }))} />
                     </div>
                     <div className="grid gap-4 md:grid-cols-2">
                       <div className="space-y-2">
-                        <Label>{isArabic ? 'الفئة' : 'Category'}</Label>
-                        <Select value={obligationForm.category} onValueChange={(value) => setObligationForm((current) => ({ ...current, category: value }))}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
+                        <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'الفئة' : 'Category'}</Label>
+                        <Select dir={isArabic ? 'rtl' : 'ltr'} value={obligationForm.category} onValueChange={(value) => setObligationForm((current) => ({ ...current, category: value }))}>
+                          <SelectTrigger dir={isArabic ? 'rtl' : 'ltr'}><SelectValue /></SelectTrigger>
                           <SelectContent>
                             {Object.entries(categoryLabels).map(([key, label]) => (
                               <SelectItem key={key} value={key}>{isArabic ? label.ar : label.en}</SelectItem>
@@ -627,9 +1207,9 @@ export function BudgetPlanningPage({
                         </Select>
                       </div>
                       <div className="space-y-2">
-                        <Label>{isArabic ? 'التكرار' : 'Frequency'}</Label>
-                        <Select value={obligationForm.frequency} onValueChange={(value) => setObligationForm((current) => ({ ...current, frequency: value as RecurringFrequency }))}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
+                        <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'التكرار' : 'Frequency'}</Label>
+                        <Select dir={isArabic ? 'rtl' : 'ltr'} value={obligationForm.frequency} onValueChange={(value) => setObligationForm((current) => ({ ...current, frequency: value as RecurringFrequency }))}>
+                          <SelectTrigger dir={isArabic ? 'rtl' : 'ltr'}><SelectValue /></SelectTrigger>
                           <SelectContent>
                             {Object.entries(obligationFrequencyLabels).map(([key, label]) => (
                               <SelectItem key={key} value={key}>{isArabic ? label.ar : label.en}</SelectItem>
@@ -640,27 +1220,27 @@ export function BudgetPlanningPage({
                     </div>
                     <div className="grid gap-4 md:grid-cols-2">
                       <div className="space-y-2">
-                        <Label>{isArabic ? 'المبلغ' : 'Amount'}</Label>
-                        <Input type="number" value={obligationForm.amount} onChange={(event) => setObligationForm((current) => ({ ...current, amount: event.target.value }))} />
+                        <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'المبلغ' : 'Amount'}</Label>
+                        <Input dir={isArabic ? 'rtl' : 'ltr'} type="number" value={obligationForm.amount} onChange={(event) => setObligationForm((current) => ({ ...current, amount: event.target.value }))} />
                       </div>
                       <div className="space-y-2">
-                        <Label>{isArabic ? 'يوم الاستحقاق' : 'Due day'}</Label>
-                        <Input type="number" value={obligationForm.dueDay} onChange={(event) => setObligationForm((current) => ({ ...current, dueDay: event.target.value }))} />
+                        <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'يوم الاستحقاق' : 'Due day'}</Label>
+                        <Input dir={isArabic ? 'rtl' : 'ltr'} type="number" value={obligationForm.dueDay} onChange={(event) => setObligationForm((current) => ({ ...current, dueDay: event.target.value }))} />
                       </div>
                     </div>
                     <div className="grid gap-4 md:grid-cols-2">
                       <div className="space-y-2">
-                        <Label>{isArabic ? 'تاريخ البدء' : 'Start date'}</Label>
-                        <Input type="date" value={obligationForm.startDate} onChange={(event) => setObligationForm((current) => ({ ...current, startDate: event.target.value }))} />
+                        <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'تاريخ البدء' : 'Start date'}</Label>
+                        <Input dir={isArabic ? 'rtl' : 'ltr'} type="date" value={obligationForm.startDate} onChange={(event) => setObligationForm((current) => ({ ...current, startDate: event.target.value }))} />
                       </div>
                       <div className="space-y-2">
-                        <Label>{isArabic ? 'تاريخ الانتهاء' : 'End date'}</Label>
-                        <Input type="date" value={obligationForm.endDate} onChange={(event) => setObligationForm((current) => ({ ...current, endDate: event.target.value }))} />
+                        <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'تاريخ الانتهاء' : 'End date'}</Label>
+                        <Input dir={isArabic ? 'rtl' : 'ltr'} type="date" value={obligationForm.endDate} onChange={(event) => setObligationForm((current) => ({ ...current, endDate: event.target.value }))} />
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label>{isArabic ? 'ملاحظات' : 'Notes'}</Label>
-                      <Input value={obligationForm.notes} onChange={(event) => setObligationForm((current) => ({ ...current, notes: event.target.value }))} />
+                      <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'ملاحظات' : 'Notes'}</Label>
+                      <Input dir={isArabic ? 'rtl' : 'ltr'} value={obligationForm.notes} onChange={(event) => setObligationForm((current) => ({ ...current, notes: event.target.value }))} />
                     </div>
                   </div>
                   <DialogFooter>
@@ -682,30 +1262,30 @@ export function BudgetPlanningPage({
                     {isArabic ? 'مصروف لمرة واحدة' : 'One-Time Expense'}
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent dir={isArabic ? 'rtl' : 'ltr'}>
                   <DialogHeader>
                     <DialogTitle>{isArabic ? 'إضافة مصروف لمرة واحدة' : 'Add One-Time Expense'}</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
-                      <Label>{isArabic ? 'العنوان' : 'Title'}</Label>
-                      <Input value={oneTimeExpenseForm.title} onChange={(event) => setOneTimeExpenseForm((current) => ({ ...current, title: event.target.value }))} />
+                      <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'العنوان' : 'Title'}</Label>
+                      <Input dir={isArabic ? 'rtl' : 'ltr'} value={oneTimeExpenseForm.title} onChange={(event) => setOneTimeExpenseForm((current) => ({ ...current, title: event.target.value }))} />
                     </div>
                     <div className="grid gap-4 md:grid-cols-2">
                       <div className="space-y-2">
-                        <Label>{isArabic ? 'المبلغ' : 'Amount'}</Label>
-                        <Input type="number" value={oneTimeExpenseForm.amount} onChange={(event) => setOneTimeExpenseForm((current) => ({ ...current, amount: event.target.value }))} />
+                        <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'المبلغ' : 'Amount'}</Label>
+                        <Input dir={isArabic ? 'rtl' : 'ltr'} type="number" value={oneTimeExpenseForm.amount} onChange={(event) => setOneTimeExpenseForm((current) => ({ ...current, amount: event.target.value }))} />
                       </div>
                       <div className="space-y-2">
-                        <Label>{isArabic ? 'تاريخ الاستحقاق' : 'Due date'}</Label>
-                        <Input type="date" value={oneTimeExpenseForm.dueDate} onChange={(event) => setOneTimeExpenseForm((current) => ({ ...current, dueDate: event.target.value }))} />
+                        <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'تاريخ الاستحقاق' : 'Due date'}</Label>
+                        <Input dir={isArabic ? 'rtl' : 'ltr'} type="date" value={oneTimeExpenseForm.dueDate} onChange={(event) => setOneTimeExpenseForm((current) => ({ ...current, dueDate: event.target.value }))} />
                       </div>
                     </div>
                     <div className="grid gap-4 md:grid-cols-2">
                       <div className="space-y-2">
-                        <Label>{isArabic ? 'الفئة' : 'Category'}</Label>
-                        <Select value={oneTimeExpenseForm.category} onValueChange={(value) => setOneTimeExpenseForm((current) => ({ ...current, category: value }))}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
+                        <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'الفئة' : 'Category'}</Label>
+                        <Select dir={isArabic ? 'rtl' : 'ltr'} value={oneTimeExpenseForm.category} onValueChange={(value) => setOneTimeExpenseForm((current) => ({ ...current, category: value }))}>
+                          <SelectTrigger dir={isArabic ? 'rtl' : 'ltr'}><SelectValue /></SelectTrigger>
                           <SelectContent>
                             {Object.entries(categoryLabels).map(([key, label]) => (
                               <SelectItem key={key} value={key}>{isArabic ? label.ar : label.en}</SelectItem>
@@ -714,9 +1294,9 @@ export function BudgetPlanningPage({
                         </Select>
                       </div>
                       <div className="space-y-2">
-                        <Label>{isArabic ? 'الأولوية' : 'Priority'}</Label>
-                        <Select value={oneTimeExpenseForm.priority} onValueChange={(value) => setOneTimeExpenseForm((current) => ({ ...current, priority: value as OneTimeExpense['priority'] }))}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
+                        <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'الأولوية' : 'Priority'}</Label>
+                        <Select dir={isArabic ? 'rtl' : 'ltr'} value={oneTimeExpenseForm.priority} onValueChange={(value) => setOneTimeExpenseForm((current) => ({ ...current, priority: value as OneTimeExpense['priority'] }))}>
+                          <SelectTrigger dir={isArabic ? 'rtl' : 'ltr'}><SelectValue /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="critical">{isArabic ? 'حرج' : 'Critical'}</SelectItem>
                             <SelectItem value="high">{isArabic ? 'عالٍ' : 'High'}</SelectItem>
@@ -727,8 +1307,8 @@ export function BudgetPlanningPage({
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label>{isArabic ? 'مصدر التمويل' : 'Funding source'}</Label>
-                      <Input value={oneTimeExpenseForm.fundingSource} onChange={(event) => setOneTimeExpenseForm((current) => ({ ...current, fundingSource: event.target.value }))} placeholder={isArabic ? 'مثال: الحساب الجاري أو عوائد' : 'Example: current account or Awaeed'} />
+                      <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'مصدر التمويل' : 'Funding source'}</Label>
+                      <Input dir={isArabic ? 'rtl' : 'ltr'} value={oneTimeExpenseForm.fundingSource} onChange={(event) => setOneTimeExpenseForm((current) => ({ ...current, fundingSource: event.target.value }))} placeholder={isArabic ? 'مثال: الحساب الجاري أو عوائد' : 'Example: current account or Awaeed'} />
                     </div>
                   </div>
                   <DialogFooter>
@@ -750,20 +1330,42 @@ export function BudgetPlanningPage({
                     {isArabic ? 'حساب ادخار / عوائد' : 'Savings / Awaeed'}
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-h-[90vh] overflow-y-auto">
+                <DialogContent dir={isArabic ? 'rtl' : 'ltr'} className="max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>{isArabic ? 'إضافة حساب ادخار أو عوائد' : 'Add Savings or Awaeed Account'}</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
-                      <Label>{isArabic ? 'اسم الحساب' : 'Account name'}</Label>
-                      <Input value={savingsAccountForm.name} onChange={(event) => setSavingsAccountForm((current) => ({ ...current, name: event.target.value }))} />
+                      <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'اسم الحساب' : 'Account Name'}</Label>
+                      <SuggestionCombobox
+                        isArabic={isArabic}
+                        value={savingsAccountForm.name}
+                        searchValue={accountNameQuery}
+                        open={accountNameOpen}
+                        options={filteredSavingsAccountNames}
+                        placeholder={{
+                          ar: 'ابحث أو اختر نوع الحساب...',
+                          en: 'Search or choose account type...',
+                        }}
+                        emptyText={{
+                          ar: 'لا توجد نتائج مطابقة',
+                          en: 'No matching account types',
+                        }}
+                        suggestionValue={accountNameSuggestionValue}
+                        onOpenChange={setAccountNameOpen}
+                        onSearchValueChange={(nextValue) => {
+                          setAccountNameQuery(nextValue);
+                          setSavingsAccountForm((current) => ({ ...current, name: nextValue }));
+                        }}
+                        onSelectOption={handleSelectSavingsAccountName}
+                        onSuggestValue={handleSuggestSavingsAccountName}
+                      />
                     </div>
                     <div className="grid gap-4 md:grid-cols-2">
                       <div className="space-y-2">
-                        <Label>{isArabic ? 'النوع' : 'Type'}</Label>
-                        <Select value={savingsAccountForm.type} onValueChange={(value) => setSavingsAccountForm((current) => ({ ...current, type: value as SavingsAccount['type'] }))}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
+                        <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'النوع' : 'Type'}</Label>
+                        <Select dir={isArabic ? 'rtl' : 'ltr'} value={savingsAccountForm.type} onValueChange={(value) => setSavingsAccountForm((current) => ({ ...current, type: value as SavingsAccount['type'] }))}>
+                          <SelectTrigger dir={isArabic ? 'rtl' : 'ltr'}><SelectValue /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="current">{isArabic ? 'جاري' : 'Current'}</SelectItem>
                             <SelectItem value="awaeed">Awaeed</SelectItem>
@@ -774,43 +1376,71 @@ export function BudgetPlanningPage({
                         </Select>
                       </div>
                       <div className="space-y-2">
-                        <Label>{isArabic ? 'البنك' : 'Provider'}</Label>
-                        <Input value={savingsAccountForm.provider} onChange={(event) => setSavingsAccountForm((current) => ({ ...current, provider: event.target.value }))} />
+                        <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'البنك / المزود' : 'Bank / Provider'}</Label>
+                        <SuggestionCombobox
+                          isArabic={isArabic}
+                          value={savingsAccountForm.provider}
+                          searchValue={providerQuery}
+                          open={providerOpen}
+                          options={filteredBanks}
+                          groupedOptions={groupedBankOptions ?? undefined}
+                          placeholder={{
+                            ar: 'ابحث عن البنك...',
+                            en: 'Search for a bank...',
+                          }}
+                          emptyText={{
+                            ar: 'لا توجد بنوك مطابقة',
+                            en: 'No matching banks',
+                          }}
+                          suggestionValue={providerSuggestionValue}
+                          onOpenChange={setProviderOpen}
+                          onSearchValueChange={(nextValue) => {
+                            setProviderQuery(nextValue);
+                            setSavingsAccountForm((current) => ({ ...current, provider: nextValue }));
+                          }}
+                          onSelectOption={handleSelectBankProvider}
+                          onSuggestValue={handleSuggestBankProvider}
+                          renderItemMeta={(option) => (
+                            <span className="shrink-0 text-xs text-muted-foreground">
+                              {(option as BankOption).country || ''}
+                            </span>
+                          )}
+                        />
                       </div>
                     </div>
                     <div className="grid gap-4 md:grid-cols-2">
                       <div className="space-y-2">
-                        <Label>{isArabic ? 'الأصل / المبلغ' : 'Principal'}</Label>
-                        <Input type="number" value={savingsAccountForm.principal} onChange={(event) => setSavingsAccountForm((current) => ({ ...current, principal: event.target.value, currentBalance: current.currentBalance || event.target.value }))} />
+                        <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'الأصل / المبلغ' : 'Principal'}</Label>
+                        <Input dir={isArabic ? 'rtl' : 'ltr'} type="number" value={savingsAccountForm.principal} onChange={(event) => setSavingsAccountForm((current) => ({ ...current, principal: event.target.value, currentBalance: current.currentBalance || event.target.value }))} />
                       </div>
                       <div className="space-y-2">
-                        <Label>{isArabic ? 'الرصيد الحالي' : 'Current balance'}</Label>
-                        <Input type="number" value={savingsAccountForm.currentBalance} onChange={(event) => setSavingsAccountForm((current) => ({ ...current, currentBalance: event.target.value }))} />
-                      </div>
-                    </div>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label>{isArabic ? 'معدل الربح السنوي %' : 'Annual profit rate %'}</Label>
-                        <Input type="number" value={savingsAccountForm.annualProfitRate} onChange={(event) => setSavingsAccountForm((current) => ({ ...current, annualProfitRate: event.target.value }))} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>{isArabic ? 'المدة بالأشهر' : 'Term months'}</Label>
-                        <Input type="number" value={savingsAccountForm.termMonths} onChange={(event) => setSavingsAccountForm((current) => ({ ...current, termMonths: event.target.value }))} />
+                        <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'الرصيد الحالي' : 'Current balance'}</Label>
+                        <Input dir={isArabic ? 'rtl' : 'ltr'} type="number" value={savingsAccountForm.currentBalance} onChange={(event) => setSavingsAccountForm((current) => ({ ...current, currentBalance: event.target.value }))} />
                       </div>
                     </div>
                     <div className="grid gap-4 md:grid-cols-2">
                       <div className="space-y-2">
-                        <Label>{isArabic ? 'تاريخ الفتح' : 'Opened at'}</Label>
-                        <Input type="date" value={savingsAccountForm.openedAt} onChange={(event) => setSavingsAccountForm((current) => ({ ...current, openedAt: event.target.value }))} />
+                        <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'معدل الربح السنوي %' : 'Annual profit rate %'}</Label>
+                        <Input dir={isArabic ? 'rtl' : 'ltr'} type="number" value={savingsAccountForm.annualProfitRate} onChange={(event) => setSavingsAccountForm((current) => ({ ...current, annualProfitRate: event.target.value }))} />
                       </div>
                       <div className="space-y-2">
-                        <Label>{isArabic ? 'تاريخ الاستحقاق' : 'Maturity date'}</Label>
-                        <Input type="date" value={savingsAccountForm.maturityDate} onChange={(event) => setSavingsAccountForm((current) => ({ ...current, maturityDate: event.target.value }))} />
+                        <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'المدة بالأشهر' : 'Term months'}</Label>
+                        <Input dir={isArabic ? 'rtl' : 'ltr'} type="number" value={savingsAccountForm.termMonths} onChange={(event) => setSavingsAccountForm((current) => ({ ...current, termMonths: event.target.value }))} />
+                      </div>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'تاريخ الفتح' : 'Opened at'}</Label>
+                        <Input dir={isArabic ? 'rtl' : 'ltr'} type="date" value={savingsAccountForm.openedAt} onChange={(event) => setSavingsAccountForm((current) => ({ ...current, openedAt: event.target.value }))} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'تاريخ الاستحقاق' : 'Maturity date'}</Label>
+                        <Input dir={isArabic ? 'rtl' : 'ltr'} type="date" value={savingsAccountForm.maturityDate} onChange={(event) => setSavingsAccountForm((current) => ({ ...current, maturityDate: event.target.value }))} />
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label>{isArabic ? 'الغرض' : 'Purpose'}</Label>
-                      <Input value={savingsAccountForm.purposeLabel} onChange={(event) => setSavingsAccountForm((current) => ({ ...current, purposeLabel: event.target.value }))} placeholder={isArabic ? 'مثال: تجديد الإقامة' : 'Example: Iqama renewal'} />
+                      <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'الغرض' : 'Purpose'}</Label>
+                      <Input dir={isArabic ? 'rtl' : 'ltr'} value={savingsAccountForm.purposeLabel} onChange={(event) => setSavingsAccountForm((current) => ({ ...current, purposeLabel: event.target.value }))} placeholder={isArabic ? 'مثال: تجديد الإقامة' : 'Example: Iqama renewal'} />
                     </div>
                   </div>
                   <DialogFooter>
@@ -848,7 +1478,7 @@ export function BudgetPlanningPage({
             <div className="grid gap-6">
               <Card {...cardProps} className={`overflow-hidden border-primary/20 bg-gradient-to-br from-primary/10 via-background to-background ${cardProps.className}`}>
                 <CardHeader className={isArabic ? 'text-right' : ''}>
-                  <div className="flex items-center justify-between gap-3">
+                  <div dir={isArabic ? 'rtl' : 'ltr'} className="flex items-center justify-between gap-3">
                     <div>
                       <CardTitle>
                         {hasAiSnapshot
@@ -931,7 +1561,7 @@ export function BudgetPlanningPage({
                   ) : (
                     dailySnapshot.tips.map((tip) => (
                       <div key={tip.tip_id} dir={isArabic ? 'rtl' : 'ltr'} className="rounded-2xl border p-4">
-                        <div className="flex items-start justify-between gap-3">
+                        <div dir={isArabic ? 'rtl' : 'ltr'} className="flex items-start justify-between gap-3">
                           <div>
                             <p className="font-semibold">{tip.title}</p>
                             <p className="mt-2 text-sm text-muted-foreground">{tip.body}</p>
@@ -970,7 +1600,7 @@ export function BudgetPlanningPage({
                   ) : (
                     dailySnapshot.notifications.map((item) => (
                       <div key={item.notification_id} dir={isArabic ? 'rtl' : 'ltr'} className="rounded-2xl border p-4">
-                        <div className="flex items-center justify-between gap-3">
+                        <div dir={isArabic ? 'rtl' : 'ltr'} className="flex items-center justify-between gap-3">
                           <p className="font-semibold">{item.title}</p>
                           <Badge variant={item.urgency === 'critical' ? 'destructive' : 'outline'}>{item.urgency}</Badge>
                         </div>
@@ -1016,8 +1646,8 @@ export function BudgetPlanningPage({
 
                       return (
                         <div key={item.category} dir={isArabic ? 'rtl' : 'ltr'} className="rounded-2xl border p-4">
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-3">
+                          <div dir={isArabic ? 'rtl' : 'ltr'} className="flex items-center justify-between gap-3">
+                            <div dir={isArabic ? 'rtl' : 'ltr'} className="flex items-center gap-3">
                               <div className="flex h-10 w-10 items-center justify-center rounded-2xl" style={{ backgroundColor: `${item.color}18` }}>
                                 <Icon className="h-4 w-4" style={{ color: item.color }} />
                               </div>
@@ -1228,7 +1858,7 @@ export function BudgetPlanningPage({
                   ) : (
                     savingsAccounts.map((account) => (
                       <div key={account.id} dir={isArabic ? 'rtl' : 'ltr'} className="rounded-2xl border p-4" data-testid={`savings-account-card-${account.id}`}>
-                        <div className="flex items-center justify-between gap-3">
+                        <div dir={isArabic ? 'rtl' : 'ltr'} className="flex items-center justify-between gap-3">
                           <div>
                             <p className="font-medium">{account.name}</p>
                             <p className="text-sm text-muted-foreground">{account.provider} • {account.type}</p>
@@ -1264,7 +1894,7 @@ export function BudgetPlanningPage({
               <CardContent className={`space-y-3 ${isArabic ? 'text-right' : ''}`}>
                 {financialBrainAlerts.slice(0, 4).map((alert) => (
                   <div key={`${alert.category}-${alert.title}`} className="rounded-2xl border p-4">
-                    <div className="flex items-center justify-between gap-3">
+                    <div dir={isArabic ? 'rtl' : 'ltr'} className="flex items-center justify-between gap-3">
                       <p className="font-medium">{alert.title}</p>
                       <Badge variant={alert.severity === 'CRITICAL' ? 'destructive' : 'outline'}>{alert.severity}</Badge>
                     </div>
@@ -1287,11 +1917,24 @@ export function BudgetPlanningPage({
               <CardContent>
                 <div className="h-80">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={forecastChartData}>
+                    <BarChart data={forecastChartData} accessibilityLayer>
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                      <XAxis dataKey="month" stroke="var(--muted-foreground)" />
-                      <YAxis stroke="var(--muted-foreground)" tickFormatter={(value) => `${Math.round(value / 1000)}k`} />
-                      <Tooltip formatter={(value: number) => formatCurrency(value, 'SAR', locale)} />
+                      <XAxis
+                        dataKey="month"
+                        stroke="var(--muted-foreground)"
+                        tickMargin={isArabic ? 4 : 8}
+                        padding={isArabic ? { left: 24, right: 8 } : { left: 8, right: 24 }}
+                      />
+                      <YAxis
+                        stroke="var(--muted-foreground)"
+                        tickFormatter={(value) => `${Math.round(value / 1000)}k`}
+                        tick={{ textAnchor: isArabic ? 'start' : 'end' }}
+                        tickMargin={isArabic ? 4 : 10}
+                      />
+                      <Tooltip
+                        cursor={{ fill: 'transparent' }}
+                        content={<CustomForecastTooltip isArabic={isArabic} locale={locale} forecastPeriods={forecast12} />}
+                      />
                       <Bar dataKey="income" name={isArabic ? 'الدخل' : 'Income'} fill="var(--chart-2)" radius={[6, 6, 0, 0]} opacity={0.35} />
                       <Bar dataKey="obligations" name={isArabic ? 'الالتزامات' : 'Obligations'} fill="var(--chart-5)" radius={[6, 6, 0, 0]}>
                         {forecastChartData.map((entry) => (
@@ -1317,6 +1960,7 @@ export function BudgetPlanningPage({
                 {snapshot.forecast.monthlyRows.map((period) => (
                   <div
                     key={period.month}
+                    dir={isArabic ? 'rtl' : 'ltr'}
                     className="grid gap-2 rounded-2xl border p-4 md:grid-cols-7"
                     data-testid={`planning-forecast-row-${period.month}`}
                   >
@@ -1330,11 +1974,21 @@ export function BudgetPlanningPage({
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">{isArabic ? 'مصروفات متكررة' : 'Recurring Expenses'}</p>
-                      <p className="font-medium">{formatCurrency(period.recurringExpenses, 'SAR', locale)}</p>
+                      <ForecastItemsPopoverCell
+                        isArabic={isArabic}
+                        locale={locale}
+                        amount={period.recurringExpenses}
+                        items={monthlyRecurringTopItems.get(period.month) ?? []}
+                      />
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">{isArabic ? 'التزامات' : 'Obligations'}</p>
-                      <p className="font-medium">{formatCurrency(period.obligationPayments, 'SAR', locale)}</p>
+                      <ForecastItemsPopoverCell
+                        isArabic={isArabic}
+                        locale={locale}
+                        amount={period.obligationPayments}
+                        items={monthlyRecurringTopItems.get(period.month) ?? []}
+                      />
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">{isArabic ? 'مرة واحدة' : 'One-Time'}</p>

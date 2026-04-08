@@ -76,6 +76,16 @@ model PortfolioHolding {
   isShariahCompliant Boolean @default(true)
   sector            String?
   country           String   @default("SA")
+  securityType      String   @default("stock")
+  units             Float?
+  purchasePricePerUnit Float?
+  currentUnitPrice  Float?
+  goldForm          String?
+  grams             Float?
+  karat             String?
+  purchasePricePerGram Float?
+  currentPricePerGram Float?
+  assetName         String?
   addedAt           DateTime @default(now())
   updatedAt         DateTime @updatedAt
   
@@ -240,4 +250,21 @@ model ExchangeRate {
   updatedAt   DateTime @updatedAt
   
   @@unique([fromCurrency, toCurrency])
+}
+
+model SuggestionEntry {
+  id                String   @id @default(cuid())
+  type              String
+  value             String
+  valueLower        String
+  locale            String   @default("en")
+  meta              Json?
+  status            String   @default("pending")
+  submittedByUserId String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([type, status])
+  @@index([type, valueLower])
+  @@index([submittedByUserId, type, createdAt])
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -8,11 +8,16 @@ import {
   Bot,
   BrainCircuit,
   CalendarDays,
+  Check,
   ChevronDown,
+  ChevronsUpDown,
   Coins,
   FileSpreadsheet,
   Filter,
+  Gem,
+  LayoutGrid,
   Lightbulb,
+  Package,
   PauseCircle,
   Plus,
   RefreshCw,
@@ -41,9 +46,19 @@ import { DashboardShell } from '@/components/layout';
 import { StatCard, FeatureGate, formatCurrency } from '@/components/shared';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from '@/components/ui/command';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Select,
   SelectContent,
@@ -81,6 +96,7 @@ import {
   type PortfolioUnderperformer,
 } from '@/store/useAppStore';
 import { useRuntimeUser } from '@/hooks/useRuntimeUser';
+import { cn } from '@/lib/utils';
 
 type FxRateMap = Partial<Record<'USD_SAR' | 'EGP_SAR', {
   symbol: string;
@@ -103,9 +119,29 @@ type AnalysisApiError = {
 
 const exchangeColors: Record<string, string> = {
   TASI: '#D4A843',
+  NOMU: '#C084FC',
+  ADX: '#06B6D4',
+  DFM: '#0EA5E9',
+  NASDAQ_DUBAI: '#2563EB',
+  QSE: '#14B8A6',
+  BKK: '#22C55E',
+  BHB: '#F97316',
+  MSX: '#84CC16',
   EGX: '#10B981',
+  ASE: '#F59E0B',
   NASDAQ: '#3B82F6',
   NYSE: '#8B5CF6',
+  AMEX: '#6366F1',
+  LSE: '#EF4444',
+  EURONEXT: '#9333EA',
+  XETRA: '#7C3AED',
+  TSE: '#EC4899',
+  HKEX: '#F43F5E',
+  SSE: '#DC2626',
+  COMEX: '#F59E0B',
+  LME: '#B45309',
+  CRYPTO: '#F97316',
+  OTC: '#6B7280',
   GOLD: '#F59E0B',
 };
 
@@ -116,7 +152,320 @@ const ACCEPTED_SPREADSHEET_TYPES = new Set([
   'text/csv',
 ]);
 const REQUIRED_IMPORT_COLUMNS = ['ticker', 'shares', 'avgcost'];
-const SUPPORTED_EXCHANGES: PortfolioExchange[] = ['TASI', 'EGX', 'NASDAQ', 'NYSE', 'GOLD'];
+const MARKETS_LIST = [
+  { value: 'TASI', label: { en: 'TASI — Saudi Stock Exchange', ar: 'تداول — السوق المالية السعودية' }, country: 'SA' },
+  { value: 'NOMU', label: { en: 'Nomu — Saudi Parallel Market', ar: 'نمو — السوق الموازية السعودية' }, country: 'SA' },
+  { value: 'ADX', label: { en: 'ADX — Abu Dhabi Securities Exchange', ar: 'سوق أبوظبي للأوراق المالية' }, country: 'AE' },
+  { value: 'DFM', label: { en: 'DFM — Dubai Financial Market', ar: 'سوق دبي المالي' }, country: 'AE' },
+  { value: 'NASDAQ_DUBAI', label: { en: 'Nasdaq Dubai', ar: 'ناسداك دبي' }, country: 'AE' },
+  { value: 'QSE', label: { en: 'QSE — Qatar Stock Exchange', ar: 'بورصة قطر' }, country: 'QA' },
+  { value: 'BKK', label: { en: 'Boursa Kuwait', ar: 'بورصة الكويت' }, country: 'KW' },
+  { value: 'BHB', label: { en: 'Bahrain Bourse', ar: 'بورصة البحرين' }, country: 'BH' },
+  { value: 'MSX', label: { en: 'Muscat Stock Exchange', ar: 'بورصة مسقط' }, country: 'OM' },
+  { value: 'EGX', label: { en: 'EGX — Egyptian Exchange', ar: 'البورصة المصرية' }, country: 'EG' },
+  { value: 'ASE', label: { en: 'ASE — Amman Stock Exchange', ar: 'بورصة عمان' }, country: 'JO' },
+  { value: 'NASDAQ', label: { en: 'Nasdaq (US)', ar: 'ناسداك (الولايات المتحدة)' }, country: 'US' },
+  { value: 'NYSE', label: { en: 'NYSE — New York Stock Exchange', ar: 'بورصة نيويورك' }, country: 'US' },
+  { value: 'AMEX', label: { en: 'NYSE American (AMEX)', ar: 'بورصة أمريكان' }, country: 'US' },
+  { value: 'LSE', label: { en: 'LSE — London Stock Exchange', ar: 'بورصة لندن' }, country: 'GB' },
+  { value: 'EURONEXT', label: { en: 'Euronext', ar: 'يورونكست' }, country: 'EU' },
+  { value: 'XETRA', label: { en: 'Xetra — Frankfurt', ar: 'بورصة فرانكفورت' }, country: 'DE' },
+  { value: 'TSE', label: { en: 'TSE — Tokyo Stock Exchange', ar: 'بورصة طوكيو' }, country: 'JP' },
+  { value: 'HKEX', label: { en: 'HKEX — Hong Kong', ar: 'بورصة هونغ كونغ' }, country: 'HK' },
+  { value: 'SSE', label: { en: 'SSE — Shanghai', ar: 'بورصة شنغهاي' }, country: 'CN' },
+  { value: 'COMEX', label: { en: 'COMEX — Commodities (Gold/Silver)', ar: 'كوميكس — السلع (ذهب / فضة)' }, country: 'GLOBAL' },
+  { value: 'LME', label: { en: 'LME — London Metals Exchange', ar: 'بورصة المعادن لندن' }, country: 'GB' },
+  { value: 'CRYPTO', label: { en: 'Crypto Markets (Global)', ar: 'أسواق العملات الرقمية' }, country: 'GLOBAL' },
+  { value: 'OTC', label: { en: 'OTC / Over The Counter', ar: 'خارج البورصة (OTC)' }, country: 'GLOBAL' },
+] as const;
+
+const MARKET_GROUP_LABELS: Record<(typeof MARKETS_LIST)[number]['country'], { en: string; ar: string }> = {
+  SA: { en: 'Saudi Arabia', ar: 'السعودية' },
+  AE: { en: 'United Arab Emirates', ar: 'الإمارات' },
+  QA: { en: 'Qatar', ar: 'قطر' },
+  KW: { en: 'Kuwait', ar: 'الكويت' },
+  BH: { en: 'Bahrain', ar: 'البحرين' },
+  OM: { en: 'Oman', ar: 'عُمان' },
+  EG: { en: 'Egypt', ar: 'مصر' },
+  JO: { en: 'Jordan', ar: 'الأردن' },
+  US: { en: 'United States', ar: 'الولايات المتحدة' },
+  GB: { en: 'United Kingdom', ar: 'المملكة المتحدة' },
+  EU: { en: 'Europe', ar: 'أوروبا' },
+  DE: { en: 'Germany', ar: 'ألمانيا' },
+  JP: { en: 'Japan', ar: 'اليابان' },
+  HK: { en: 'Hong Kong', ar: 'هونغ كونغ' },
+  CN: { en: 'China', ar: 'الصين' },
+  GLOBAL: { en: 'Global', ar: 'عالمي' },
+};
+
+const SECURITY_TYPES = [
+  { value: 'stock', label: { en: 'Stock', ar: 'سهم' }, icon: TrendingUp },
+  { value: 'etf', label: { en: 'ETF', ar: 'صندوق ETF' }, icon: LayoutGrid },
+  { value: 'gold', label: { en: 'Gold', ar: 'ذهب' }, icon: Gem },
+  { value: 'other', label: { en: 'Other', ar: 'أخرى' }, icon: Package },
+] as const;
+
+type SecurityType = 'stock' | 'etf' | 'gold' | 'other';
+
+const GOLD_FORMS = [
+  { value: 'bullion_bar', label: { en: 'Bullion Bar', ar: 'سبيكة ذهب' } },
+  { value: 'coin', label: { en: 'Gold Coin', ar: 'عملة ذهبية' } },
+  { value: 'jewelry', label: { en: 'Jewelry', ar: 'مجوهرات' } },
+  { value: 'etf_gold', label: { en: 'Gold ETF', ar: 'صندوق ذهب ETF' } },
+  { value: 'digital_gold', label: { en: 'Digital Gold', ar: 'ذهب رقمي' } },
+] as const;
+
+const KARAT_OPTIONS = ['24K', '22K', '21K', '18K', '14K'] as const;
+const SUPPORTED_EXCHANGES: PortfolioExchange[] = [
+  ...MARKETS_LIST.map((market) => market.value),
+  'GOLD',
+];
+
+type MarketOption = (typeof MARKETS_LIST)[number];
+
+type HoldingDraft = {
+  ticker: string;
+  name: string;
+  exchange: string;
+  shares: string;
+  avgCost: string;
+  currentPrice: string;
+  isShariah: boolean;
+  units: string;
+  purchasePricePerUnit: string;
+  currentUnitPrice: string;
+  goldForm: (typeof GOLD_FORMS)[number]['value'];
+  grams: string;
+  karat: (typeof KARAT_OPTIONS)[number];
+  purchasePricePerGram: string;
+  currentPricePerGram: string;
+  assetName: string;
+  quantity: string;
+  purchasePrice: string;
+  currentValue: string;
+};
+
+const EMPTY_HOLDING_DRAFT: HoldingDraft = {
+  ticker: '',
+  name: '',
+  exchange: 'TASI',
+  shares: '',
+  avgCost: '',
+  currentPrice: '',
+  isShariah: true,
+  units: '',
+  purchasePricePerUnit: '',
+  currentUnitPrice: '',
+  goldForm: 'bullion_bar',
+  grams: '',
+  karat: '24K',
+  purchasePricePerGram: '',
+  currentPricePerGram: '',
+  assetName: '',
+  quantity: '',
+  purchasePrice: '',
+  currentValue: '',
+};
+
+function normalizeSearchValue(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function getLocalizedMarketLabel(item: MarketOption, isArabic: boolean) {
+  return isArabic ? item.label.ar : item.label.en;
+}
+
+function getSecurityTypeMeta(type: SecurityType | undefined, isArabic: boolean) {
+  const securityType = type ?? 'stock';
+  const item = SECURITY_TYPES.find((option) => option.value === securityType) ?? SECURITY_TYPES[0];
+
+  return {
+    icon: item.icon,
+    label: isArabic ? item.label.ar : item.label.en,
+    badgeClass: securityType === 'stock'
+      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+      : securityType === 'etf'
+        ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+        : securityType === 'gold'
+          ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-500'
+          : 'bg-muted text-muted-foreground',
+  };
+}
+
+function getHoldingMetrics(holding: PortfolioHolding) {
+  const securityType = holding.securityType ?? 'stock';
+
+  if (securityType === 'etf') {
+    const units = holding.units ?? holding.shares;
+    const costPerUnit = holding.purchasePricePerUnit ?? holding.avgCost;
+    const currentUnitPrice = holding.currentUnitPrice ?? holding.currentPrice;
+    return {
+      securityType,
+      quantity: units,
+      costPerUnit,
+      currentPerUnit: currentUnitPrice,
+      totalCost: units * costPerUnit,
+      totalValue: units * currentUnitPrice,
+    };
+  }
+
+  if (securityType === 'gold') {
+    const grams = holding.grams ?? holding.shares;
+    const purchasePricePerGram = holding.purchasePricePerGram ?? holding.avgCost;
+    const currentPricePerGram = holding.currentPricePerGram ?? holding.currentPrice;
+    return {
+      securityType,
+      quantity: grams,
+      costPerUnit: purchasePricePerGram,
+      currentPerUnit: currentPricePerGram,
+      totalCost: grams * purchasePricePerGram,
+      totalValue: grams * currentPricePerGram,
+    };
+  }
+
+  return {
+    securityType,
+    quantity: holding.shares,
+    costPerUnit: holding.avgCost,
+    currentPerUnit: holding.currentPrice,
+    totalCost: holding.shares * holding.avgCost,
+    totalValue: holding.shares * holding.currentPrice,
+  };
+}
+
+type MarketComboboxProps = {
+  isArabic: boolean;
+  open: boolean;
+  value: string;
+  query: string;
+  onOpenChange: (open: boolean) => void;
+  onQueryChange: (value: string) => void;
+  onSelect: (option: MarketOption) => void;
+  onSuggest: (value: string) => void;
+};
+
+function MarketCombobox({
+  isArabic,
+  open,
+  value,
+  query,
+  onOpenChange,
+  onQueryChange,
+  onSelect,
+  onSuggest,
+}: MarketComboboxProps) {
+  const normalizedQuery = normalizeSearchValue(query);
+
+  const filteredOptions = useMemo(() => {
+    if (!normalizedQuery) {
+      return MARKETS_LIST;
+    }
+
+    return MARKETS_LIST.filter((option) =>
+      [option.value, option.label.en, option.label.ar].some((candidate) =>
+        normalizeSearchValue(candidate).includes(normalizedQuery)
+      )
+    );
+  }, [normalizedQuery]);
+
+  const groupedOptions = useMemo(() => {
+    return filteredOptions.reduce<Record<string, MarketOption[]>>((acc, option) => {
+      acc[option.country] = acc[option.country] ? [...acc[option.country], option] : [option];
+      return acc;
+    }, {});
+  }, [filteredOptions]);
+
+  const suggestionValue = useMemo(() => {
+    if (!normalizedQuery) {
+      return '';
+    }
+
+    const exactMatch = MARKETS_LIST.some((option) =>
+      [option.value, option.label.en, option.label.ar].some(
+        (candidate) => normalizeSearchValue(candidate) === normalizedQuery
+      )
+    );
+
+    return exactMatch ? '' : query.trim();
+  }, [normalizedQuery, query]);
+
+  const selectedOption = MARKETS_LIST.find((option) => option.value === value);
+  const displayValue = selectedOption
+    ? getLocalizedMarketLabel(selectedOption, isArabic)
+    : (value || (isArabic ? 'ابحث عن السوق أو البورصة...' : 'Search market or exchange...'));
+
+  return (
+    <Popover open={open} onOpenChange={onOpenChange}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className={cn(
+            'w-full justify-between font-normal',
+            !value && 'text-muted-foreground',
+            isArabic && 'text-right'
+          )}
+          dir={isArabic ? 'rtl' : 'ltr'}
+        >
+          <span className="truncate">{displayValue}</span>
+          <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-[var(--radix-popover-trigger-width)] p-0"
+        align="start"
+        dir={isArabic ? 'rtl' : 'ltr'}
+      >
+        <Command dir={isArabic ? 'rtl' : 'ltr'} shouldFilter={false}>
+          <CommandInput
+            dir={isArabic ? 'rtl' : 'ltr'}
+            value={query}
+            onValueChange={onQueryChange}
+            placeholder={isArabic ? 'ابحث عن السوق أو البورصة...' : 'Search market or exchange...'}
+            className={isArabic ? 'text-right' : 'text-left'}
+          />
+          <CommandList>
+            <CommandEmpty>
+              {isArabic ? 'لا توجد أسواق مطابقة' : 'No matching markets'}
+            </CommandEmpty>
+            {Object.entries(groupedOptions).map(([country, options]) => (
+              <CommandGroup
+                key={country}
+                heading={isArabic ? MARKET_GROUP_LABELS[country as keyof typeof MARKET_GROUP_LABELS].ar : MARKET_GROUP_LABELS[country as keyof typeof MARKET_GROUP_LABELS].en}
+              >
+                {options.map((option) => (
+                  <CommandItem
+                    key={option.value}
+                    value={`${option.value}-${option.label.en}-${option.label.ar}`}
+                    onSelect={() => onSelect(option)}
+                  >
+                    <Check className={cn('h-4 w-4', value === option.value ? 'opacity-100' : 'opacity-0')} />
+                    <span>{getLocalizedMarketLabel(option, isArabic)}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            ))}
+            {suggestionValue ? (
+              <>
+                <CommandSeparator />
+                <CommandGroup>
+                  <CommandItem value={`suggest-${suggestionValue}`} onSelect={() => onSuggest(suggestionValue)}>
+                    <Plus className="h-4 w-4" />
+                    <span>
+                      {isArabic ? `+ اقتراح: "${suggestionValue}"` : `+ Suggest: "${suggestionValue}"`}
+                    </span>
+                  </CommandItem>
+                </CommandGroup>
+              </>
+            ) : null}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 function getAnalysisActionMeta(actionType: string, isArabic: boolean) {
   switch (actionType) {
@@ -289,19 +638,15 @@ export default function PortfolioPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isRefreshingPrices, setIsRefreshingPrices] = useState(false);
   const [analysisPulse, setAnalysisPulse] = useState(0);
+  const [securityType, setSecurityType] = useState<SecurityType>('stock');
+  const [marketOpen, setMarketOpen] = useState(false);
+  const [marketQuery, setMarketQuery] = useState('');
   const [marketRefreshMeta, setMarketRefreshMeta] = useState<MarketRefreshMeta>({
     updatedAt: null,
     sources: [],
     fxRates: {},
   });
-  const [newHolding, setNewHolding] = useState({
-    ticker: '',
-    name: '',
-    exchange: 'TASI',
-    shares: '',
-    avgCost: '',
-    isShariah: true,
-  });
+  const [newHolding, setNewHolding] = useState<HoldingDraft>(EMPTY_HOLDING_DRAFT);
 
   const holdings = portfolioHoldings;
   const latestAnalysis = portfolioAnalysisHistory[0] ?? null;
@@ -322,22 +667,90 @@ export default function PortfolioPage() {
     return () => window.clearInterval(interval);
   }, [analysisStages.length, isAnalyzing]);
 
+  useEffect(() => {
+    if (showAddHolding) {
+      setMarketQuery(newHolding.exchange);
+    } else {
+      setMarketOpen(false);
+      setMarketQuery('');
+    }
+  }, [newHolding.exchange, showAddHolding]);
+
   const normalizeSaudiTicker = (ticker: string) => ticker.trim().toUpperCase().replace(/\.SR$/i, '');
   const getHoldingCurrency = (exchange: PortfolioExchange) => {
-    if (exchange === 'TASI') return 'SAR';
+    if (exchange === 'TASI' || exchange === 'NOMU') return 'SAR';
+    if (exchange === 'ADX' || exchange === 'DFM' || exchange === 'NASDAQ_DUBAI') return 'AED';
+    if (exchange === 'QSE') return 'QAR';
+    if (exchange === 'BKK') return 'KWD';
+    if (exchange === 'BHB') return 'BHD';
+    if (exchange === 'MSX') return 'OMR';
     if (exchange === 'EGX') return 'EGP';
+    if (exchange === 'ASE') return 'JOD';
+    if (exchange === 'LSE' || exchange === 'LME') return 'GBP';
+    if (exchange === 'EURONEXT' || exchange === 'XETRA') return 'EUR';
+    if (exchange === 'TSE') return 'JPY';
+    if (exchange === 'HKEX') return 'HKD';
+    if (exchange === 'SSE') return 'CNY';
     if (exchange === 'GOLD') return 'USD';
     return 'USD';
   };
 
   const getFxPairForHolding = (exchange: PortfolioExchange) => {
     if (exchange === 'EGX') return 'EGP_SAR';
-    if (exchange === 'NASDAQ' || exchange === 'NYSE' || exchange === 'GOLD') return 'USD_SAR';
+    if (['NASDAQ', 'NYSE', 'AMEX', 'COMEX', 'CRYPTO', 'OTC', 'GOLD'].includes(exchange)) return 'USD_SAR';
     return null;
   };
 
+  const formatHoldingNumberValue = (value: number, digits = 2) =>
+    value.toLocaleString(isArabic ? 'ar-SA' : 'en-US', {
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits,
+    });
+
+  const updateHoldingDraft = (updates: Partial<HoldingDraft>) => {
+    setNewHolding((current) => ({ ...current, ...updates }));
+  };
+
+  const submitMarketSuggestion = async (value: string) => {
+    try {
+      const response = await fetch('/api/suggestions/market-name', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value, country: '' }),
+      });
+
+      if (response.ok) {
+        toast({
+          title: isArabic
+            ? 'تم إرسال الاقتراح للمراجعة، شكراً لمساهمتك 🙏'
+            : 'Suggestion submitted for review — thank you 🙏',
+        });
+      }
+    } catch {
+      // Best effort only; keep the typed value in place.
+    }
+  };
+
+  const handleSelectMarket = (option: MarketOption) => {
+    updateHoldingDraft({ exchange: option.value });
+    setMarketQuery(option.value);
+    setMarketOpen(false);
+  };
+
+  const handleSuggestMarket = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return;
+    }
+
+    updateHoldingDraft({ exchange: trimmed });
+    setMarketQuery(trimmed);
+    setMarketOpen(false);
+    void submitMarketSuggestion(trimmed);
+  };
+
   const getConvertedSarValue = (value: number, exchange: PortfolioExchange) => {
-    if (exchange === 'TASI') {
+    if (exchange === 'TASI' || exchange === 'NOMU') {
       return {
         value,
         rateLabel: null,
@@ -377,12 +790,12 @@ export default function PortfolioPage() {
   const totalValue = filteredHoldings.reduce((sum, holding) => {
     const baseValue = holding.shares * holding.currentPrice;
     const converted = getConvertedSarValue(baseValue, holding.exchange);
-    return sum + (converted?.value ?? (holding.exchange === 'TASI' ? baseValue : 0));
+    return sum + (converted?.value ?? (['TASI', 'NOMU'].includes(holding.exchange) ? baseValue : 0));
   }, 0);
   const totalCost = filteredHoldings.reduce((sum, holding) => {
     const baseValue = holding.shares * holding.avgCost;
     const converted = getConvertedSarValue(baseValue, holding.exchange);
-    return sum + (converted?.value ?? (holding.exchange === 'TASI' ? baseValue : 0));
+    return sum + (converted?.value ?? (['TASI', 'NOMU'].includes(holding.exchange) ? baseValue : 0));
   }, 0);
   const totalGainLoss = totalValue - totalCost;
   const totalGainLossPercent = totalCost > 0 ? (totalGainLoss / totalCost) * 100 : 0;
@@ -408,6 +821,24 @@ export default function PortfolioPage() {
     value,
   }));
 
+  const stockCurrency = getHoldingCurrency(newHolding.exchange as PortfolioExchange);
+  const etfUnitsValue = Number(newHolding.units) || 0;
+  const etfPurchasePriceValue = Number(newHolding.purchasePricePerUnit) || 0;
+  const etfCurrentPriceValue = Number(newHolding.currentUnitPrice) || 0;
+  const etfTotalCost = etfUnitsValue * etfPurchasePriceValue;
+  const etfTotalValue = etfUnitsValue * etfCurrentPriceValue;
+  const etfGainLoss = etfTotalValue - etfTotalCost;
+  const goldGramsValue = Number(newHolding.grams) || 0;
+  const goldPurchasePriceValue = Number(newHolding.purchasePricePerGram) || 0;
+  const goldCurrentPriceValue = Number(newHolding.currentPricePerGram) || 0;
+  const goldTotalCost = goldGramsValue * goldPurchasePriceValue;
+  const goldTotalValue = goldGramsValue * goldCurrentPriceValue;
+  const goldGainLoss = goldTotalValue - goldTotalCost;
+  const otherQuantityValue = Number(newHolding.quantity) || 0;
+  const otherPurchaseValue = Number(newHolding.purchasePrice) || 0;
+  const otherCurrentValue = Number(newHolding.currentValue) || 0;
+  const otherGainLoss = otherCurrentValue - otherPurchaseValue;
+
   const handleAddHolding = () => {
     if (!isSignedIn) {
       toast({
@@ -419,23 +850,118 @@ export default function PortfolioPage() {
       return;
     }
 
-    if (!newHolding.ticker || !newHolding.shares || !newHolding.avgCost) {
+    const stockShares = Number(newHolding.shares);
+    const stockAvgCost = Number(newHolding.avgCost);
+    const stockCurrentPrice = Number(newHolding.currentPrice || newHolding.avgCost);
+    const etfUnits = Number(newHolding.units);
+    const etfPurchasePrice = Number(newHolding.purchasePricePerUnit);
+    const etfCurrentPrice = Number(newHolding.currentUnitPrice || newHolding.purchasePricePerUnit);
+    const goldGrams = Number(newHolding.grams);
+    const goldPurchasePrice = Number(newHolding.purchasePricePerGram);
+    const goldCurrentPrice = Number(newHolding.currentPricePerGram || newHolding.purchasePricePerGram);
+    const otherQuantity = Number(newHolding.quantity);
+    const otherPurchasePrice = Number(newHolding.purchasePrice);
+    const otherCurrentValue = Number(newHolding.currentValue);
+
+    const isValid =
+      (securityType === 'stock' &&
+        Boolean(newHolding.ticker.trim()) &&
+        stockShares > 0 &&
+        stockAvgCost > 0 &&
+        stockCurrentPrice > 0) ||
+      (securityType === 'etf' &&
+        Boolean(newHolding.ticker.trim()) &&
+        etfUnits > 0 &&
+        etfPurchasePrice > 0 &&
+        etfCurrentPrice > 0) ||
+      (securityType === 'gold' &&
+        goldGrams > 0 &&
+        goldPurchasePrice > 0 &&
+        goldCurrentPrice > 0 &&
+        (newHolding.goldForm !== 'etf_gold' || Boolean(newHolding.ticker.trim()))) ||
+      (securityType === 'other' &&
+        Boolean(newHolding.assetName.trim()) &&
+        otherQuantity > 0 &&
+        otherPurchasePrice > 0 &&
+        otherCurrentValue > 0);
+
+    if (!isValid) {
       return;
     }
 
-    addPortfolioHolding({
-      id: createOpaqueId('holding'),
-      ticker: newHolding.ticker.toUpperCase(),
-      name: newHolding.name || newHolding.ticker.toUpperCase(),
-      exchange: newHolding.exchange as PortfolioExchange,
-      shares: parseFloat(newHolding.shares),
-      avgCost: parseFloat(newHolding.avgCost),
-      currentPrice: parseFloat(newHolding.avgCost) * (newHolding.exchange === 'GOLD' ? 1.02 : 1.05),
-      sector: newHolding.exchange === 'GOLD' ? 'Precious Metals' : 'Other',
-      isShariah: newHolding.isShariah,
-    });
+    let holdingPayload: PortfolioHolding;
 
-    setNewHolding({ ticker: '', name: '', exchange: 'TASI', shares: '', avgCost: '', isShariah: true });
+    if (securityType === 'stock') {
+      holdingPayload = {
+        id: createOpaqueId('holding'),
+        ticker: newHolding.ticker.toUpperCase(),
+        name: newHolding.name || newHolding.ticker.toUpperCase(),
+        exchange: newHolding.exchange as PortfolioExchange,
+        shares: stockShares,
+        avgCost: stockAvgCost,
+        currentPrice: stockCurrentPrice,
+        sector: 'Other',
+        isShariah: newHolding.isShariah,
+        securityType,
+      };
+    } else if (securityType === 'etf') {
+      holdingPayload = {
+        id: createOpaqueId('holding'),
+        ticker: newHolding.ticker.toUpperCase(),
+        name: newHolding.name || newHolding.ticker.toUpperCase(),
+        exchange: newHolding.exchange as PortfolioExchange,
+        shares: etfUnits,
+        avgCost: etfPurchasePrice,
+        currentPrice: etfCurrentPrice,
+        sector: 'Funds',
+        isShariah: newHolding.isShariah,
+        securityType,
+        units: etfUnits,
+        purchasePricePerUnit: etfPurchasePrice,
+        currentUnitPrice: etfCurrentPrice,
+      };
+    } else if (securityType === 'gold') {
+      const goldFormLabel = GOLD_FORMS.find((form) => form.value === newHolding.goldForm)?.label.en ?? 'Gold';
+
+      holdingPayload = {
+        id: createOpaqueId('holding'),
+        ticker: newHolding.goldForm === 'etf_gold' ? newHolding.ticker.toUpperCase() : '',
+        name: newHolding.name || goldFormLabel,
+        exchange: newHolding.exchange as PortfolioExchange,
+        shares: goldGrams,
+        avgCost: goldPurchasePrice,
+        currentPrice: goldCurrentPrice,
+        sector: 'Precious Metals',
+        isShariah: newHolding.isShariah,
+        securityType,
+        goldForm: newHolding.goldForm,
+        grams: goldGrams,
+        karat: newHolding.karat,
+        purchasePricePerGram: goldPurchasePrice,
+        currentPricePerGram: goldCurrentPrice,
+      };
+    } else {
+      holdingPayload = {
+        id: createOpaqueId('holding'),
+        ticker: '',
+        name: newHolding.assetName,
+        exchange: newHolding.exchange as PortfolioExchange,
+        shares: otherQuantity,
+        avgCost: otherPurchasePrice / otherQuantity,
+        currentPrice: otherCurrentValue / otherQuantity,
+        sector: 'Alternative Assets',
+        isShariah: newHolding.isShariah,
+        securityType,
+        assetName: newHolding.assetName,
+      };
+    }
+
+    addPortfolioHolding(holdingPayload);
+
+    setNewHolding(EMPTY_HOLDING_DRAFT);
+    setSecurityType('stock');
+    setMarketQuery('');
+    setMarketOpen(false);
     setShowAddHolding(false);
     toast({
       title: isArabic ? 'تم تحديث المركز' : 'Holding updated',
@@ -706,8 +1232,8 @@ export default function PortfolioPage() {
       return;
     }
 
-    const saudiHoldings = holdings.filter((holding) => holding.exchange === 'TASI');
-    const nonSaudiHoldings = holdings.filter((holding) => ['EGX', 'NASDAQ', 'NYSE', 'GOLD'].includes(holding.exchange));
+    const saudiHoldings = holdings.filter((holding) => ['TASI', 'NOMU'].includes(holding.exchange));
+    const nonSaudiHoldings = holdings.filter((holding) => !['TASI', 'NOMU'].includes(holding.exchange));
 
     if (saudiHoldings.length === 0) {
       toast({
@@ -735,7 +1261,7 @@ export default function PortfolioPage() {
 
       const quotes = data.quotes ?? {};
       const nextHoldings = holdings.map((holding) => {
-        if (holding.exchange !== 'TASI') {
+        if (!['TASI', 'NOMU'].includes(holding.exchange)) {
           return holding;
         }
 
@@ -810,20 +1336,260 @@ export default function PortfolioPage() {
                 : (isArabic ? 'تحديث أسعار السوق' : 'Refresh Market Prices')}
             </Button>
 
-            <Dialog open={showAddHolding} onOpenChange={setShowAddHolding}>
+            <Dialog
+              open={showAddHolding}
+              onOpenChange={(open) => {
+                setShowAddHolding(open);
+                if (!open) {
+                  setNewHolding(EMPTY_HOLDING_DRAFT);
+                  setSecurityType('stock');
+                  setMarketQuery('');
+                  setMarketOpen(false);
+                }
+              }}
+            >
               <DialogTrigger asChild>
                 <Button variant="outline" className="gap-2" disabled={!isSignedIn}>
                   <Plus className="w-4 h-4" />
                   {isArabic ? 'إضافة مركز' : 'Add Holding'}
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent dir={isArabic ? 'rtl' : 'ltr'}>
                 <DialogHeader>
-                  <DialogTitle>{isArabic ? 'إضافة سهم جديد' : 'Add New Holding'}</DialogTitle>
+                  <DialogTitle>{isArabic ? 'إضافة مركز جديد' : 'Add New Holding'}</DialogTitle>
                   <DialogDescription>
-                    {isArabic ? 'أضف سهماً جديداً إلى محفظتك' : 'Add a new stock to your portfolio'}
+                    {isArabic ? 'أضف مركزاً جديداً مع نوع أصل وسوق وبيانات تسعير أدق' : 'Add a new holding with a market, asset type, and pricing details'}
                   </DialogDescription>
                 </DialogHeader>
+                <div className="space-y-5 py-4" dir={isArabic ? 'rtl' : 'ltr'}>
+                  <div className="space-y-2" dir={isArabic ? 'rtl' : 'ltr'}>
+                    <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'نوع الورقة المالية' : 'Security Type'}</Label>
+                    <div dir={isArabic ? 'rtl' : 'ltr'} className={cn('flex flex-wrap gap-2', isArabic && 'flex-row-reverse')}>
+                      {SECURITY_TYPES.map((option) => {
+                        const Icon = option.icon;
+                        const active = securityType === option.value;
+
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => setSecurityType(option.value)}
+                            className={cn(
+                              'inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm transition-colors',
+                              active ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80',
+                              isArabic && 'flex-row-reverse'
+                            )}
+                          >
+                            <Icon className="h-4 w-4" />
+                            <span>{isArabic ? option.label.ar : option.label.en}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2" dir={isArabic ? 'rtl' : 'ltr'}>
+                    {(securityType === 'stock' || securityType === 'etf' || (securityType === 'gold' && newHolding.goldForm === 'etf_gold')) ? (
+                      <div className="space-y-2" dir={isArabic ? 'rtl' : 'ltr'}>
+                        <Label dir={isArabic ? 'rtl' : 'ltr'}>
+                          {securityType === 'stock' ? (isArabic ? 'رمز السهم' : 'Symbol / Ticker') : (isArabic ? 'رمز الصندوق' : 'ETF Symbol')}
+                        </Label>
+                        <Input
+                          dir={isArabic ? 'rtl' : 'ltr'}
+                          value={newHolding.ticker}
+                          onChange={(e) => updateHoldingDraft({ ticker: e.target.value.toUpperCase() })}
+                          placeholder={securityType === 'stock' ? '2222.SR' : 'SPY'}
+                          className={isArabic ? 'text-right' : 'text-left'}
+                        />
+                      </div>
+                    ) : null}
+
+                    <div className="space-y-2" dir={isArabic ? 'rtl' : 'ltr'}>
+                      <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'السوق' : 'Market'}</Label>
+                      <MarketCombobox
+                        isArabic={isArabic}
+                        open={marketOpen}
+                        value={newHolding.exchange}
+                        query={marketQuery}
+                        onOpenChange={setMarketOpen}
+                        onQueryChange={(value) => {
+                          setMarketQuery(value);
+                          updateHoldingDraft({ exchange: value });
+                        }}
+                        onSelect={handleSelectMarket}
+                        onSuggest={handleSuggestMarket}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2" dir={isArabic ? 'rtl' : 'ltr'}>
+                    <Label dir={isArabic ? 'rtl' : 'ltr'}>
+                      {securityType === 'other' ? (isArabic ? 'اسم الأصل' : 'Asset Name') : (isArabic ? 'الاسم' : 'Name')}
+                    </Label>
+                    <Input
+                      dir={isArabic ? 'rtl' : 'ltr'}
+                      value={securityType === 'other' ? newHolding.assetName : newHolding.name}
+                      onChange={(e) => updateHoldingDraft(securityType === 'other' ? { assetName: e.target.value } : { name: e.target.value })}
+                      className={isArabic ? 'text-right' : 'text-left'}
+                    />
+                  </div>
+
+                  {securityType === 'stock' ? (
+                    <div className="grid gap-4 md:grid-cols-2" dir={isArabic ? 'rtl' : 'ltr'}>
+                      <div className="space-y-2" dir={isArabic ? 'rtl' : 'ltr'}>
+                        <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'عدد الأسهم' : 'Number of Shares'}</Label>
+                        <Input dir={isArabic ? 'rtl' : 'ltr'} type="number" min="0.0001" step="0.0001" value={newHolding.shares} onChange={(e) => updateHoldingDraft({ shares: e.target.value })} className={isArabic ? 'text-right' : 'text-left'} />
+                      </div>
+                      <div className="space-y-2" dir={isArabic ? 'rtl' : 'ltr'}>
+                        <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'سعر الشراء للسهم' : 'Purchase Price per Share'}</Label>
+                        <div className="relative">
+                          <Input dir={isArabic ? 'rtl' : 'ltr'} type="number" min="0" step="0.01" value={newHolding.avgCost} onChange={(e) => updateHoldingDraft({ avgCost: e.target.value })} className={cn(isArabic ? 'pl-12 text-right' : 'pr-12 text-left')} />
+                          <span className={cn('absolute top-1/2 -translate-y-1/2 text-xs text-muted-foreground', isArabic ? 'left-3' : 'right-3')}>{stockCurrency}</span>
+                        </div>
+                      </div>
+                      <div className="space-y-2 md:col-span-2" dir={isArabic ? 'rtl' : 'ltr'}>
+                        <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'السعر الحالي للسهم' : 'Current Price per Share'}</Label>
+                        <div className="relative">
+                          <Input dir={isArabic ? 'rtl' : 'ltr'} type="number" min="0" step="0.01" value={newHolding.currentPrice} onChange={(e) => updateHoldingDraft({ currentPrice: e.target.value })} className={cn(isArabic ? 'pl-12 text-right' : 'pr-12 text-left')} />
+                          <span className={cn('absolute top-1/2 -translate-y-1/2 text-xs text-muted-foreground', isArabic ? 'left-3' : 'right-3')}>{stockCurrency}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {securityType === 'etf' ? (
+                    <>
+                      <div className="grid gap-4 md:grid-cols-2" dir={isArabic ? 'rtl' : 'ltr'}>
+                        <div className="space-y-2" dir={isArabic ? 'rtl' : 'ltr'}>
+                          <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'عدد الوحدات' : 'Number of Units'}</Label>
+                          <Input dir={isArabic ? 'rtl' : 'ltr'} type="number" min="0.0001" step="0.0001" value={newHolding.units} onChange={(e) => updateHoldingDraft({ units: e.target.value })} className={isArabic ? 'text-right' : 'text-left'} />
+                        </div>
+                        <div className="space-y-2" dir={isArabic ? 'rtl' : 'ltr'}>
+                          <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'سعر الشراء للوحدة' : 'Purchase Price per Unit'}</Label>
+                          <div className="relative">
+                            <Input dir={isArabic ? 'rtl' : 'ltr'} type="number" min="0" step="0.01" value={newHolding.purchasePricePerUnit} onChange={(e) => updateHoldingDraft({ purchasePricePerUnit: e.target.value })} className={cn(isArabic ? 'pl-12 text-right' : 'pr-12 text-left')} />
+                            <span className={cn('absolute top-1/2 -translate-y-1/2 text-xs text-muted-foreground', isArabic ? 'left-3' : 'right-3')}>{stockCurrency}</span>
+                          </div>
+                        </div>
+                        <div className="space-y-2 md:col-span-2" dir={isArabic ? 'rtl' : 'ltr'}>
+                          <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'السعر الحالي للوحدة' : 'Current Unit Price'}</Label>
+                          <div className="relative">
+                            <Input dir={isArabic ? 'rtl' : 'ltr'} type="number" min="0" step="0.01" value={newHolding.currentUnitPrice} onChange={(e) => updateHoldingDraft({ currentUnitPrice: e.target.value })} className={cn(isArabic ? 'pl-12 text-right' : 'pr-12 text-left')} />
+                            <span className={cn('absolute top-1/2 -translate-y-1/2 text-xs text-muted-foreground', isArabic ? 'left-3' : 'right-3')}>{stockCurrency}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="grid gap-3 rounded-xl bg-muted/40 p-4 md:grid-cols-3" dir={isArabic ? 'rtl' : 'ltr'}>
+                        <div className={isArabic ? 'text-right' : 'text-left'}>
+                          <p className="text-xs text-muted-foreground">{isArabic ? 'القيمة الإجمالية' : 'Total Value'}</p>
+                          <p className="tabular-nums font-semibold">{formatCurrency(etfTotalValue, stockCurrency, locale)}</p>
+                        </div>
+                        <div className={isArabic ? 'text-right' : 'text-left'}>
+                          <p className="text-xs text-muted-foreground">{isArabic ? 'إجمالي التكلفة' : 'Total Cost'}</p>
+                          <p className="tabular-nums font-semibold">{formatCurrency(etfTotalCost, stockCurrency, locale)}</p>
+                        </div>
+                        <div className={isArabic ? 'text-right' : 'text-left'}>
+                          <p className="text-xs text-muted-foreground">{isArabic ? 'الربح / الخسارة' : 'Gain / Loss'}</p>
+                          <p className={cn('tabular-nums font-semibold', etfGainLoss > 0 ? 'text-green-600 dark:text-green-400' : etfGainLoss < 0 ? 'text-red-500' : 'text-muted-foreground')}>{formatCurrency(etfGainLoss, stockCurrency, locale)}</p>
+                        </div>
+                      </div>
+                    </>
+                  ) : null}
+
+                  {securityType === 'gold' ? (
+                    <>
+                      <div className="grid gap-4 md:grid-cols-2" dir={isArabic ? 'rtl' : 'ltr'}>
+                        <div className="space-y-2" dir={isArabic ? 'rtl' : 'ltr'}>
+                          <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'شكل الذهب' : 'Gold Form'}</Label>
+                          <Select value={newHolding.goldForm} onValueChange={(value) => updateHoldingDraft({ goldForm: value as HoldingDraft['goldForm'] })}>
+                            <SelectTrigger dir={isArabic ? 'rtl' : 'ltr'}><SelectValue /></SelectTrigger>
+                            <SelectContent dir={isArabic ? 'rtl' : 'ltr'}>
+                              {GOLD_FORMS.map((form) => (
+                                <SelectItem key={form.value} value={form.value}>{isArabic ? form.label.ar : form.label.en}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2" dir={isArabic ? 'rtl' : 'ltr'}>
+                          <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'العيار' : 'Karat'}</Label>
+                          <Select value={newHolding.karat} onValueChange={(value) => updateHoldingDraft({ karat: value as HoldingDraft['karat'] })}>
+                            <SelectTrigger dir={isArabic ? 'rtl' : 'ltr'}><SelectValue /></SelectTrigger>
+                            <SelectContent dir={isArabic ? 'rtl' : 'ltr'}>
+                              {KARAT_OPTIONS.map((karat) => (
+                                <SelectItem key={karat} value={karat}>{karat}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2" dir={isArabic ? 'rtl' : 'ltr'}>
+                          <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'الوزن (جرام)' : 'Weight (grams)'}</Label>
+                          <Input dir={isArabic ? 'rtl' : 'ltr'} type="number" min="0.01" step="0.01" value={newHolding.grams} onChange={(e) => updateHoldingDraft({ grams: e.target.value })} className={isArabic ? 'text-right' : 'text-left'} />
+                        </div>
+                        <div className="space-y-2" dir={isArabic ? 'rtl' : 'ltr'}>
+                          <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'سعر الشراء للجرام' : 'Purchase Price per Gram'}</Label>
+                          <div className="relative">
+                            <Input dir={isArabic ? 'rtl' : 'ltr'} type="number" min="0" step="0.01" value={newHolding.purchasePricePerGram} onChange={(e) => updateHoldingDraft({ purchasePricePerGram: e.target.value })} className={cn(isArabic ? 'pl-12 text-right' : 'pr-12 text-left')} />
+                            <span className={cn('absolute top-1/2 -translate-y-1/2 text-xs text-muted-foreground', isArabic ? 'left-3' : 'right-3')}>{stockCurrency}</span>
+                          </div>
+                        </div>
+                        <div className="space-y-2 md:col-span-2" dir={isArabic ? 'rtl' : 'ltr'}>
+                          <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'السعر الحالي للجرام' : 'Current Price per Gram'}</Label>
+                          <div className="relative">
+                            <Input dir={isArabic ? 'rtl' : 'ltr'} type="number" min="0" step="0.01" value={newHolding.currentPricePerGram} onChange={(e) => updateHoldingDraft({ currentPricePerGram: e.target.value })} className={cn(isArabic ? 'pl-12 text-right' : 'pr-12 text-left')} />
+                            <span className={cn('absolute top-1/2 -translate-y-1/2 text-xs text-muted-foreground', isArabic ? 'left-3' : 'right-3')}>{stockCurrency}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="grid gap-3 rounded-xl bg-muted/40 p-4 md:grid-cols-3" dir={isArabic ? 'rtl' : 'ltr'}>
+                        <div className={isArabic ? 'text-right' : 'text-left'}>
+                          <p className="text-xs text-muted-foreground">{isArabic ? 'القيمة الإجمالية' : 'Total Value'}</p>
+                          <p className="tabular-nums font-semibold">{formatCurrency(goldTotalValue, stockCurrency, locale)}</p>
+                        </div>
+                        <div className={isArabic ? 'text-right' : 'text-left'}>
+                          <p className="text-xs text-muted-foreground">{isArabic ? 'إجمالي التكلفة' : 'Total Cost'}</p>
+                          <p className="tabular-nums font-semibold">{formatCurrency(goldTotalCost, stockCurrency, locale)}</p>
+                        </div>
+                        <div className={isArabic ? 'text-right' : 'text-left'}>
+                          <p className="text-xs text-muted-foreground">{isArabic ? 'الربح / الخسارة' : 'Gain / Loss'}</p>
+                          <p className={cn('tabular-nums font-semibold', goldGainLoss > 0 ? 'text-green-600 dark:text-green-400' : goldGainLoss < 0 ? 'text-red-500' : 'text-muted-foreground')}>{formatCurrency(goldGainLoss, stockCurrency, locale)}</p>
+                        </div>
+                      </div>
+                    </>
+                  ) : null}
+
+                  {securityType === 'other' ? (
+                    <div className="grid gap-4 md:grid-cols-2" dir={isArabic ? 'rtl' : 'ltr'}>
+                      <div className="space-y-2" dir={isArabic ? 'rtl' : 'ltr'}>
+                        <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'الكمية / الوحدات' : 'Quantity / Units'}</Label>
+                        <Input dir={isArabic ? 'rtl' : 'ltr'} type="number" min="0.0001" step="0.0001" value={newHolding.quantity} onChange={(e) => updateHoldingDraft({ quantity: e.target.value })} className={isArabic ? 'text-right' : 'text-left'} />
+                      </div>
+                      <div className="space-y-2" dir={isArabic ? 'rtl' : 'ltr'}>
+                        <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'سعر الشراء (إجمالي)' : 'Purchase Price (total)'}</Label>
+                        <div className="relative">
+                          <Input dir={isArabic ? 'rtl' : 'ltr'} type="number" min="0" step="0.01" value={newHolding.purchasePrice} onChange={(e) => updateHoldingDraft({ purchasePrice: e.target.value })} className={cn(isArabic ? 'pl-12 text-right' : 'pr-12 text-left')} />
+                          <span className={cn('absolute top-1/2 -translate-y-1/2 text-xs text-muted-foreground', isArabic ? 'left-3' : 'right-3')}>{stockCurrency}</span>
+                        </div>
+                      </div>
+                      <div className="space-y-2" dir={isArabic ? 'rtl' : 'ltr'}>
+                        <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'القيمة الحالية' : 'Current Value (total)'}</Label>
+                        <div className="relative">
+                          <Input dir={isArabic ? 'rtl' : 'ltr'} type="number" min="0" step="0.01" value={newHolding.currentValue} onChange={(e) => updateHoldingDraft({ currentValue: e.target.value })} className={cn(isArabic ? 'pl-12 text-right' : 'pr-12 text-left')} />
+                          <span className={cn('absolute top-1/2 -translate-y-1/2 text-xs text-muted-foreground', isArabic ? 'left-3' : 'right-3')}>{stockCurrency}</span>
+                        </div>
+                      </div>
+                      <div className="space-y-2" dir={isArabic ? 'rtl' : 'ltr'}>
+                        <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'الربح / الخسارة' : 'Gain / Loss'}</Label>
+                        <div className={cn('rounded-md border bg-muted/40 px-3 py-2 text-sm font-medium tabular-nums', otherGainLoss > 0 ? 'text-green-600 dark:text-green-400' : otherGainLoss < 0 ? 'text-red-500' : 'text-muted-foreground')}>{formatCurrency(otherGainLoss, stockCurrency, locale)}</div>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div className={cn('flex items-center gap-2', isArabic && 'flex-row-reverse')} dir={isArabic ? 'rtl' : 'ltr'}>
+                    <Switch checked={newHolding.isShariah} onCheckedChange={(checked) => updateHoldingDraft({ isShariah: checked })} />
+                    <Label dir={isArabic ? 'rtl' : 'ltr'} className="font-normal">{isArabic ? 'متوافق مع الشريعة الإسلامية' : 'Shariah Compliant'}</Label>
+                  </div>
+                </div>
+                {false ? (
                 <div className="space-y-4 py-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -883,8 +1649,18 @@ export default function PortfolioPage() {
                     </Label>
                   </div>
                 </div>
+                ) : null}
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setShowAddHolding(false)}>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowAddHolding(false);
+                      setNewHolding(EMPTY_HOLDING_DRAFT);
+                      setSecurityType('stock');
+                      setMarketQuery('');
+                      setMarketOpen(false);
+                    }}
+                  >
                     {isArabic ? 'إلغاء' : 'Cancel'}
                   </Button>
                   <Button onClick={handleAddHolding} disabled={!isSignedIn}>
@@ -1088,7 +1864,7 @@ export default function PortfolioPage() {
                         <TableHead>{isArabic ? 'الرمز' : 'Ticker'}</TableHead>
                         <TableHead>{isArabic ? 'الاسم' : 'Name'}</TableHead>
                         <TableHead>{isArabic ? 'البورصة' : 'Exchange'}</TableHead>
-                        <TableHead className="text-right">{isArabic ? 'الأسهم' : 'Shares'}</TableHead>
+                        <TableHead className="text-right">{isArabic ? 'الكمية' : 'Quantity'}</TableHead>
                         <TableHead className="text-right">{isArabic ? 'متوسط التكلفة' : 'Avg Cost'}</TableHead>
                         <TableHead className="text-right">{isArabic ? 'السعر الحالي' : 'Current'}</TableHead>
                         <TableHead className="text-right">{isArabic ? 'القيمة السوقية' : 'Market Value'}</TableHead>
@@ -1098,18 +1874,35 @@ export default function PortfolioPage() {
                     </TableHeader>
                     <TableBody>
                       {filteredHoldings.map((holding) => {
-                        const marketValue = holding.shares * holding.currentPrice;
-                        const costBasis = holding.shares * holding.avgCost;
+                        const metrics = getHoldingMetrics(holding);
+                        const securityMeta = getSecurityTypeMeta(holding.securityType, isArabic);
+                        const marketValue = metrics.totalValue;
+                        const costBasis = metrics.totalCost;
                         const gainLoss = marketValue - costBasis;
                         const gainLossPercent = costBasis > 0 ? (gainLoss / costBasis) * 100 : 0;
                         const holdingCurrency = getHoldingCurrency(holding.exchange);
                         const convertedMarketValue = getConvertedSarValue(marketValue, holding.exchange);
+                        const summaryLine = metrics.securityType === 'etf'
+                          ? (isArabic
+                            ? `${formatHoldingNumberValue(metrics.quantity)} وحدة @ ${formatCurrency(metrics.currentPerUnit, holdingCurrency, locale)}/وحدة`
+                            : `${formatHoldingNumberValue(metrics.quantity)} units @ ${formatCurrency(metrics.currentPerUnit, holdingCurrency, locale)}/unit`)
+                          : metrics.securityType === 'gold'
+                            ? (isArabic
+                              ? `${formatHoldingNumberValue(metrics.quantity)} جرام · عيار ${holding.karat ?? '24K'} · @ ${formatCurrency(metrics.currentPerUnit, holdingCurrency, locale)}/جرام`
+                              : `${formatHoldingNumberValue(metrics.quantity)} grams · ${holding.karat ?? '24K'} · @ ${formatCurrency(metrics.currentPerUnit, holdingCurrency, locale)}/g`)
+                            : metrics.securityType === 'other'
+                              ? (isArabic
+                                ? `${formatHoldingNumberValue(metrics.quantity)} وحدة`
+                                : `${formatHoldingNumberValue(metrics.quantity)} units`)
+                              : (isArabic
+                                ? `${formatHoldingNumberValue(metrics.quantity)} سهم @ ${formatCurrency(metrics.currentPerUnit, holdingCurrency, locale)}`
+                                : `${formatHoldingNumberValue(metrics.quantity)} shares @ ${formatCurrency(metrics.currentPerUnit, holdingCurrency, locale)}`);
 
                         return (
                           <TableRow key={holding.id}>
                             <TableCell>
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium">{holding.ticker}</span>
+                              <div className={cn('flex items-center gap-2', isArabic && 'flex-row-reverse')} dir={isArabic ? 'rtl' : 'ltr'}>
+                                <span className="font-medium tabular-nums">{holding.ticker || '—'}</span>
                                 {holding.isShariah && (
                                   <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-500 border-emerald-500/20">
                                     {isArabic ? 'شريعة' : 'Shariah'}
@@ -1117,22 +1910,32 @@ export default function PortfolioPage() {
                                 )}
                               </div>
                             </TableCell>
-                            <TableCell>{holding.name}</TableCell>
                             <TableCell>
-                              <Badge style={{ backgroundColor: `${exchangeColors[holding.exchange]}20`, color: exchangeColors[holding.exchange] }}>
+                              <div className={cn('space-y-1', isArabic ? 'text-right' : 'text-left')} dir={isArabic ? 'rtl' : 'ltr'}>
+                                <div className={cn('flex items-start gap-2', isArabic ? 'flex-row-reverse justify-between' : 'justify-between')}>
+                                  <span className="font-medium">{holding.assetName || holding.name}</span>
+                                  <Badge className={cn('shrink-0 border-0', securityMeta.badgeClass)}>
+                                    {securityMeta.label}
+                                  </Badge>
+                                </div>
+                                <p className="text-xs text-muted-foreground tabular-nums">{summaryLine}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge style={{ backgroundColor: `${exchangeColors[holding.exchange] || '#6B7280'}20`, color: exchangeColors[holding.exchange] || '#6B7280' }}>
                                 {holding.exchange}
                               </Badge>
                             </TableCell>
-                            <TableCell className="text-right">{formatNumber(holding.shares, locale)}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(holding.avgCost, holdingCurrency, locale)}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(holding.currentPrice, holdingCurrency, locale)}</TableCell>
-                            <TableCell className="text-right font-medium">
+                            <TableCell className="text-right tabular-nums">{formatHoldingNumberValue(metrics.quantity, 2)}</TableCell>
+                            <TableCell className="text-right tabular-nums">{formatCurrency(metrics.costPerUnit, holdingCurrency, locale)}</TableCell>
+                            <TableCell className="text-right tabular-nums">{formatCurrency(metrics.currentPerUnit, holdingCurrency, locale)}</TableCell>
+                            <TableCell className="text-right font-medium tabular-nums">
                               <div>{formatCurrency(marketValue, holdingCurrency, locale)}</div>
-                              {convertedMarketValue && holding.exchange !== 'TASI' ? (
+                              {convertedMarketValue && !['TASI', 'NOMU'].includes(holding.exchange) ? (
                                 <div className="mt-1 text-xs text-muted-foreground">
                                   {formatCurrency(convertedMarketValue.value, 'SAR', locale)}
                                 </div>
-                              ) : holding.exchange !== 'TASI' ? (
+                              ) : !['TASI', 'NOMU'].includes(holding.exchange) ? (
                                 <div className="mt-1 text-xs text-muted-foreground">
                                   {isArabic ? 'غير محوّل إلى SAR بعد' : 'Unconverted to SAR'}
                                 </div>
@@ -1140,11 +1943,11 @@ export default function PortfolioPage() {
                             </TableCell>
                             <TableCell className="text-right">
                               <div className={gainLoss >= 0 ? 'text-emerald-500' : 'text-rose-500'}>
-                                <div className="flex items-center justify-end gap-1">
+                                <div className="flex items-center justify-end gap-1 tabular-nums">
                                   {gainLoss >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
                                   {formatCurrency(Math.abs(gainLoss), holdingCurrency, locale)}
                                 </div>
-                                <span className="text-xs">
+                                <span className="text-xs tabular-nums">
                                   {gainLoss >= 0 ? '+' : ''}{gainLossPercent.toFixed(2)}%
                                 </span>
                               </div>

@@ -14,7 +14,33 @@ export type SubscriptionTier = 'none' | 'core' | 'pro';
 export type AppMode = 'demo' | 'live';
 export type IncomeSource = 'salary' | 'freelance' | 'business' | 'investment' | 'rental' | 'other';
 export type IncomeFrequency = 'one_time' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
-export type PortfolioExchange = 'TASI' | 'EGX' | 'NASDAQ' | 'NYSE' | 'GOLD';
+export type PortfolioExchange =
+  | 'TASI'
+  | 'NOMU'
+  | 'ADX'
+  | 'DFM'
+  | 'NASDAQ_DUBAI'
+  | 'QSE'
+  | 'BKK'
+  | 'BHB'
+  | 'MSX'
+  | 'EGX'
+  | 'ASE'
+  | 'NASDAQ'
+  | 'NYSE'
+  | 'AMEX'
+  | 'LSE'
+  | 'EURONEXT'
+  | 'XETRA'
+  | 'TSE'
+  | 'HKEX'
+  | 'SSE'
+  | 'COMEX'
+  | 'LME'
+  | 'CRYPTO'
+  | 'OTC'
+  | 'GOLD'
+  | (string & {});
 export type AssetCategory = 'cash' | 'investment' | 'real_estate' | 'vehicle' | 'other';
 export type LiabilityCategory = 'loan' | 'mortgage' | 'credit_card' | 'other';
 export type ExpenseCategory =
@@ -213,6 +239,16 @@ export interface PortfolioHolding {
   currentPrice: number;
   sector: string;
   isShariah: boolean;
+  securityType?: 'stock' | 'etf' | 'gold' | 'other';
+  units?: number | null;
+  purchasePricePerUnit?: number | null;
+  currentUnitPrice?: number | null;
+  goldForm?: 'bullion_bar' | 'coin' | 'jewelry' | 'etf_gold' | 'digital_gold' | null;
+  grams?: number | null;
+  karat?: '24K' | '22K' | '21K' | '18K' | '14K' | null;
+  purchasePricePerGram?: number | null;
+  currentPricePerGram?: number | null;
+  assetName?: string | null;
 }
 
 export interface PortfolioAnalysisAction {
@@ -393,12 +429,16 @@ function workspaceFieldsToSnapshot(source: {
   };
 }
 
-function normalizeHoldingKey(holding: Pick<PortfolioHolding, 'ticker' | 'exchange'>) {
-  const baseTicker = holding.exchange === 'TASI'
-    ? holding.ticker.trim().toUpperCase().replace(/\.SR$/i, '')
-    : holding.ticker.trim().toUpperCase();
+function normalizeHoldingKey(
+  holding: Pick<PortfolioHolding, 'id' | 'ticker' | 'exchange' | 'securityType' | 'assetName'>
+) {
+  const securityType = holding.securityType ?? 'stock';
+  const rawIdentifier = holding.ticker.trim() || holding.assetName?.trim() || holding.id;
+  const baseTicker = ['TASI', 'NOMU'].includes(holding.exchange)
+    ? rawIdentifier.toUpperCase().replace(/\.SR$/i, '')
+    : rawIdentifier.toUpperCase();
 
-  return `${holding.exchange}:${baseTicker}`;
+  return `${securityType}:${holding.exchange}:${baseTicker}`;
 }
 
 function mergePortfolioHoldingEntries(holdings: PortfolioHolding[]) {
@@ -412,21 +452,48 @@ function mergePortfolioHoldingEntries(holdings: PortfolioHolding[]) {
       merged.set(key, {
         ...holding,
         ticker: holding.ticker.trim().toUpperCase(),
+        securityType: holding.securityType ?? 'stock',
       });
       continue;
     }
 
     const totalShares = existing.shares + holding.shares;
     const totalCostBasis = (existing.shares * existing.avgCost) + (holding.shares * holding.avgCost);
+    const totalUnits = (existing.units ?? 0) + (holding.units ?? 0);
+    const totalUnitCostBasis =
+      ((existing.units ?? 0) * (existing.purchasePricePerUnit ?? 0)) +
+      ((holding.units ?? 0) * (holding.purchasePricePerUnit ?? 0));
+    const totalGrams = (existing.grams ?? 0) + (holding.grams ?? 0);
+    const totalGramCostBasis =
+      ((existing.grams ?? 0) * (existing.purchasePricePerGram ?? 0)) +
+      ((holding.grams ?? 0) * (holding.purchasePricePerGram ?? 0));
 
     merged.set(key, {
       ...existing,
       name: holding.name || existing.name,
       sector: holding.sector || existing.sector,
       isShariah: existing.isShariah && holding.isShariah,
+      securityType: holding.securityType ?? existing.securityType ?? 'stock',
       shares: totalShares,
       avgCost: totalShares > 0 ? totalCostBasis / totalShares : existing.avgCost,
       currentPrice: holding.currentPrice > 0 ? holding.currentPrice : existing.currentPrice,
+      units: totalUnits > 0 ? totalUnits : (holding.units ?? existing.units ?? null),
+      purchasePricePerUnit: totalUnits > 0
+        ? totalUnitCostBasis / totalUnits
+        : (holding.purchasePricePerUnit ?? existing.purchasePricePerUnit ?? null),
+      currentUnitPrice: holding.currentUnitPrice && holding.currentUnitPrice > 0
+        ? holding.currentUnitPrice
+        : (existing.currentUnitPrice ?? null),
+      goldForm: holding.goldForm ?? existing.goldForm ?? null,
+      grams: totalGrams > 0 ? totalGrams : (holding.grams ?? existing.grams ?? null),
+      karat: holding.karat ?? existing.karat ?? null,
+      purchasePricePerGram: totalGrams > 0
+        ? totalGramCostBasis / totalGrams
+        : (holding.purchasePricePerGram ?? existing.purchasePricePerGram ?? null),
+      currentPricePerGram: holding.currentPricePerGram && holding.currentPricePerGram > 0
+        ? holding.currentPricePerGram
+        : (existing.currentPricePerGram ?? null),
+      assetName: holding.assetName ?? existing.assetName ?? null,
     });
   }
 
