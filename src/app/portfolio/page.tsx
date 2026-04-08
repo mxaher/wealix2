@@ -368,13 +368,18 @@ function MarketCombobox({
     );
   }, [normalizedQuery]);
 
-  const groupedOptions = useMemo(() => {
+  const groupedOptions = useMemo<Record<string, MarketOption[]>>(() => {
     const groups: Record<string, MarketOption[]> = {};
 
-    return filteredOptions.reduce((acc, option) => {
-      acc[option.country] = acc[option.country] ? [...acc[option.country], option] : [option];
-      return acc;
-    }, groups);
+    for (const option of filteredOptions) {
+      if (!groups[option.country]) {
+        groups[option.country] = [];
+      }
+
+      groups[option.country].push(option);
+    }
+
+    return groups;
   }, [filteredOptions]);
 
   const suggestionValue = useMemo(() => {
