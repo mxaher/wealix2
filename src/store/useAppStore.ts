@@ -393,6 +393,10 @@ export interface RemoteWorkspaceSnapshot {
   savingsAccounts: SavingsAccount[];
 }
 
+type PersistedWorkspaceState = RemoteWorkspaceSnapshot & {
+  user: User | null;
+};
+
 function workspaceFieldsToSnapshot(source: {
   appMode: AppMode;
   startPage: StartPage;
@@ -1040,10 +1044,12 @@ const defaultSavingsAccounts: SavingsAccount[] = [
   },
 ];
 
-function buildDemoState() {
+function buildDemoState(): PersistedWorkspaceState {
   return {
     appMode: 'demo' as const,
+    startPage: DEFAULT_START_PAGE,
     user: defaultUser,
+    notificationPreferences: defaultNotificationPreferences,
     notificationFeed: defaultNotificationFeed,
     incomeEntries: defaultIncomeEntries,
     expenseEntries: defaultExpenseEntries,
@@ -1060,10 +1066,12 @@ function buildDemoState() {
   };
 }
 
-function buildLiveState() {
+function buildLiveState(): PersistedWorkspaceState {
   return {
     appMode: 'live' as const,
+    startPage: DEFAULT_START_PAGE,
     user: null,
+    notificationPreferences: defaultNotificationPreferences,
     notificationFeed: [] as NotificationItem[],
     incomeEntries: [] as IncomeEntry[],
     expenseEntries: [] as ExpenseEntry[],
@@ -1110,7 +1118,7 @@ function createProfileSnapshot(
   id: string,
   label: string,
   email: string,
-  state: ReturnType<typeof buildDemoState> | ReturnType<typeof buildLiveState>,
+  state: PersistedWorkspaceState,
   overrides?: {
     user?: User | null;
     notificationPreferences?: NotificationPreferences;
@@ -1284,7 +1292,7 @@ function syncActiveProfileState(state: AppState, partial: Partial<AppState>) {
   };
 }
 
-function profileToState(profile: LocalProfile) {
+function profileToState(profile: LocalProfile): PersistedWorkspaceState {
   return {
     appMode: profile.appMode,
     startPage: profile.startPage,
