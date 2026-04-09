@@ -1,23 +1,31 @@
-'use client';
+import { auth } from '@clerk/nextjs/server';
+import { redirect } from 'next/navigation';
+import { db } from '@/lib/db';
+import AppEntryClient from './AppEntryClient';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { DashboardShell } from '@/components/layout';
-import { DashboardSkeleton } from '@/components/shared';
-import { getStartPageHref } from '@/lib/start-page';
-import { useAppStore } from '@/store/useAppStore';
+/**
+ * Server Component entry point for /app.
+ * Checks if the authenticated user has completed onboarding.
+ * If not, redirects to /onboarding.
+ * If yes, renders the client shell which then navigates to the correct page.
+ */
+export default async function AppEntryPage() {
+  const { userId } = await auth();
 
-export default function AppEntryPage() {
-  const router = useRouter();
-  const startPage = useAppStore((state) => state.startPage);
+  if (!userId) {
+    redirect('/');
+  }
 
-  useEffect(() => {
-    router.replace(getStartPageHref(startPage));
-  }, [router, startPage]);
+  const dbUser = await db.user.findUnique({
+    where: { id: userId },
+    select: { onboardingDone: true },
+  });
 
-  return (
-    <DashboardShell>
-      <DashboardSkeleton />
-    </DashboardShell>
-  );
+  // New user or incomplete onboarding — send to wizard
+  if (!dbUser?.onboardingDone) {
+    redirect('/onboarding');
+  }
+
+  // Onboarding complete — render the client entry shell
+  return <AppEntryClient />;
 }
