@@ -8,10 +8,21 @@ import {
 } from '@/store/useAppStore';
 import { useRuntimeUser } from '@/hooks/useRuntimeUser';
 
+type OnboardingProfilePayload = {
+  monthlyIncome?: number | null;
+  riskTolerance?: string | null;
+  preferredMarkets?: string[] | null;
+  retirementGoal?: string | null;
+  currentAge?: number | null;
+  retirementAge?: number | null;
+};
+
 export function RemoteProfileSync() {
   const { isLoaded, isSignedIn, user } = useRuntimeUser();
   const hydrateRemoteWorkspace = useAppStore((state) => state.hydrateRemoteWorkspace);
   const stashRemoteWorkspace = useAppStore((state) => state.stashRemoteWorkspace);
+  const setUserProfile = useAppStore((state) => state.setUserProfile);
+  const profileLoadedForRef = useRef<string | null>(null);
   const appMode = useAppStore((state) => state.appMode);
   const startPage = useAppStore((state) => state.startPage);
   const profiles = useAppStore((state) => state.profiles);
@@ -104,6 +115,7 @@ export function RemoteProfileSync() {
       lastSavedSnapshotRef.current = '';
       remoteUpdatedAtRef.current = null;
       applyingRemoteRef.current = false;
+      profileLoadedForRef.current = null;
       if (saveTimerRef.current) {
         window.clearTimeout(saveTimerRef.current);
         saveTimerRef.current = null;
@@ -180,6 +192,30 @@ export function RemoteProfileSync() {
         }
 
         loadedSyncKeyRef.current = currentSyncKey;
+
+        // Load onboarding profile once per user session to hydrate userProfile
+        // (risk tolerance, income baseline, FIRE targets, markets).
+        // This is separate from the workspace sync because onboarding data lives
+        // in a different D1 table and is never included in RemoteWorkspaceSnapshot.
+        if (profileLoadedForRef.current !== user.id) {
+          profileLoadedForRef.current = user.id;
+          void fetch('/api/onboarding/profile', { cache: 'no-store' })
+            .then(async (r) => {
+              if (!r.ok) return;
+              const json = await r.json() as { profile: OnboardingProfilePayload | null };
+              const p = json?.profile;
+              if (!p) return;
+              setUserProfile({
+                monthlyIncome: p.monthlyIncome ?? undefined,
+                riskTolerance: p.riskTolerance ?? undefined,
+                preferredMarkets: p.preferredMarkets ?? undefined,
+                retirementGoal: p.retirementGoal ?? undefined,
+                currentAge: p.currentAge ?? undefined,
+                retirementAge: p.retirementAge ?? undefined,
+              });
+            })
+            .catch(() => { /* non-blocking */ });
+        }
       } catch (error) {
         if (!options?.silent) {
           console.error('[remote-sync] load failed', error);

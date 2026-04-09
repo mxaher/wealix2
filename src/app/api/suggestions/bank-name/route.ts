@@ -1,6 +1,6 @@
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { countSuggestionsSubmittedToday, createSuggestion, findDuplicateSuggestion } from '@/lib/suggestion-storage';
 
 const ALLOWED_CHARS = /^[\p{L}\p{N}\s\-().\/،,]+$/u;
 const COUNTRY_CODE_PATTERN = /^[A-Z]{0,2}$/;
@@ -39,42 +39,32 @@ export async function POST(req: Request) {
   const country =
     typeof body.country === 'string' && COUNTRY_CODE_PATTERN.test(body.country) ? body.country : '';
 
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
-
-  const countToday = await db.suggestionEntry.count({
-    where: {
-      submittedByUserId: userId,
-      type: 'bank_name',
-      createdAt: { gte: today },
-    },
+  const countToday = await countSuggestionsSubmittedToday({
+    submittedByUserId: userId,
+    type: 'bank_name',
   });
 
   if (countToday >= 5) {
     return NextResponse.json({ error: 'Daily suggestion limit reached' }, { status: 429 });
   }
 
-  const existing = await db.suggestionEntry.findFirst({
-    where: {
-      type: 'bank_name',
-      valueLower: value.toLowerCase(),
-    },
+  const existing = await findDuplicateSuggestion({
+    type: 'bank_name',
+    valueLower: value.toLowerCase(),
   });
 
   if (existing) {
     return NextResponse.json({ success: true, duplicate: true });
   }
 
-  await db.suggestionEntry.create({
-    data: {
-      type: 'bank_name',
-      value,
-      valueLower: value.toLowerCase(),
-      locale: 'en',
-      meta: { country },
-      status: 'pending',
-      submittedByUserId: userId,
-    },
+  await createSuggestion({
+    type: 'bank_name',
+    value,
+    valueLower: value.toLowerCase(),
+    locale: 'en',
+    meta: { country },
+    status: 'pending',
+    submittedByUserId: userId,
   });
 
   return NextResponse.json({ success: true });

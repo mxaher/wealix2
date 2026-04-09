@@ -1,7 +1,15 @@
 import { NextResponse } from 'next/server';
 import { getOnboardingDoneCookieOptions, ONBOARDING_DONE_COOKIE } from '@/lib/onboarding-guard';
-import { saveOnboardingProfile } from '@/lib/onboarding-profile-storage';
+import { getOnboardingProfile, saveOnboardingProfile } from '@/lib/onboarding-profile-storage';
 import { requireAuthenticatedUser } from '@/lib/server-auth';
+
+export async function GET() {
+  const { userId, error } = await requireAuthenticatedUser();
+  if (error || !userId) return error ?? NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const profile = await getOnboardingProfile(userId);
+  return NextResponse.json({ profile: profile ?? null });
+}
 
 export async function POST(request: Request) {
   const { userId, error } = await requireAuthenticatedUser();
