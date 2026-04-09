@@ -1,6 +1,7 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { type NextRequest, NextResponse } from 'next/server';
 import { isE2ERequestAuthenticated } from '@/lib/e2e-auth';
+import { hasCompletedOnboardingCookie, ONBOARDING_DONE_COOKIE } from '@/lib/onboarding-guard';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://wealix.app';
 const APP_ORIGIN = new URL(APP_URL);
@@ -201,6 +202,14 @@ export default function middleware(req: NextRequest) {
 
     if (isAppRoute(request)) {
       await auth.protect();
+
+      if (!request.nextUrl.pathname.startsWith('/onboarding')) {
+        const onboardingDone = request.cookies.get(ONBOARDING_DONE_COOKIE)?.value;
+        if (!hasCompletedOnboardingCookie(onboardingDone)) {
+          return NextResponse.redirect(new URL('/onboarding', request.url));
+        }
+      }
+
       return NextResponse.next({ request: { headers: requestHeaders } });
     }
 

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { getOnboardingDoneCookieOptions, ONBOARDING_DONE_COOKIE } from '@/lib/onboarding-guard';
 import { requireAuthenticatedUser } from '@/lib/server-auth';
 
 export async function POST(request: Request) {
@@ -53,15 +54,6 @@ export async function POST(request: Request) {
   });
 
   const response = NextResponse.json({ success: true });
-
-  // Set the onboarding gate cookie — httpOnly + secure + 1 year expiry
-  response.cookies.set('onboarding_done', '1', {
-    httpOnly: true,
-    secure: true,
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 365, // 1 year
-    path: '/',
-  });
-
+  response.cookies.set(ONBOARDING_DONE_COOKIE, '1', getOnboardingDoneCookieOptions());
   return response;
 }
