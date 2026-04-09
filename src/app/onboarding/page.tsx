@@ -1,30 +1,23 @@
-import { auth, clerkClient } from '@clerk/nextjs/server';
+import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
+import { db } from '@/lib/db';
 import OnboardingClient from '@/app/onboarding/OnboardingClient';
-import { getOnboardingRedirectTarget } from '@/lib/onboarding-guard';
 
 export default async function OnboardingPage() {
-  const { userId, sessionClaims } = await auth();
+  const { userId } = await auth();
 
   if (!userId) {
     redirect('/');
   }
 
-  const sessionMetadata = (sessionClaims?.publicMetadata ?? {}) as Record<string, unknown>;
-  let redirectTarget = getOnboardingRedirectTarget(sessionMetadata);
+  // Check DB record — if onboarding is already completed, go straight to /app
+  const dbUser = await db.user.findUnique({
+    where: { id: userId },
+    select: { onboardingDone: true },
+  });
 
-  if (!redirectTarget) {
-    const clerk = await clerkClient();
-    const user = await clerk.users.getUser(userId);
-    const mergedMetadata = {
-      ...(user.publicMetadata as Record<string, unknown>),
-      ...(user.privateMetadata as Record<string, unknown>),
-    };
-    redirectTarget = getOnboardingRedirectTarget(mergedMetadata);
-  }
-
-  if (redirectTarget) {
-    redirect(redirectTarget);
+  if (dbUser?.onboardingDone) {
+    redirect('/app');
   }
 
   return <OnboardingClient />;

@@ -1,4 +1,73 @@
-export const DAILY_PLANNING_SYSTEM_PROMPT = `
+export type DailyPlanningUserProfile = {
+  name?: string | null;
+  locale?: string | null;
+  currency?: string | null;
+  monthlyIncome?: number | null;
+  riskTolerance?: string | null;
+  preferredMarkets?: string[] | null;
+  retirementGoal?: string | null;
+  currentAge?: number | null;
+  retirementAge?: number | null;
+};
+
+const RISK_DESCRIPTIONS: Record<string, string> = {
+  conservative: 'prefers capital preservation, low volatility, avoids speculative positions',
+  moderate: 'balances growth and safety, accepts measured volatility for reasonable returns',
+  aggressive: 'prioritizes growth, comfortable with high volatility and concentrated bets',
+};
+
+const GOAL_DESCRIPTIONS: Record<string, string> = {
+  early_retirement: 'achieve financial independence and retire before conventional age',
+  comfortable_retirement: 'build sufficient wealth for a comfortable retirement at a standard age',
+  legacy: 'accumulate generational wealth to pass on to heirs',
+  financial_freedom: 'generate passive income that covers living expenses, full work optionality',
+};
+
+function buildUserProfileBlock(profile: DailyPlanningUserProfile): string {
+  const lines: string[] = ['## USER PROFILE'];
+
+  if (profile.name) lines.push(`- Name: ${profile.name}`);
+  if (profile.locale) lines.push(`- Language: ${profile.locale}`);
+  if (profile.currency) lines.push(`- Currency: ${profile.currency}`);
+  if (profile.monthlyIncome != null && profile.monthlyIncome > 0) {
+    lines.push(`- Monthly Income: ${profile.monthlyIncome.toLocaleString('en-US')} ${profile.currency ?? 'SAR'}`);
+  }
+  if (profile.riskTolerance) {
+    const desc = RISK_DESCRIPTIONS[profile.riskTolerance] ?? profile.riskTolerance;
+    lines.push(`- Risk Tolerance: ${profile.riskTolerance} — ${desc}`);
+  }
+  if (profile.preferredMarkets && profile.preferredMarkets.length > 0) {
+    lines.push(`- Preferred Markets: ${profile.preferredMarkets.join(', ')}`);
+  }
+  if (profile.retirementGoal) {
+    const desc = GOAL_DESCRIPTIONS[profile.retirementGoal] ?? profile.retirementGoal;
+    lines.push(`- Financial Goal: ${profile.retirementGoal} — ${desc}`);
+  }
+  if (profile.currentAge != null && profile.retirementAge != null) {
+    const yearsLeft = Math.max(0, profile.retirementAge - profile.currentAge);
+    lines.push(`- Time Horizon: age ${profile.currentAge} → target retirement at ${profile.retirementAge}, ${yearsLeft} year${yearsLeft !== 1 ? 's' : ''} remaining`);
+  } else if (profile.retirementAge != null) {
+    lines.push(`- Target Retirement Age: ${profile.retirementAge}`);
+  }
+
+  const filledFields = lines.length - 1; // subtract header
+  if (filledFields < 4) {
+    lines.push('- Note: incomplete profile — recommendation specificity is reduced until more profile fields are provided.');
+  }
+
+  lines.push('');
+  lines.push('Always apply the above profile when generating recommendations. Align all portfolio suggestions, savings rate targets, and market insights to this user\'s risk tolerance and preferred markets. If the user asks something that contradicts their risk profile, acknowledge the conflict explicitly before answering. Frame all outputs as analytical decision support, not regulated financial advice.');
+  lines.push('');
+
+  return lines.join('\n');
+}
+
+export function buildDailyPlanningSystemPrompt(profile?: DailyPlanningUserProfile | null): string {
+  const profileBlock = profile ? buildUserProfileBlock(profile) : '';
+  return `${profileBlock}${DAILY_PLANNING_SYSTEM_PROMPT_BODY}`;
+}
+
+const DAILY_PLANNING_SYSTEM_PROMPT_BODY = `
 You are the Wealix Daily Financial Intelligence Engine.
 
 You run silently, once per day, in the background — before the user wakes up.
@@ -300,3 +369,7 @@ Health Score < 40:
 END OF PROMPT — OUTPUT VALID JSON ONLY
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `;
+
+// Legacy export — callers that use this directly get the body without a profile block.
+// Prefer buildDailyPlanningSystemPrompt(profile) for new usage.
+export const DAILY_PLANNING_SYSTEM_PROMPT = DAILY_PLANNING_SYSTEM_PROMPT_BODY;

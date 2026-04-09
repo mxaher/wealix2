@@ -15,6 +15,7 @@ import {
   Crown,
   LogOut,
   Check,
+  RefreshCw,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -369,6 +370,9 @@ function SettingsPageContent() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* ── Financial Profile ── */}
+            <FinancialProfileSection isArabic={isArabic} isSignedIn={isSignedIn} />
           </TabsContent>
 
           {/* ── Preferences ── */}
@@ -671,6 +675,204 @@ function SettingsPageContent() {
         </Tabs>
       </div>
     </DashboardShell>
+  );
+}
+
+// ─── Financial Profile Section ────────────────────────────────────────────────
+
+const CURRENCIES_LIST = ['SAR', 'USD', 'AED', 'EGP', 'KWD', 'GBP', 'EUR'];
+const MARKETS_LIST = ['TASI', 'NASDAQ', 'NYSE', 'DFM', 'ADX', 'EGX', 'LSE', 'Tadawul'];
+
+function FinancialProfileSection({ isArabic, isSignedIn }: { isArabic: boolean; isSignedIn: boolean }) {
+  const { userProfile, setUserProfile } = useAppStore();
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    monthlyIncome: userProfile.monthlyIncome?.toString() ?? '',
+    currency: 'SAR',
+    riskTolerance: userProfile.riskTolerance ?? '',
+    preferredMarkets: userProfile.preferredMarkets ?? [],
+    retirementGoal: userProfile.retirementGoal ?? '',
+    currentAge: userProfile.currentAge?.toString() ?? '',
+    retirementAge: userProfile.retirementAge?.toString() ?? '',
+  });
+
+  function toggleMarket(m: string) {
+    setForm((prev) => ({
+      ...prev,
+      preferredMarkets: prev.preferredMarkets.includes(m)
+        ? prev.preferredMarkets.filter((x) => x !== m)
+        : [...prev.preferredMarkets, m],
+    }));
+  }
+
+  async function save() {
+    if (!isSignedIn) return;
+    setSaving(true);
+    const payload: Record<string, unknown> = {};
+    if (form.monthlyIncome) payload.monthlyIncome = parseFloat(form.monthlyIncome);
+    if (form.riskTolerance) payload.riskTolerance = form.riskTolerance;
+    if (form.preferredMarkets.length) payload.preferredMarkets = form.preferredMarkets;
+    if (form.retirementGoal) payload.retirementGoal = form.retirementGoal;
+    if (form.currentAge) payload.currentAge = parseInt(form.currentAge, 10);
+    if (form.retirementAge) payload.retirementAge = parseInt(form.retirementAge, 10);
+
+    try {
+      await fetch('/api/onboarding/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      setUserProfile({
+        monthlyIncome: form.monthlyIncome ? parseFloat(form.monthlyIncome) : undefined,
+        riskTolerance: form.riskTolerance || undefined,
+        preferredMarkets: form.preferredMarkets.length ? form.preferredMarkets : undefined,
+        retirementGoal: form.retirementGoal || undefined,
+        currentAge: form.currentAge ? parseInt(form.currentAge, 10) : undefined,
+        retirementAge: form.retirementAge ? parseInt(form.retirementAge, 10) : undefined,
+      });
+      toast({ title: isArabic ? 'تم الحفظ' : 'Saved', description: isArabic ? 'تم تحديث ملفك المالي.' : 'Financial profile updated.' });
+    } catch {
+      toast({ title: isArabic ? 'خطأ' : 'Error', description: isArabic ? 'فشل الحفظ.' : 'Save failed.', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{isArabic ? 'الملف المالي' : 'Financial Profile'}</CardTitle>
+        <CardDescription>
+          {isArabic
+            ? 'يُستخدم هذا لتخصيص توصيات الذكاء الاصطناعي وتحليلات المحفظة.'
+            : 'Used to personalise AI recommendations and portfolio analysis.'}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Monthly Income */}
+        <div className="space-y-1.5">
+          <Label>{isArabic ? 'الدخل الشهري' : 'Monthly Income'}</Label>
+          <div className="flex gap-2">
+            <input
+              type="number"
+              min="0"
+              value={form.monthlyIncome}
+              onChange={(e) => setForm((p) => ({ ...p, monthlyIncome: e.target.value }))}
+              placeholder="0"
+              className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+            />
+            <select
+              value={form.currency}
+              onChange={(e) => setForm((p) => ({ ...p, currency: e.target.value }))}
+              className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              {CURRENCIES_LIST.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Risk Tolerance */}
+        <div className="space-y-2">
+          <Label>{isArabic ? 'تحمّل المخاطر' : 'Risk Tolerance'}</Label>
+          <div className="flex flex-wrap gap-2">
+            {(['conservative', 'moderate', 'aggressive'] as const).map((r) => (
+              <button
+                key={r}
+                type="button"
+                onClick={() => setForm((p) => ({ ...p, riskTolerance: r }))}
+                className={`rounded-full border px-4 py-1.5 text-xs font-medium transition-colors ${
+                  form.riskTolerance === r ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:border-primary/40'
+                }`}
+              >
+                {isArabic
+                  ? { conservative: 'محافظ', moderate: 'معتدل', aggressive: 'عدواني' }[r]
+                  : { conservative: 'Conservative', moderate: 'Moderate', aggressive: 'Aggressive' }[r]}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Preferred Markets */}
+        <div className="space-y-2">
+          <Label>{isArabic ? 'الأسواق المفضلة' : 'Preferred Markets'}</Label>
+          <div className="flex flex-wrap gap-2">
+            {MARKETS_LIST.map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => toggleMarket(m)}
+                className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                  form.preferredMarkets.includes(m) ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:border-primary/40'
+                }`}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Retirement Goal */}
+        <div className="space-y-2">
+          <Label>{isArabic ? 'الهدف المالي' : 'Financial Goal'}</Label>
+          <select
+            value={form.retirementGoal}
+            onChange={(e) => setForm((p) => ({ ...p, retirementGoal: e.target.value }))}
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          >
+            <option value="">{isArabic ? '— اختر —' : '— Select —'}</option>
+            <option value="early_retirement">{isArabic ? 'التقاعد المبكر' : 'Early Retirement'}</option>
+            <option value="comfortable_retirement">{isArabic ? 'تقاعد مريح' : 'Comfortable Retirement'}</option>
+            <option value="legacy">{isArabic ? 'الإرث' : 'Legacy'}</option>
+            <option value="financial_freedom">{isArabic ? 'الحرية المالية' : 'Financial Freedom'}</option>
+          </select>
+        </div>
+
+        {/* Ages */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label>{isArabic ? 'عمرك الحالي' : 'Current Age'}</Label>
+            <input
+              type="number"
+              min="16"
+              max="100"
+              value={form.currentAge}
+              onChange={(e) => setForm((p) => ({ ...p, currentAge: e.target.value }))}
+              placeholder="30"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>{isArabic ? 'سن التقاعد المستهدف' : 'Target Retirement Age'}</Label>
+            <input
+              type="number"
+              min="30"
+              max="100"
+              value={form.retirementAge}
+              onChange={(e) => setForm((p) => ({ ...p, retirementAge: e.target.value }))}
+              placeholder="60"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            />
+          </div>
+        </div>
+
+        <Button onClick={save} disabled={saving || !isSignedIn} className="w-full">
+          {saving ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
+          {isArabic ? 'حفظ الملف المالي' : 'Save Financial Profile'}
+        </Button>
+
+        <p className="text-xs text-muted-foreground text-center">
+          {isArabic
+            ? 'هذه البيانات تُستخدم فقط لتخصيص التحليل المالي. لا تُشارك مع أطراف خارجية.'
+            : 'This data is used only to personalise financial analysis. Never shared with third parties.'}
+        </p>
+      </CardContent>
+    </Card>
   );
 }
 

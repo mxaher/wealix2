@@ -27,6 +27,7 @@ export type WealixForecastMonth = {
 export type WealixAIContext = {
   snapshotDate: string;
   currency: string;
+  onboardingProfile?: OnboardingProfile | null;
   healthScore: number;
   riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   missingDataFlags: string[];
@@ -86,6 +87,16 @@ export type WealixAIContext = {
   narrativeSummary: string;
 };
 
+export type OnboardingProfile = {
+  monthlyIncome?: number | null;
+  riskTolerance?: string | null;
+  preferredMarkets?: string[] | null;
+  retirementGoal?: string | null;
+  currentAge?: number | null;
+  retirementAge?: number | null;
+  currency?: string | null;
+};
+
 type ContextBuildInput = {
   userId: string;
   snapshot: FinancialSnapshot;
@@ -95,6 +106,7 @@ type ContextBuildInput = {
   recurringObligations: RecurringObligation[];
   oneTimeExpenses: OneTimeExpense[];
   savingsAccounts: SavingsAccount[];
+  onboardingProfile?: OnboardingProfile | null;
 };
 
 const ESSENTIAL_EXPENSE_CATEGORIES = new Set<ExpenseCategory>([
@@ -402,7 +414,17 @@ function buildTopPriorityActions(alerts: WealixAIAlert[], largestExpenseCategory
 
 function buildContext(input: ContextBuildInput): WealixAIContext {
   const { snapshot, expenseEntries, budgetLimits } = input;
-  const monthlyIncome = roundMoney(snapshot.income.monthlyNormalized);
+  const profile = input.onboardingProfile;
+
+  // Use profile monthlyIncome as override when income entries are sparse (< 1 entry)
+  const derivedMonthlyIncome = roundMoney(snapshot.income.monthlyNormalized);
+  const monthlyIncome = (
+    profile?.monthlyIncome &&
+    profile.monthlyIncome > 0 &&
+    input.incomeEntries.length < 1
+  )
+    ? roundMoney(profile.monthlyIncome)
+    : derivedMonthlyIncome;
   const monthlyExpenses = roundMoney(snapshot.expenses.monthlyNormalized);
   const monthlySurplus = roundMoney(snapshot.monthlySavings);
   const annualIncome = roundMoney((monthlyIncome * 12));
@@ -494,7 +516,8 @@ function buildContext(input: ContextBuildInput): WealixAIContext {
 
   return {
     snapshotDate: snapshot.snapshotDate,
-    currency: snapshot.currency,
+    currency: profile?.currency ?? snapshot.currency,
+    onboardingProfile: profile ?? null,
     healthScore,
     riskLevel,
     missingDataFlags,
@@ -574,7 +597,7 @@ function buildContext(input: ContextBuildInput): WealixAIContext {
   };
 }
 
-export function buildWealixAIContext(userId: string, workspace: RemoteUserWorkspace): WealixAIContext {
+export function buildWealixAIContext(userId: string, workspace: RemoteUserWorkspace, onboardingProfile?: OnboardingProfile | null): WealixAIContext {
   return buildContext({
     userId,
     snapshot: buildFinancialSnapshotFromWorkspace(workspace),
@@ -584,6 +607,7 @@ export function buildWealixAIContext(userId: string, workspace: RemoteUserWorksp
     recurringObligations: workspace.recurringObligations ?? [],
     oneTimeExpenses: workspace.oneTimeExpenses ?? [],
     savingsAccounts: workspace.savingsAccounts ?? [],
+    onboardingProfile: onboardingProfile ?? null,
   });
 }
 
@@ -591,6 +615,7 @@ export function buildWealixAIContextFromClientContext(userId: string, context: C
   recurringObligations?: RecurringObligation[];
   oneTimeExpenses?: OneTimeExpense[];
   savingsAccounts?: SavingsAccount[];
+  onboardingProfile?: OnboardingProfile | null;
 }) {
   return buildContext({
     userId,
@@ -601,6 +626,7 @@ export function buildWealixAIContextFromClientContext(userId: string, context: C
     recurringObligations: context.recurringObligations ?? [],
     oneTimeExpenses: context.oneTimeExpenses ?? [],
     savingsAccounts: context.savingsAccounts ?? [],
+    onboardingProfile: context.onboardingProfile ?? null,
   });
 }
 

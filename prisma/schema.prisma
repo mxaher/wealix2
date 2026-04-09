@@ -20,6 +20,15 @@ model User {
   subscriptionTier  String    @default("none")     // "none" | "core" | "pro"
   subscriptionEndsAt DateTime?
   onboardingDone    Boolean   @default(false)
+  onboardingSkipped Boolean   @default(false)
+  phone             String?
+  notificationChannel String? // "whatsapp" | "email" | "both" | "none"
+  monthlyIncome     Float?
+  riskTolerance     String?   // "conservative" | "moderate" | "aggressive"
+  preferredMarkets  String?   // JSON-serialized array e.g. '["TASI","NASDAQ"]'
+  retirementAge     Int?
+  currentAge        Int?
+  retirementGoal    String?   // "early_retirement" | "comfortable_retirement" | "legacy" | "financial_freedom"
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 

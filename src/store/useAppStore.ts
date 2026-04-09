@@ -1444,7 +1444,18 @@ interface AppState {
   stashRemoteWorkspace: (workspace: RemoteWorkspaceSnapshot) => void;
   clearAllData: () => void;
   setSubscriptionTier: (tier: SubscriptionTier) => void;
-  
+
+  // Onboarding profile (enrichment layer for AI context)
+  userProfile: {
+    monthlyIncome?: number;
+    riskTolerance?: string;
+    preferredMarkets?: string[];
+    retirementGoal?: string;
+    currentAge?: number;
+    retirementAge?: number;
+  };
+  setUserProfile: (updates: Partial<AppState['userProfile']>) => void;
+
   // Sidebar
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
@@ -1951,7 +1962,12 @@ export const useAppStore = create<AppState>()(
             user: { ...state.user, subscriptionTier: tier },
           });
         }),
-      
+
+      // Onboarding profile
+      userProfile: {},
+      setUserProfile: (updates) =>
+        set((state) => ({ userProfile: { ...state.userProfile, ...updates } })),
+
       // Sidebar
       sidebarCollapsed: false,
       toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
