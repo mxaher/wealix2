@@ -1,6 +1,8 @@
 import { auth } from '@clerk/nextjs/server';
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
+import { hasCompletedOnboardingCookie, ONBOARDING_DONE_COOKIE } from '@/lib/onboarding-guard';
 import AppEntryClient from './AppEntryClient';
 
 /**
@@ -16,14 +18,26 @@ export default async function AppEntryPage() {
     redirect('/');
   }
 
-  const dbUser = await db.user.findUnique({
-    where: { id: userId },
-    select: { onboardingDone: true },
-  });
+  const cookieStore = await cookies();
+  const onboardingDoneCookie = cookieStore.get(ONBOARDING_DONE_COOKIE)?.value;
+  const hasOnboardingCookie = hasCompletedOnboardingCookie(onboardingDoneCookie);
 
-  // New user or incomplete onboarding — send to wizard
-  if (!dbUser?.onboardingDone) {
-    redirect('/onboarding');
+  if (hasOnboardingCookie) {
+    return <AppEntryClient />;
+  }
+
+  try {
+    const dbUser = await db.user.findUnique({
+      where: { id: userId },
+      select: { onboardingDone: true },
+    });
+
+    // New user or incomplete onboarding — send to wizard
+    if (!dbUser?.onboardingDone) {
+      redirect('/onboarding');
+    }
+  } catch (error) {
+    console.error('[app/app/page] onboarding lookup failed, trusting middleware cookie gate', error);
   }
 
   // Onboarding complete — render the client entry shell
