@@ -21,10 +21,6 @@
     "e2e:smoke": "playwright test e2e/specs/smoke",
     "e2e:financial-brain": "playwright test e2e/specs/integration e2e/specs/journeys",
     "e2e:install": "playwright install --with-deps",
-    "db:push": "prisma db push",
-    "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev",
-    "db:reset": "prisma migrate reset"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.0.7",
@@ -33,8 +29,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@fontsource/tajawal": "^5.2.7",
     "@hookform/resolvers": "^5.1.1",
-    "@prisma/client": "^6.11.1",
-    "@radix-ui/react-accordion": "^1.2.11",
+"@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
     "@radix-ui/react-aspect-ratio": "^1.1.7",
     "@radix-ui/react-avatar": "^1.1.10",
@@ -78,8 +73,7 @@
     "next-intl": "^4.3.4",
     "next-themes": "^0.4.6",
     "pdfjs-dist": "^5.6.205",
-    "prisma": "^6.11.1",
-    "react": "^19.0.0",
+"react": "^19.0.0",
     "react-day-picker": "^9.8.0",
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.60.0",
@@ -92,6 +86,7 @@
     "tailwindcss-animate": "^1.0.7",
     "uuid": "^11.1.0",
     "vaul": "^1.1.2",
+    "@react-pdf/renderer": "^3.4.0",
     "zod": "^4.0.2",
     "zustand": "^5.0.6"
   },

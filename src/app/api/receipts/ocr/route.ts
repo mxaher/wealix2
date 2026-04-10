@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server';
+import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { buildRateLimitHeaders, enforceRateLimit } from '@/lib/rate-limit';
 import { requireTier } from '@/lib/server-auth';
+import { dbRun } from '@/lib/db';
 
 const MAX_RECEIPT_FILE_SIZE = 10 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
@@ -532,6 +534,50 @@ export async function POST(request: NextRequest) {
     });
 
     const nvidiaResult = await runNvidiaReceiptOcr(normalizedFile);
+
+    // Persist image + receipt record in the background — does not block the response.
+    try {
+      const cfCtx = await getCloudflareContext();
+      const receiptId = crypto.randomUUID();
+      const fileExtension = sanitizedImage.type === 'image/png'
+        ? 'png'
+        : sanitizedImage.type === 'image/webp'
+          ? 'webp'
+          : 'jpg';
+      const r2Key = `receipts/${userId}/${receiptId}.${fileExtension}`;
+
+      const uploadToR2 = (async () => {
+        const storage = (cfCtx.env as Record<string, unknown>).WEALIX_STORAGE as R2Bucket | undefined;
+        if (storage) {
+          await storage.put(r2Key, normalizedBytes!.buffer as ArrayBuffer, {
+            httpMetadata: { contentType: sanitizedImage.type },
+            customMetadata: { userId, uploadedAt: Date.now().toString() },
+          });
+        }
+      })();
+
+      const insertToD1 = dbRun(
+        `INSERT INTO receipts (id, user_id, merchant, amount, currency, date, category, r2_image_key, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          receiptId,
+          userId,
+          nvidiaResult.merchantName,
+          nvidiaResult.amount,
+          nvidiaResult.currency,
+          nvidiaResult.date,
+          nvidiaResult.suggestedCategory,
+          r2Key,
+          Date.now(),
+        ]
+      );
+
+      cfCtx.ctx.waitUntil(Promise.all([uploadToR2, insertToD1]));
+    } catch (persistError) {
+      // Non-critical — log but don't fail the OCR response.
+      console.warn('[receipt-ocr] persistence error (non-fatal):', persistError);
+    }
+
     return Response.json(nvidiaResult, { headers: buildRateLimitHeaders(rateLimit) });
   } catch (error) {
     console.error('Receipt OCR Error:', error);

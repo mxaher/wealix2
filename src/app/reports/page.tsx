@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { motion } from 'framer-motion';
 import {
@@ -13,6 +13,7 @@ import {
   PieChart,
   Receipt,
   Sparkles,
+  Trash2,
   TrendingUp,
   Wallet,
   Briefcase,
@@ -155,6 +156,46 @@ export default function ReportsPage() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const [generatedReports, setGeneratedReports] = useState<GeneratedReport[]>([]);
+
+  type PersistedReport = { id: string; report_type: string; title: string; r2_pdf_key: string; created_at: number };
+  const [persistedReports, setPersistedReports] = useState<PersistedReport[]>([]);
+  const [persistedLoading, setPersistedLoading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const loadPersistedReports = useCallback(async () => {
+    if (!isSignedIn) return;
+    setPersistedLoading(true);
+    try {
+      const res = await fetch('/api/reports');
+      if (res.ok) {
+        const data = await res.json() as { reports: PersistedReport[] };
+        setPersistedReports(data.reports ?? []);
+      }
+    } catch {
+      // silent
+    } finally {
+      setPersistedLoading(false);
+    }
+  }, [isSignedIn]);
+
+  useEffect(() => {
+    loadPersistedReports();
+  }, [loadPersistedReports]);
+
+  const handleDeletePersistedReport = async (id: string) => {
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/reports/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setPersistedReports((prev) => prev.filter((r) => r.id !== id));
+        toast({ title: isArabic ? 'تم حذف التقرير' : 'Report deleted' });
+      }
+    } catch {
+      toast({ title: isArabic ? 'فشل الحذف' : 'Delete failed', variant: 'destructive' });
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const matchesPeriod = (date: string) => {
     if (!date) return false;
@@ -489,6 +530,78 @@ export default function ReportsPage() {
             )}
           </CardContent>
         </Card>
+
+        {isSignedIn && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>{isArabic ? 'التقارير المحفوظة' : 'Saved Reports'}</CardTitle>
+                  <CardDescription>
+                    {isArabic ? 'تقارير تم إنشاؤها وحفظها في السحابة.' : 'Reports generated and saved to your cloud storage.'}
+                  </CardDescription>
+                </div>
+                <Button variant="ghost" size="sm" onClick={loadPersistedReports} disabled={persistedLoading}>
+                  {persistedLoading ? (isArabic ? 'تحميل...' : 'Loading...') : (isArabic ? 'تحديث' : 'Refresh')}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {persistedLoading ? (
+                <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
+                  {isArabic ? 'جارٍ التحميل...' : 'Loading...'}
+                </div>
+              ) : persistedReports.length === 0 ? (
+                <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
+                  {isArabic ? 'لا توجد تقارير محفوظة.' : 'No saved reports yet.'}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {persistedReports.map((report) => (
+                    <div key={report.id} className="flex flex-col gap-4 rounded-xl border p-4 md:flex-row md:items-center">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                        <FileText className="h-5 w-5" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium">{report.title}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {new Date(report.created_at * 1000).toLocaleDateString(isArabic ? 'ar-SA-u-nu-latn' : 'en-US')}
+                          {' · '}
+                          {report.report_type}
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        {report.r2_pdf_key && (
+                          <Button
+                            asChild
+                            variant="outline"
+                            size="sm"
+                            className="gap-2"
+                          >
+                            <a href={`/api/reports/${report.id}/download`} target="_blank" rel="noopener noreferrer">
+                              <Download className="h-4 w-4" />
+                              {isArabic ? 'تنزيل' : 'Download'}
+                            </a>
+                          </Button>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-2 text-destructive hover:bg-destructive/10"
+                          onClick={() => handleDeletePersistedReport(report.id)}
+                          disabled={deletingId === report.id}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          {deletingId === report.id ? (isArabic ? 'جارٍ الحذف...' : 'Deleting...') : (isArabic ? 'حذف' : 'Delete')}
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
           <DialogContent className="max-w-3xl">

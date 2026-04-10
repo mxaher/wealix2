@@ -1054,8 +1054,8 @@ const DEMO_EXPENSE_IDS = new Set([
   'expense-entertainment',
 ]);
 const DEMO_PORTFOLIO_IDS = new Set(['1', '2', '3', '4', '5', '6', '7']);
-const DEMO_ASSET_ID_PREFIX = 'asset-';
-const DEMO_LIABILITY_ID_PREFIX = 'liability-';
+const DEMO_ASSET_IDS = new Set(['asset-1', 'asset-2', 'asset-3', 'asset-4', 'asset-5']);
+const DEMO_LIABILITY_IDS = new Set(['liability-1', 'liability-2', 'liability-3']);
 const DEMO_RECEIPT_IDS = new Set(['receipt-demo-1']);
 const DEMO_OBLIGATION_IDS = new Set(['obligation-rent', 'obligation-household', 'obligation-insurance']);
 const DEMO_ONE_TIME_IDS = new Set(['expense-iqama-renewal']);
@@ -1065,9 +1065,6 @@ function stripDemoSeeds<T extends { id: string }>(entries: T[], demoIds: Set<str
   return entries.filter((e) => !demoIds.has(e.id));
 }
 
-function stripDemoSeedsByPrefix<T extends { id: string }>(entries: T[], prefix: string): T[] {
-  return entries.filter((e) => !e.id.startsWith(prefix));
-}
 
 function purgeDemoDataFromState(state: PersistedWorkspaceState): PersistedWorkspaceState {
   return {
@@ -1075,8 +1072,8 @@ function purgeDemoDataFromState(state: PersistedWorkspaceState): PersistedWorksp
     incomeEntries: stripDemoSeeds(state.incomeEntries, DEMO_INCOME_IDS),
     expenseEntries: stripDemoSeeds(state.expenseEntries, DEMO_EXPENSE_IDS),
     portfolioHoldings: stripDemoSeeds(state.portfolioHoldings, DEMO_PORTFOLIO_IDS),
-    assets: stripDemoSeedsByPrefix(state.assets, DEMO_ASSET_ID_PREFIX),
-    liabilities: stripDemoSeedsByPrefix(state.liabilities, DEMO_LIABILITY_ID_PREFIX),
+    assets: stripDemoSeeds(state.assets, DEMO_ASSET_IDS),
+    liabilities: stripDemoSeeds(state.liabilities, DEMO_LIABILITY_IDS),
     receiptScans: stripDemoSeeds(state.receiptScans, DEMO_RECEIPT_IDS),
     recurringObligations: stripDemoSeeds(state.recurringObligations, DEMO_OBLIGATION_IDS),
     oneTimeExpenses: stripDemoSeeds(state.oneTimeExpenses, DEMO_ONE_TIME_IDS),

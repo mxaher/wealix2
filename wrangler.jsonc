@@ -12,7 +12,15 @@
     {
       "binding": "WEALIX_DB",
       "database_name": "wealix-db",
-      "database_id": "99beaa7e-d8d3-4718-b4ab-e880803515a5"
+      "database_id": "99beaa7e-d8d3-4718-b4ab-e880803515a5",
+      "migrations_dir": "cloudflare"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "WEALIX_STORAGE",
+      "bucket_name": "wealix-user-storage",
+      "preview_bucket_name": "wealix-user-storage-dev"
     }
   ],
   "assets": {

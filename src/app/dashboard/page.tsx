@@ -353,6 +353,8 @@ export default function DashboardPage() {
 
  <Card className="card-hover xl:col-span-2">
  <CardHeader>
+ <div className="flex items-center justify-between">
+ <div>
  <CardTitle className="flex items-center gap-2">
  <TrendingUp className="h-5 w-5 text-primary" />
  {isArabic ? 'اتجاه صافي الثروة' : 'Net Worth Trend'}
@@ -360,6 +362,13 @@ export default function DashboardPage() {
  <CardDescription>
  {isArabic ? 'آخر 12 شهراً' : 'Last 12 months'}
  </CardDescription>
+ </div>
+ <Button asChild variant="outline" size="sm" className="gap-1 text-xs rounded-xl shrink-0">
+ <Link href="/reports">
+ {isArabic ? 'تقرير صافي الثروة' : 'Net Worth Report'}
+ </Link>
+ </Button>
+ </div>
  </CardHeader>
  <CardContent>
  <div className="h-72">
@@ -485,7 +494,15 @@ export default function DashboardPage() {
 
  <Card className="card-hover">
  <CardHeader>
+ <div className="flex items-center justify-between">
  <CardTitle>{isArabic ? 'أكبر المراكز' : 'Top Holdings'}</CardTitle>
+ <Button asChild variant="ghost" size="sm" className="gap-1 text-xs">
+ <Link href="/portfolio">
+ {isArabic ? 'عرض المحفظة' : 'View Portfolio'}
+ <ChevronRight className="w-3 h-3" />
+ </Link>
+ </Button>
+ </div>
  </CardHeader>
  <CardContent className="space-y-3">
  {holdings.slice(0, 4).map((holding) => (

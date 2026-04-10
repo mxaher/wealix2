@@ -1,5 +1,7 @@
 import { NextRequest } from 'next/server';
+import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { sanitizeUserMessage, logAiAuditEvent } from '@/lib/ai-safety';
+import { appendChatMessage, createChatSession } from '@/lib/chat-history';
 import { buildFinancialSnapshotFromWorkspace, hasCompleteFinancialContext } from '@/lib/financial-snapshot';
 import { buildAiRouteHeaders, getAiProviderEndpoint, getAiProviderModel, getAiRouteDecision, getGemmaApiMode, hasAiProviderApiKey, type AiProvider } from '@/lib/llm-routing';
 import { buildRateLimitHeaders, enforceRateLimit } from '@/lib/rate-limit';
@@ -693,7 +695,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { messages, locale = 'ar', clientContext } = body;
+    const { messages, locale = 'ar', clientContext, sessionId: incomingSessionId } = body;
     const clientWorkspace = hasCompleteFinancialContext(clientContext?.workspace)
       ? clientContext.workspace as RemoteUserWorkspace
       : null;
@@ -703,6 +705,22 @@ export async function POST(request: NextRequest) {
         JSON.stringify({ error: 'Messages array is required' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Session management — create or reuse a server-side chat session
+    const userId = authResult.userId!;
+    const lastUserMessage = [...messages].reverse().find((m) => m.role === 'user')?.content ?? '';
+    let sessionId = typeof incomingSessionId === 'string' && incomingSessionId ? incomingSessionId : null;
+    try {
+      if (!sessionId) {
+        sessionId = await createChatSession(userId, lastUserMessage.slice(0, 60) || 'Chat');
+      }
+      if (lastUserMessage) {
+        await appendChatMessage(sessionId, userId, 'user', lastUserMessage);
+      }
+    } catch (err) {
+      // Non-fatal — continue even if history persistence fails
+      console.error('[ai/chat] chat history persistence error (user message)', err);
     }
 
     let userContext: AdvisorUserContext | undefined;
@@ -814,10 +832,27 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      // Persist assistant message after streaming
+      if (sessionId) {
+        const capturedSessionId = sessionId;
+        const capturedContent = deterministicResponse;
+        try {
+          const cfCtx = await getCloudflareContext();
+          cfCtx.ctx.waitUntil(
+            appendChatMessage(capturedSessionId, userId, 'assistant', capturedContent).catch((err) =>
+              console.error('[ai/chat] chat history persistence error (assistant/deterministic)', err)
+            )
+          );
+        } catch {
+          // getCloudflareContext not available in non-CF environments — ignore
+        }
+      }
+
       return new Response(stream, {
         headers: {
           'Content-Type': 'application/x-ndjson',
           'Transfer-Encoding': 'chunked',
+          ...(sessionId ? { 'X-Session-Id': sessionId } : {}),
           ...buildRateLimitHeaders(rateLimit),
         },
       });
@@ -871,6 +906,22 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Persist assistant message after the full response is collected
+    if (sessionId) {
+      const capturedSessionId = sessionId;
+      const capturedContent = response;
+      try {
+        const cfCtx = await getCloudflareContext();
+        cfCtx.ctx.waitUntil(
+          appendChatMessage(capturedSessionId, userId, 'assistant', capturedContent).catch((err) =>
+            console.error('[ai/chat] chat history persistence error (assistant)', err)
+          )
+        );
+      } catch {
+        // getCloudflareContext not available in non-CF environments — ignore
+      }
+    }
+
     // Return as a stream-like response
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
@@ -891,6 +942,7 @@ export async function POST(request: NextRequest) {
       headers: {
         'Content-Type': 'application/x-ndjson',
         'Transfer-Encoding': 'chunked',
+        ...(sessionId ? { 'X-Session-Id': sessionId } : {}),
         ...buildRateLimitHeaders(rateLimit),
         ...buildAiRouteHeaders(decision, responseProvider),
       },

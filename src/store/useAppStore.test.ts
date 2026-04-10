@@ -162,6 +162,8 @@ describe('useAppStore mode isolation', () => {
       liabilities: [],
       budgetLimits: [],
       recurringObligations: [],
+      oneTimeExpenses: [],
+      savingsAccounts: [],
     });
 
     expect(useAppStore.getState().appMode).toBe('demo');

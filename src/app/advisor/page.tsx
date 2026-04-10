@@ -92,6 +92,8 @@ export default function AdvisorPage() {
 
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState('');
+  // serverSessionId tracks the D1-persisted session id returned by the chat API
+  const [serverSessionId, setServerSessionId] = useState<string | null>(null);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [streamingContent, setStreamingContent] = useState('');
@@ -219,8 +221,15 @@ export default function AdvisorPage() {
             version: financialStateVersion,
             workspace: getPersistableWorkspaceSnapshot(useAppStore.getState()),
           },
+          ...(serverSessionId ? { sessionId: serverSessionId } : {}),
         }),
       });
+
+      // Capture the server-side session id returned by the API
+      const returnedSessionId = response.headers.get('X-Session-Id');
+      if (returnedSessionId && !serverSessionId) {
+        setServerSessionId(returnedSessionId);
+      }
 
       if (!response.ok) {
         const data = await response.json().catch(() => null) as { error?: string; details?: string } | null;
@@ -318,6 +327,7 @@ export default function AdvisorPage() {
     };
     setSessions(prev => [newSession, ...prev]);
     setActiveSessionId(newSession.id);
+    setServerSessionId(null);
   };
 
   const deleteSession = (sessionId: string) => {
@@ -354,7 +364,7 @@ export default function AdvisorPage() {
                         ? 'bg-primary text-primary-foreground' 
                         : 'hover:bg-muted'
                     }`}
-                    onClick={() => setActiveSessionId(session.id)}
+                    onClick={() => { setActiveSessionId(session.id); setServerSessionId(null); }}
                   >
                     <MessageSquare className="w-4 h-4 shrink-0" />
                     <span className="flex-1 truncate text-sm">{session.title}</span>
