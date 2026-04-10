@@ -3,7 +3,6 @@ import { auth } from '@clerk/nextjs/server';
 import { dbFirst, dbRun } from '@/lib/db';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 
-export const runtime = 'edge';
 
 type ReceiptRow = {
   id: string;

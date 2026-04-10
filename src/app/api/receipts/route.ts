@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { dbQuery } from '@/lib/db';
 
-export const runtime = 'edge';
 
 export async function GET(request: Request) {
   const { userId } = await auth();

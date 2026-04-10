@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { dbQuery } from '@/lib/db';
 
-export const runtime = 'edge';
 
 type ReportRow = {
   id: string;

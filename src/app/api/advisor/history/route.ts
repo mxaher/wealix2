@@ -3,7 +3,6 @@ import { getChatHistory } from '@/lib/chat-history';
 import { buildRateLimitHeaders, enforceRateLimit } from '@/lib/rate-limit';
 import { requireAuthenticatedUser } from '@/lib/server-auth';
 
-export const runtime = 'edge';
 
 export async function GET(request: Request) {
   const { userId, error } = await requireAuthenticatedUser();

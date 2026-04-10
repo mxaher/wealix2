@@ -3,7 +3,6 @@ import { getChatSession, deleteChatSession } from '@/lib/chat-history';
 import { buildRateLimitHeaders, enforceRateLimit } from '@/lib/rate-limit';
 import { requireAuthenticatedUser } from '@/lib/server-auth';
 
-export const runtime = 'edge';
 
 export async function GET(
   _request: Request,
