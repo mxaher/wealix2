@@ -43,7 +43,7 @@ import {
   YAxis,
 } from 'recharts';
 import { DashboardShell } from '@/components/layout';
-import { StatCard, FeatureGate, formatCurrency } from '@/components/shared';
+import { FinancialSettingsSyncBadge, StatCard, FeatureGate, formatCurrency } from '@/components/shared';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -95,6 +95,7 @@ import {
   type PortfolioTradeRecommendation,
   type PortfolioUnderperformer,
 } from '@/store/useAppStore';
+import { useFinancialSettingsStore } from '@/store/useFinancialSettingsStore';
 import { useRuntimeUser } from '@/hooks/useRuntimeUser';
 import { cn } from '@/lib/utils';
 import {
@@ -588,6 +589,8 @@ export default function PortfolioPage() {
   } = useAppStore();
   const isArabic = locale === 'ar';
   const { isSignedIn } = useRuntimeUser();
+  const financialSettings = useFinancialSettingsStore((state) => state.data);
+  const updateFinancialSettings = useFinancialSettingsStore((state) => state.updateFields);
 
   const [showAddHolding, setShowAddHolding] = useState(false);
   const [showImportDialog, setShowImportDialog] = useState(false);
@@ -604,6 +607,7 @@ export default function PortfolioPage() {
     fxRates: {},
   });
   const [newHolding, setNewHolding] = useState<HoldingDraft>(EMPTY_HOLDING_DRAFT);
+  const [allocationDraft, setAllocationDraft] = useState('');
 
   const holdings = portfolioHoldings;
   const latestAnalysis = portfolioAnalysisHistory[0] ?? null;
@@ -632,6 +636,34 @@ export default function PortfolioPage() {
       setMarketQuery('');
     }
   }, [newHolding.exchange, showAddHolding]);
+
+  useEffect(() => {
+    setAllocationDraft(
+      financialSettings.investmentAllocation.map((entry) => `${entry.label}:${entry.percentage}`).join(', ')
+    );
+  }, [financialSettings.investmentAllocation]);
+
+  const parseAllocationDraft = (value: string) =>
+    value
+      .split(',')
+      .map((chunk, index) => {
+        const [label, percentage] = chunk.split(':').map((item) => item.trim());
+        if (!label || !percentage) {
+          return null;
+        }
+
+        const parsedPercentage = Number(percentage);
+        if (!Number.isFinite(parsedPercentage) || parsedPercentage <= 0) {
+          return null;
+        }
+
+        return {
+          id: `${label}-${index}`,
+          label,
+          percentage: parsedPercentage,
+        };
+      })
+      .filter((entry): entry is { id: string; label: string; percentage: number } => Boolean(entry));
 
   const normalizeSaudiTicker = (ticker: string) => ticker.trim().toUpperCase().replace(/\.SR$/i, '');
   const getHoldingCurrency = (exchange: PortfolioExchange) => {
@@ -1675,6 +1707,55 @@ export default function PortfolioPage() {
             </Dialog>
           </div>
         </div>
+
+        <Card>
+          <CardHeader className="flex flex-row items-start justify-between gap-4">
+            <div>
+              <CardTitle>{isArabic ? 'إعدادات المحفظة المشتركة' : 'Shared Portfolio Settings'}</CardTitle>
+              <CardDescription>
+                {isArabic
+                  ? 'توزيع الاستثمار وملف المخاطر متزامنان مع الإعدادات ولوحة التحكم.'
+                  : 'Investment allocation and risk profile stay synced with Settings and Dashboard.'}
+              </CardDescription>
+            </div>
+            <FinancialSettingsSyncBadge isArabic={isArabic} />
+          </CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label>{isArabic ? 'ملف المخاطر' : 'Risk Profile'}</Label>
+              <Select
+                value={financialSettings.riskProfile}
+                onValueChange={(value) =>
+                  updateFinancialSettings({
+                    riskProfile: value as 'conservative' | 'moderate' | 'aggressive',
+                  })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="conservative">{isArabic ? 'محافظ' : 'Conservative'}</SelectItem>
+                  <SelectItem value="moderate">{isArabic ? 'معتدل' : 'Moderate'}</SelectItem>
+                  <SelectItem value="aggressive">{isArabic ? 'عدواني' : 'Aggressive'}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>{isArabic ? 'التوزيع الاستثماري' : 'Investment Allocation'}</Label>
+              <Input
+                value={allocationDraft}
+                onChange={(event) => setAllocationDraft(event.target.value)}
+                onBlur={() =>
+                  updateFinancialSettings({
+                    investmentAllocation: parseAllocationDraft(allocationDraft),
+                  })
+                }
+                placeholder={isArabic ? 'أسهم:50, ذهب:20, نقد:30' : 'Equities:50, Gold:20, Cash:30'}
+              />
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 auto-rows-fr">
           <StatCard

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   PiggyBank,
@@ -20,8 +20,9 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { DashboardShell } from '@/components/layout';
-import { StatCard, formatCurrency } from '@/components/shared';
+import { FinancialSettingsSyncBadge, StatCard, formatCurrency } from '@/components/shared';
 import { useAppStore } from '@/store/useAppStore';
+import { useFinancialSettingsStore } from '@/store/useFinancialSettingsStore';
 import {
   AreaChart,
   Area,
@@ -89,41 +90,45 @@ function calculateMonthlyIncome(
 
 export default function RetirementPage() {
   const { locale } = useAppStore();
+  const financialSettings = useFinancialSettingsStore((state) => state.data);
+  const updateFinancialSettings = useFinancialSettingsStore((state) => state.updateFields);
   const isArabic = locale === 'ar';
   
   // State
   const [currentAge, setCurrentAge] = useState(30);
-  const [retirementAge, setRetirementAge] = useState(60);
+  const [retirementAge, setRetirementAge] = useState(financialSettings.fireTargetAge || 60);
   const [currentSavings, setCurrentSavings] = useState(200000);
   const [monthlyContribution, setMonthlyContribution] = useState(5000);
   const [expectedReturn, setExpectedReturn] = useState(7);
   const [inflationRate, setInflationRate] = useState(3);
-  const [targetMonthlyIncome, setTargetMonthlyIncome] = useState(15000);
+  const [targetMonthlyIncome, setTargetMonthlyIncome] = useState(financialSettings.monthlyIncome || 15000);
+  const effectiveRetirementAge = financialSettings.fireTargetAge || retirementAge;
+  const effectiveTargetMonthlyIncome = financialSettings.monthlyIncome || targetMonthlyIncome;
 
   // Calculations
   const projection = useMemo(() => calculateRetirementProjection(
     currentAge,
-    retirementAge,
+    effectiveRetirementAge,
     currentSavings,
     monthlyContribution,
     expectedReturn,
     inflationRate
-  ), [currentAge, retirementAge, currentSavings, monthlyContribution, expectedReturn, inflationRate]);
+  ), [currentAge, effectiveRetirementAge, currentSavings, monthlyContribution, expectedReturn, inflationRate]);
 
   const monthlyIncomeAtRetirement = useMemo(() => 
     calculateMonthlyIncome(projection.totalAtRetirement, 25, expectedReturn, inflationRate),
     [projection.totalAtRetirement, expectedReturn, inflationRate]
   );
 
-  const incomeGap = targetMonthlyIncome - monthlyIncomeAtRetirement;
+  const incomeGap = effectiveTargetMonthlyIncome - monthlyIncomeAtRetirement;
   const isOnTrack = incomeGap <= 0;
 
   // Calculate required contribution to meet target
   const requiredMonthlyContribution = useMemo(() => {
-    const years = retirementAge - currentAge;
+    const years = effectiveRetirementAge - currentAge;
     const months = years * 12;
     const monthlyRate = expectedReturn / 100 / 12;
-    const targetSavings = (targetMonthlyIncome * 12) / 0.04; // Using 4% rule
+    const targetSavings = (effectiveTargetMonthlyIncome * 12) / 0.04; // Using 4% rule
     
     const fvCurrentSavings = currentSavings * Math.pow(1 + monthlyRate, months);
     const neededFromContributions = targetSavings - fvCurrentSavings;
@@ -131,7 +136,7 @@ export default function RetirementPage() {
     if (neededFromContributions <= 0) return 0;
     
     return Math.round(neededFromContributions / ((Math.pow(1 + monthlyRate, months) - 1) / monthlyRate));
-  }, [currentAge, retirementAge, currentSavings, expectedReturn, targetMonthlyIncome]);
+  }, [currentAge, effectiveRetirementAge, currentSavings, expectedReturn, effectiveTargetMonthlyIncome]);
 
   return (
     <DashboardShell>
@@ -148,6 +153,52 @@ export default function RetirementPage() {
             </p>
           </div>
         </div>
+
+        <Card>
+          <CardHeader className="flex flex-row items-start justify-between gap-4">
+            <div>
+              <CardTitle>{isArabic ? 'إعدادات التقاعد المشتركة' : 'Shared Retirement Settings'}</CardTitle>
+              <CardDescription>
+                {isArabic
+                  ? 'سن التقاعد والدخل المستهدف متزامنان مع الإعدادات و FIRE.'
+                  : 'Retirement age and target income stay synced with Settings and FIRE.'}
+              </CardDescription>
+            </div>
+            <FinancialSettingsSyncBadge isArabic={isArabic} />
+          </CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label>{isArabic ? 'سن التقاعد المستهدف' : 'Target Retirement Age'}</Label>
+              <Input
+                type="number"
+                min="30"
+                max="100"
+                value={effectiveRetirementAge}
+                onChange={(event) => {
+                  const value = Number(event.target.value || 60);
+                  setRetirementAge(value);
+                  updateFinancialSettings({ fireTargetAge: value });
+                }}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{isArabic ? 'الدخل الشهري المستهدف' : 'Target Monthly Income'}</Label>
+              <Input
+                type="number"
+                min="0"
+                value={effectiveTargetMonthlyIncome}
+                onChange={(event) => {
+                  const value = Number(event.target.value || 0);
+                  setTargetMonthlyIncome(value);
+                  updateFinancialSettings({
+                    monthlyIncome: value,
+                    annualIncome: value * 12,
+                  });
+                }}
+              />
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Status Card */}
         <Card className={isOnTrack ? 'bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border-emerald-500/30' : 'bg-gradient-to-br from-amber-500/10 to-amber-500/5 border-amber-500/30'}>
@@ -209,7 +260,7 @@ export default function RetirementPage() {
           <Card>
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">{isArabic ? 'سنوات حتى التقاعد' : 'Years to Retirement'}</p>
-              <p className="text-2xl font-bold mt-1">{retirementAge - currentAge} {isArabic ? 'سنة' : 'years'}</p>
+              <p className="text-2xl font-bold mt-1">{effectiveRetirementAge - currentAge} {isArabic ? 'سنة' : 'years'}</p>
             </CardContent>
           </Card>
         </div>
@@ -230,7 +281,7 @@ export default function RetirementPage() {
                 <CardHeader>
                   <CardTitle>{isArabic ? 'نمو المدخرات' : 'Savings Growth'}</CardTitle>
                   <CardDescription>
-                    {isArabic ? `من عمر ${currentAge} إلى ${retirementAge}` : `From age ${currentAge} to ${retirementAge}`}
+                    {isArabic ? `من عمر ${currentAge} إلى ${effectiveRetirementAge}` : `From age ${currentAge} to ${effectiveRetirementAge}`}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -285,7 +336,7 @@ export default function RetirementPage() {
                     <DollarSign className="w-8 h-8 text-blue-500" />
                     <div>
                       <p className="text-sm text-muted-foreground">{isArabic ? 'إجمالي المساهمات' : 'Total Contributions'}</p>
-                      <p className="font-medium">{formatCurrency(monthlyContribution * 12 * (retirementAge - currentAge), 'SAR', locale)}</p>
+                      <p className="font-medium">{formatCurrency(monthlyContribution * 12 * (effectiveRetirementAge - currentAge), 'SAR', locale)}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -296,7 +347,7 @@ export default function RetirementPage() {
                     <TrendingUp className="w-8 h-8 text-emerald-500" />
                     <div>
                       <p className="text-sm text-muted-foreground">{isArabic ? 'عوائد الاستثمار' : 'Investment Returns'}</p>
-                      <p className="font-medium">{formatCurrency(projection.totalAtRetirement - currentSavings - monthlyContribution * 12 * (retirementAge - currentAge), 'SAR', locale)}</p>
+                      <p className="font-medium">{formatCurrency(projection.totalAtRetirement - currentSavings - monthlyContribution * 12 * (effectiveRetirementAge - currentAge), 'SAR', locale)}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -336,7 +387,7 @@ export default function RetirementPage() {
                       <Label>{isArabic ? 'عمر التقاعد' : 'Retirement Age'}</Label>
                       <Input
                         type="number"
-                        value={retirementAge}
+                        value={effectiveRetirementAge}
                         onChange={(e) => setRetirementAge(parseInt(e.target.value) || 0)}
                       />
                     </div>
@@ -371,7 +422,7 @@ export default function RetirementPage() {
                       <Label>{isArabic ? 'الدخل الشهري المستهدف' : 'Target Monthly Income (SAR)'}</Label>
                       <Input
                         type="number"
-                        value={targetMonthlyIncome}
+                        value={effectiveTargetMonthlyIncome}
                         onChange={(e) => setTargetMonthlyIncome(parseFloat(e.target.value) || 0)}
                       />
                     </div>

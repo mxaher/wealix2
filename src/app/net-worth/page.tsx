@@ -67,6 +67,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { DashboardShell } from '@/components/layout';
+import { FinancialSettingsSyncBadge } from '@/components/shared';
 import {
   useAppStore,
   formatCurrency,
@@ -76,6 +77,7 @@ import {
   type AssetEntry,
   type LiabilityEntry,
 } from '@/store/useAppStore';
+import { useFinancialSettingsStore } from '@/store/useFinancialSettingsStore';
 import { BarChart2 } from 'lucide-react';
 import { useFinancialSnapshot } from '@/hooks/useFinancialSnapshot';
 import { toast } from '@/hooks/use-toast';
@@ -132,6 +134,8 @@ export default function NetWorthPage() {
   const { snapshot } = useFinancialSnapshot();
   const isArabic = locale === 'ar';
   const { isSignedIn } = useRuntimeUser();
+  const financialSettings = useFinancialSettingsStore((state) => state.data);
+  const updateFinancialSettings = useFinancialSettingsStore((state) => state.updateFields);
 
   const [showAddAsset, setShowAddAsset] = useState(false);
   const [showAddLiability, setShowAddLiability] = useState(false);
@@ -139,9 +143,9 @@ export default function NetWorthPage() {
   const [newLiability, setNewLiability] = useState({ name: '', category: 'loan', balance: '' });
 
   const portfolioInvestmentsValue = appMode === 'demo' ? 0 : snapshot.portfolio.totalInvestments;
-  const totalAssets = appMode === 'demo' ? 1170000 : snapshot.totalAssets;
-  const totalLiabilities = appMode === 'demo' ? 585500 : snapshot.totalLiabilities;
-  const netWorth = appMode === 'demo' ? 584500 : snapshot.netWorth.net;
+  const totalAssets = appMode === 'demo' ? 1170000 : financialSettings.totalAssets;
+  const totalLiabilities = appMode === 'demo' ? 585500 : financialSettings.totalLiabilities;
+  const netWorth = appMode === 'demo' ? 584500 : financialSettings.netWorth;
 
   const displayAssets = useMemo(
     () => [
@@ -451,6 +455,54 @@ export default function NetWorthPage() {
             </Dialog>
           </div>
         </div>
+
+        <Card>
+          <CardHeader className="flex flex-row items-start justify-between gap-4">
+            <div>
+              <CardTitle>{isArabic ? 'إعدادات صافي الثروة المشتركة' : 'Shared Net Worth Settings'}</CardTitle>
+              <CardDescription>
+                {isArabic
+                  ? 'أي تعديل هنا ينعكس فوراً في الإعدادات ولوحة التحكم والمحفظة.'
+                  : 'Changes here instantly sync with Settings, Dashboard, and Portfolio.'}
+              </CardDescription>
+            </div>
+            <FinancialSettingsSyncBadge isArabic={isArabic} />
+          </CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-3">
+            <div className="space-y-2">
+              <Label>{isArabic ? 'إجمالي الأصول' : 'Total Assets'}</Label>
+              <Input
+                type="number"
+                min="0"
+                value={financialSettings.totalAssets}
+                onChange={(event) =>
+                  updateFinancialSettings({
+                    totalAssets: Number(event.target.value || 0),
+                  })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{isArabic ? 'إجمالي الالتزامات' : 'Total Liabilities'}</Label>
+              <Input
+                type="number"
+                min="0"
+                value={financialSettings.totalLiabilities}
+                onChange={(event) =>
+                  updateFinancialSettings({
+                    totalLiabilities: Number(event.target.value || 0),
+                  })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{isArabic ? 'صافي الثروة المحسوب' : 'Computed Net Worth'}</Label>
+              <div className="rounded-xl border border-input bg-muted/30 px-3 py-2 text-sm font-medium">
+                {formatCurrency(netWorth, financialSettings.currency, locale)}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {!isSignedIn && (
           <Card className="border-dashed">

@@ -9,6 +9,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "next-themes";
 import { LocaleSync } from "@/components/layout/LocaleSync";
 import { ClerkSync } from "@/components/layout/ClerkSync";
+import { FinancialSettingsSync } from "@/components/layout/FinancialSettingsSync";
 import { RemoteProfileSync } from "@/components/layout/RemoteProfileSync";
 
 const inter = Inter({
@@ -184,6 +185,7 @@ export default function RootLayout({
             <LocaleSync />
             <ClerkSync />
             <RemoteProfileSync />
+            <FinancialSettingsSync />
             {children}
             <Toaster />
           </ThemeProvider>

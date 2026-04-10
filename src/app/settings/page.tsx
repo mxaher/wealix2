@@ -32,7 +32,9 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { DashboardShell } from '@/components/layout';
+import { FinancialSettingsSyncBadge } from '@/components/shared';
 import { useAppStore } from '@/store/useAppStore';
+import { useFinancialSettingsStore } from '@/store/useFinancialSettingsStore';
 import { useTheme } from 'next-themes';
 import { toast } from '@/hooks/use-toast';
 import { getStartPageHref, type StartPage } from '@/lib/start-page';
@@ -685,54 +687,47 @@ function SettingsPageContent() {
 // ─── Financial Profile Section ────────────────────────────────────────────────
 
 const CURRENCIES_LIST = ['SAR', 'USD', 'AED', 'EGP', 'KWD', 'GBP', 'EUR'];
-const MARKETS_LIST = ['TASI', 'NASDAQ', 'NYSE', 'DFM', 'ADX', 'EGX', 'LSE', 'Tadawul'];
 
 function FinancialProfileSection({ isArabic, isSignedIn }: { isArabic: boolean; isSignedIn: boolean }) {
-  const { userProfile, setUserProfile } = useAppStore();
+  const data = useFinancialSettingsStore((state) => state.data);
+  const updateFields = useFinancialSettingsStore((state) => state.updateFields);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    monthlyIncome: userProfile.monthlyIncome?.toString() ?? '',
-    currency: 'SAR',
-    riskTolerance: userProfile.riskTolerance ?? '',
-    preferredMarkets: userProfile.preferredMarkets ?? [],
-    retirementGoal: userProfile.retirementGoal ?? '',
-    currentAge: userProfile.currentAge?.toString() ?? '',
-    retirementAge: userProfile.retirementAge?.toString() ?? '',
+    monthlyIncome: data.monthlyIncome?.toString() ?? '',
+    currency: data.currency || 'SAR',
+    riskTolerance: data.riskProfile ?? '',
+    fireTarget: data.fireTarget?.toString() ?? '',
+    monthlyExpenses: data.monthlyExpenses?.toString() ?? '',
+    retirementAge: data.fireTargetAge?.toString() ?? '',
   });
 
-  function toggleMarket(m: string) {
-    setForm((prev) => ({
-      ...prev,
-      preferredMarkets: prev.preferredMarkets.includes(m)
-        ? prev.preferredMarkets.filter((x) => x !== m)
-        : [...prev.preferredMarkets, m],
-    }));
-  }
+  useEffect(() => {
+    setForm({
+      monthlyIncome: data.monthlyIncome?.toString() ?? '',
+      currency: data.currency || 'SAR',
+      riskTolerance: data.riskProfile ?? '',
+      fireTarget: data.fireTarget?.toString() ?? '',
+      monthlyExpenses: data.monthlyExpenses?.toString() ?? '',
+      retirementAge: data.fireTargetAge?.toString() ?? '',
+    });
+  }, [data]);
 
   async function save() {
     if (!isSignedIn) return;
     setSaving(true);
-    const payload: Record<string, unknown> = {};
-    if (form.monthlyIncome) payload.monthlyIncome = parseFloat(form.monthlyIncome);
-    if (form.riskTolerance) payload.riskTolerance = form.riskTolerance;
-    if (form.preferredMarkets.length) payload.preferredMarkets = form.preferredMarkets;
-    if (form.retirementGoal) payload.retirementGoal = form.retirementGoal;
-    if (form.currentAge) payload.currentAge = parseInt(form.currentAge, 10);
-    if (form.retirementAge) payload.retirementAge = parseInt(form.retirementAge, 10);
-
     try {
-      await fetch('/api/onboarding/profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      setUserProfile({
-        monthlyIncome: form.monthlyIncome ? parseFloat(form.monthlyIncome) : undefined,
-        riskTolerance: form.riskTolerance || undefined,
-        preferredMarkets: form.preferredMarkets.length ? form.preferredMarkets : undefined,
-        retirementGoal: form.retirementGoal || undefined,
-        currentAge: form.currentAge ? parseInt(form.currentAge, 10) : undefined,
-        retirementAge: form.retirementAge ? parseInt(form.retirementAge, 10) : undefined,
+      updateFields({
+        monthlyIncome: form.monthlyIncome ? parseFloat(form.monthlyIncome) : 0,
+        annualIncome: form.monthlyIncome ? parseFloat(form.monthlyIncome) * 12 : 0,
+        currency: form.currency,
+        riskProfile:
+          form.riskTolerance === 'conservative' || form.riskTolerance === 'aggressive'
+            ? form.riskTolerance
+            : 'moderate',
+        fireTarget: form.fireTarget ? parseFloat(form.fireTarget) : 0,
+        monthlyExpenses: form.monthlyExpenses ? parseFloat(form.monthlyExpenses) : 0,
+        fireTargetAge: form.retirementAge ? parseInt(form.retirementAge, 10) : 60,
+        onboardingCompleted: true,
       });
       toast({ title: isArabic ? 'تم الحفظ' : 'Saved', description: isArabic ? 'تم تحديث ملفك المالي.' : 'Financial profile updated.' });
     } catch {
@@ -751,9 +746,9 @@ function FinancialProfileSection({ isArabic, isSignedIn }: { isArabic: boolean; 
             ? 'يُستخدم هذا لتخصيص توصيات الذكاء الاصطناعي وتحليلات المحفظة.'
             : 'Used to personalise AI recommendations and portfolio analysis.'}
         </CardDescription>
+        <FinancialSettingsSyncBadge isArabic={isArabic} className="pt-2" />
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Monthly Income */}
         <div className="space-y-1.5">
           <Label>{isArabic ? 'الدخل الشهري' : 'Monthly Income'}</Label>
           <div className="flex gap-2">
@@ -777,7 +772,6 @@ function FinancialProfileSection({ isArabic, isSignedIn }: { isArabic: boolean; 
 
         <Separator />
 
-        {/* Risk Tolerance */}
         <div className="space-y-2">
           <Label>{isArabic ? 'تحمّل المخاطر' : 'Risk Tolerance'}</Label>
           <div className="flex flex-wrap gap-2">
@@ -800,57 +794,33 @@ function FinancialProfileSection({ isArabic, isSignedIn }: { isArabic: boolean; 
 
         <Separator />
 
-        {/* Preferred Markets */}
         <div className="space-y-2">
-          <Label>{isArabic ? 'الأسواق المفضلة' : 'Preferred Markets'}</Label>
-          <div className="flex flex-wrap gap-2">
-            {MARKETS_LIST.map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => toggleMarket(m)}
-                className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                  form.preferredMarkets.includes(m) ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:border-primary/40'
-                }`}
-              >
-                {m}
-              </button>
-            ))}
-          </div>
+          <Label>{isArabic ? 'هدف FIRE' : 'FIRE Target'}</Label>
+          <input
+            type="number"
+            min="0"
+            value={form.fireTarget}
+            onChange={(e) => setForm((p) => ({ ...p, fireTarget: e.target.value }))}
+            placeholder="1000000"
+            className={`w-full rounded-md border border-input bg-background px-3 py-2 text-sm ${isArabic ? 'text-end' : 'text-start'}`}
+          />
         </div>
 
         <Separator />
 
-        {/* Retirement Goal */}
         <div className="space-y-2">
-          <Label>{isArabic ? 'الهدف المالي' : 'Financial Goal'}</Label>
-          <select
-            value={form.retirementGoal}
-            onChange={(e) => setForm((p) => ({ ...p, retirementGoal: e.target.value }))}
+          <Label>{isArabic ? 'المصروفات الشهرية' : 'Monthly Expenses'}</Label>
+          <input
+            type="number"
+            min="0"
+            value={form.monthlyExpenses}
+            onChange={(e) => setForm((p) => ({ ...p, monthlyExpenses: e.target.value }))}
+            placeholder="0"
             className={`w-full rounded-md border border-input bg-background px-3 py-2 text-sm ${isArabic ? 'text-end' : 'text-start'}`}
-          >
-            <option value="">{isArabic ? '— اختر —' : '— Select —'}</option>
-            <option value="early_retirement">{isArabic ? 'التقاعد المبكر' : 'Early Retirement'}</option>
-            <option value="comfortable_retirement">{isArabic ? 'تقاعد مريح' : 'Comfortable Retirement'}</option>
-            <option value="legacy">{isArabic ? 'الإرث' : 'Legacy'}</option>
-            <option value="financial_freedom">{isArabic ? 'الحرية المالية' : 'Financial Freedom'}</option>
-          </select>
+          />
         </div>
 
-        {/* Ages */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label>{isArabic ? 'عمرك الحالي' : 'Current Age'}</Label>
-            <input
-              type="number"
-              min="16"
-              max="100"
-              value={form.currentAge}
-              onChange={(e) => setForm((p) => ({ ...p, currentAge: e.target.value }))}
-              placeholder="30"
-              className={`w-full rounded-md border border-input bg-background px-3 py-2 text-sm ${isArabic ? 'text-end' : 'text-start'}`}
-            />
-          </div>
           <div className="space-y-1.5">
             <Label>{isArabic ? 'سن التقاعد المستهدف' : 'Target Retirement Age'}</Label>
             <input
@@ -862,6 +832,14 @@ function FinancialProfileSection({ isArabic, isSignedIn }: { isArabic: boolean; 
               placeholder="60"
               className={`w-full rounded-md border border-input bg-background px-3 py-2 text-sm ${isArabic ? 'text-end' : 'text-start'}`}
             />
+          </div>
+          <div className="space-y-1.5">
+            <Label>{isArabic ? 'التوزيع الحالي' : 'Current Allocation'}</Label>
+            <div className="rounded-md border border-input bg-background px-3 py-2 text-sm text-muted-foreground">
+              {data.investmentAllocation.length > 0
+                ? data.investmentAllocation.map((entry) => `${entry.label} ${entry.percentage.toFixed(0)}%`).join(' • ')
+                : (isArabic ? 'لا يوجد بعد' : 'Not set yet')}
+            </div>
           </div>
         </div>
 

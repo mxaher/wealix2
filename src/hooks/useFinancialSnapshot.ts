@@ -2,7 +2,9 @@
 
 import { useMemo, useState } from 'react';
 import { buildFinancialSnapshotFromClientContext } from '@/lib/financial-snapshot';
+import { applyFinancialSettingsToSnapshot } from '@/lib/financial-settings';
 import { useAppStore } from '@/store/useAppStore';
+import { useFinancialSettingsStore } from '@/store/useFinancialSettingsStore';
 
 export function useFinancialSnapshot() {
   const locale = useAppStore((state) => state.locale);
@@ -17,6 +19,7 @@ export function useFinancialSnapshot() {
   const recurringObligations = useAppStore((state) => state.recurringObligations);
   const oneTimeExpenses = useAppStore((state) => state.oneTimeExpenses);
   const savingsAccounts = useAppStore((state) => state.savingsAccounts);
+  const financialSettings = useFinancialSettingsStore((state) => state.data);
   const [refreshNonce, setRefreshNonce] = useState(0);
 
   const snapshot = useMemo(() => buildFinancialSnapshotFromClientContext({
@@ -47,8 +50,13 @@ export function useFinancialSnapshot() {
     savingsAccounts,
   ]);
 
+  const syncedSnapshot = useMemo(
+    () => applyFinancialSettingsToSnapshot(snapshot, financialSettings),
+    [financialSettings, snapshot]
+  );
+
   return {
-    snapshot,
+    snapshot: syncedSnapshot,
     locale,
     isLoading: false,
     error: null as Error | null,

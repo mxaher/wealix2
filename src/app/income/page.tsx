@@ -12,7 +12,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { FinancialSettingsSyncBadge } from '@/components/shared';
 import { useAppStore, formatCurrency, type IncomeEntry, type IncomeFrequency, type IncomeSource } from '@/store/useAppStore';
+import { useFinancialSettingsStore } from '@/store/useFinancialSettingsStore';
 import { toast } from '@/hooks/use-toast';
 import { createOpaqueId } from '@/lib/ids';
 import { useRuntimeUser } from '@/hooks/useRuntimeUser';
@@ -51,6 +53,8 @@ export default function IncomePage() {
   const deleteIncomeEntry = useAppStore((state) => state.deleteIncomeEntry);
   const isArabic = locale === 'ar';
   const { isSignedIn } = useRuntimeUser();
+  const financialSettings = useFinancialSettingsStore((state) => state.data);
+  const updateFinancialSettings = useFinancialSettingsStore((state) => state.updateFields);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(defaultForm);
 
@@ -249,6 +253,70 @@ export default function IncomePage() {
             </DialogContent>
           </Dialog>
         </div>
+
+        <Card>
+          <CardHeader className="flex flex-row items-start justify-between gap-4">
+            <div>
+              <CardTitle>{isArabic ? 'إعدادات الدخل المشتركة' : 'Shared Income Settings'}</CardTitle>
+              <CardDescription>
+                {isArabic
+                  ? 'هذه القيم مرتبطة مباشرة بصفحات الإعدادات ولوحة التحكم و FIRE.'
+                  : 'These values stay in sync with Settings, Dashboard, and FIRE.'}
+              </CardDescription>
+            </div>
+            <FinancialSettingsSyncBadge isArabic={isArabic} />
+          </CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-3">
+            <div className="space-y-2">
+              <Label>{isArabic ? 'الدخل الشهري' : 'Monthly Income'}</Label>
+              <Input
+                type="number"
+                min="0"
+                value={financialSettings.monthlyIncome}
+                onChange={(event) =>
+                  updateFinancialSettings({
+                    monthlyIncome: Number(event.target.value || 0),
+                    annualIncome: Number(event.target.value || 0) * 12,
+                  })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{isArabic ? 'مصدر الدخل الأساسي' : 'Primary Income Source'}</Label>
+              <Select
+                value={financialSettings.incomeSource}
+                onValueChange={(value) => {
+                  updateFinancialSettings({ incomeSource: value });
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {incomeSources.map((source) => (
+                    <SelectItem key={source.value} value={source.value}>
+                      {isArabic ? source.ar : source.en}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>{isArabic ? 'معدل الادخار الحالي %' : 'Current Savings Rate %'}</Label>
+              <Input
+                type="number"
+                min="0"
+                max="100"
+                value={financialSettings.currentSavingsRate}
+                onChange={(event) =>
+                  updateFinancialSettings({
+                    currentSavingsRate: Number(event.target.value || 0),
+                  })
+                }
+              />
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="grid gap-4 md:grid-cols-3">
           <StatCard

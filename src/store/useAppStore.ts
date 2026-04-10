@@ -1370,7 +1370,7 @@ const initialGuestProfile = createProfileSnapshot('guest', 'Guest', '', buildDem
   notificationPreferences: defaultNotificationPreferences,
 });
 
-interface AppState {
+export interface AppState {
   // User
   user: User | null;
   setUser: (user: User | null) => void;

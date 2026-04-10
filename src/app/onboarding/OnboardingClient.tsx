@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAppStore } from '@/store/useAppStore';
+import { useFinancialSettingsStore } from '@/store/useFinancialSettingsStore';
 import { toast } from '@/hooks/use-toast';
 import { createOpaqueId } from '@/lib/ids';
 
@@ -489,6 +490,19 @@ export default function OnboardingClient() {
       retirementGoal: (data.retirementGoal as RetirementGoal) || undefined,
       currentAge,
       retirementAge,
+    });
+
+    void useFinancialSettingsStore.getState().initializeFromOnboarding({
+      monthlyIncome: monthlyIncome ?? 0,
+      annualIncome: (monthlyIncome ?? 0) * 12,
+      incomeSource: 'salary',
+      currency: data.currency,
+      fireTargetAge: retirementAge ?? 60,
+      riskProfile:
+        data.riskTolerance === 'conservative' || data.riskTolerance === 'aggressive'
+          ? data.riskTolerance
+          : 'moderate',
+      onboardingCompleted: true,
     });
 
     updateStoreUser({

@@ -28,8 +28,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { DashboardShell } from '@/components/layout';
-import { StatCard, FeatureGate, formatCurrency } from '@/components/shared';
+import { FinancialSettingsSyncBadge, StatCard, FeatureGate, formatCurrency } from '@/components/shared';
 import { useAppStore } from '@/store/useAppStore';
+import { useFinancialSettingsStore } from '@/store/useFinancialSettingsStore';
 import { useFinancialSnapshot } from '@/hooks/useFinancialSnapshot';
 import {
   LineChart,
@@ -98,6 +99,8 @@ function calculateProjectedGrowth(
 export default function FirePage() {
   const { locale } = useAppStore();
   const { snapshot } = useFinancialSnapshot();
+  const financialSettings = useFinancialSettingsStore((state) => state.data);
+  const updateFinancialSettings = useFinancialSettingsStore((state) => state.updateFields);
   const isArabic = locale === 'ar';
 
   const [withdrawalRate, setWithdrawalRate] = useState(4);
@@ -106,11 +109,14 @@ export default function FirePage() {
   const [fireType, setFireType] = useState<'lean' | 'regular' | 'fat'>('regular');
   const [errors, setErrors] = useState<FireErrors>({});
   const [additionalSavings, setAdditionalSavings] = useState(0);
-  const annualExpenses = snapshot.fire.annualExpenses;
+  const annualExpenses = financialSettings.monthlyExpenses * 12;
   const currentNetWorth = snapshot.netWorth.net;
-  const annualSavings = snapshot.fire.annualSavings;
+  const annualSavings = (financialSettings.monthlyIncome - financialSettings.monthlyExpenses) * 12;
 
-  const fireNumber = useMemo(() => calculateFireNumber(annualExpenses, withdrawalRate), [annualExpenses, withdrawalRate]);
+  const fireNumber = useMemo(
+    () => financialSettings.fireTarget > 0 ? financialSettings.fireTarget : calculateFireNumber(annualExpenses, withdrawalRate),
+    [annualExpenses, financialSettings.fireTarget, withdrawalRate]
+  );
   const yearsToFire = useMemo(() => calculateYearsToFire(currentNetWorth, fireNumber, annualSavings + additionalSavings, expectedReturn), [currentNetWorth, fireNumber, annualSavings, additionalSavings, expectedReturn]);
   const progress = useMemo(() => Math.min((currentNetWorth / fireNumber) * 100, 100), [currentNetWorth, fireNumber]);
   const projectionData = useMemo(() => calculateProjectedGrowth(currentNetWorth, annualSavings + additionalSavings, expectedReturn, Math.max((yearsToFire ?? 20) + 5, 20)), [currentNetWorth, annualSavings, additionalSavings, expectedReturn, yearsToFire]);
@@ -139,7 +145,7 @@ export default function FirePage() {
 
   const fireTypeMultipliers = { lean: 0.7, regular: 1, fat: 1.5 };
   const adjustedFireNumber = fireNumber * fireTypeMultipliers[fireType];
-  const fireYearLabel = yearsToFire === null ? (isArabic ? 'يتطلب رفع الادخار' : 'Needs higher savings') : String(new Date().getFullYear() + yearsToFire);
+  const fireYearLabel = yearsToFire === null ? (isArabic ? 'يتطلب رفع الادخار' : 'Needs higher savings') : String(financialSettings.fireTargetAge || (new Date().getFullYear() + yearsToFire));
 
   const validateField = (field: FireFieldKey, value: number): string | undefined => {
     if (!Number.isFinite(value) || value <= 0) {
@@ -209,6 +215,50 @@ export default function FirePage() {
             </Select>
           </div>
         </div>
+
+        <Card>
+          <CardHeader className="flex flex-row items-start justify-between gap-4">
+            <div>
+              <CardTitle>{isArabic ? 'إعدادات FIRE المشتركة' : 'Shared FIRE Settings'}</CardTitle>
+              <CardDescription>
+                {isArabic
+                  ? 'التعديلات هنا تنعكس فوراً في الإعدادات والدخل ولوحة التحكم.'
+                  : 'Changes here instantly sync with Settings, Income, and Dashboard.'}
+              </CardDescription>
+            </div>
+            <FinancialSettingsSyncBadge isArabic={isArabic} />
+          </CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-3">
+            <div className="space-y-2">
+              <Label>{isArabic ? 'هدف FIRE' : 'FIRE Target'}</Label>
+              <Input
+                type="number"
+                min="0"
+                value={financialSettings.fireTarget}
+                onChange={(event) => updateFinancialSettings({ fireTarget: Number(event.target.value || 0) })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{isArabic ? 'المصروفات الشهرية' : 'Monthly Expenses'}</Label>
+              <Input
+                type="number"
+                min="0"
+                value={financialSettings.monthlyExpenses}
+                onChange={(event) => updateFinancialSettings({ monthlyExpenses: Number(event.target.value || 0) })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{isArabic ? 'العمر المستهدف' : 'Target Age'}</Label>
+              <Input
+                type="number"
+                min="30"
+                max="100"
+                value={financialSettings.fireTargetAge}
+                onChange={(event) => updateFinancialSettings({ fireTargetAge: Number(event.target.value || 60) })}
+              />
+            </div>
+          </CardContent>
+        </Card>
 
         {/* FIRE Number Hero */}
         <Card className="bg-gradient-to-br from-orange-500/10 via-gold/10 to-emerald-500/10 border-gold/30">
