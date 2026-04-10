@@ -45,7 +45,6 @@ const navSections = [
     items: [
       { href: '/income', label: { en: 'Income', ar: 'الدخل' }, icon: TrendingUp },
       { href: '/expenses', label: { en: 'Expenses', ar: 'المصروفات' }, icon: Receipt },
-      { href: '/budget', label: { en: 'Budget', ar: 'الميزانية' }, icon: PiggyBank },
     ],
   },
   {
