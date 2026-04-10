@@ -20,7 +20,7 @@
     "e2e": "playwright test",
     "e2e:smoke": "playwright test e2e/specs/smoke",
     "e2e:financial-brain": "playwright test e2e/specs/integration e2e/specs/journeys",
-    "e2e:install": "playwright install --with-deps",
+    "e2e:install": "playwright install --with-deps"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.0.7",
