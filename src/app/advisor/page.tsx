@@ -42,9 +42,10 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { DashboardShell } from '@/components/layout';
-import { FeatureGate } from '@/components/shared';
+import { AIModelSelector, FeatureGate } from '@/components/shared';
 import { InvestmentDecisionCheck } from '@/components/investment/InvestmentDecisionCheck';
 import { getPersistableWorkspaceSnapshot, useAppStore } from '@/store/useAppStore';
+import { useAIModelStore } from '@/store/useAIModelStore';
 import ReactMarkdown from 'react-markdown';
 import { createOpaqueId } from '@/lib/ids';
 
@@ -88,6 +89,8 @@ export default function AdvisorPage() {
   } = useAppStore();
   const financialStateVersion = useAppStore((state) => state.financialStateVersion);
   const isArabic = locale === 'ar';
+  const loadAIModels = useAIModelStore((state) => state.loadFromBackend);
+  const selectedModelId = useAIModelStore((state) => state.data.selectedModelId);
 
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState('');
@@ -101,6 +104,10 @@ export default function AdvisorPage() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const activeSession = sessions.find(s => s.id === activeSessionId);
+
+  useEffect(() => {
+    void loadAIModels();
+  }, [loadAIModels]);
 
   useEffect(() => {
     const defaultSession: ChatSession = {
@@ -216,6 +223,7 @@ export default function AdvisorPage() {
         body: JSON.stringify({
           messages,
           locale,
+          selectedModelId,
           clientContext: {
             version: financialStateVersion,
             workspace: getPersistableWorkspaceSnapshot(useAppStore.getState()),
@@ -403,6 +411,7 @@ export default function AdvisorPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
+                  <AIModelSelector isArabic={isArabic} compact />
                   <Dialog>
                     <DialogTrigger asChild>
                       <Button variant="outline" size="sm" className="btn-with-icon gap-2">

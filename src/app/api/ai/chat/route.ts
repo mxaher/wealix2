@@ -3,13 +3,14 @@ import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { sanitizeUserMessage, logAiAuditEvent } from '@/lib/ai-safety';
 import { appendChatMessage, createChatSession } from '@/lib/chat-history';
 import { buildFinancialSnapshotFromWorkspace, hasCompleteFinancialContext } from '@/lib/financial-snapshot';
-import { buildAiRouteHeaders, getAiProviderEndpoint, getAiProviderModel, getAiRouteDecision, getGemmaApiMode, hasAiProviderApiKey, type AiProvider } from '@/lib/llm-routing';
+import { buildAiRouteHeaders } from '@/lib/llm-routing';
 import { buildRateLimitHeaders, enforceRateLimit } from '@/lib/rate-limit';
 import { isRemotePersistenceConfigured, loadRemoteWorkspace, type RemoteUserWorkspace } from '@/lib/remote-user-data';
 import { requirePaidTier } from '@/lib/server-auth';
 import { buildDeterministicAdvisorResponse, buildFinancialPersonaFromWorkspace } from '@/lib/financial-brain-surface';
 import { buildCompactWealixAIContext, buildWealixAIContext } from '@/lib/wealix-ai-context';
-import { extractNvidiaAdvisorText } from './provider-response';
+import { AIService, type AIServiceMessage } from '@/lib/ai-service';
+import { getResolvedAIModelSelection } from '@/lib/ai-model-storage';
 
 // Financial advisor system prompt
 const FINANCIAL_ADVISOR_SYSTEM_PROMPT = `You are Wael, the AI Financial Advisor embedded inside Wealix.
@@ -155,49 +156,6 @@ type ChatMessage = {
   role: 'system' | 'user' | 'assistant';
   content: string;
 };
-
-type NvidiaChatResponse = {
-  choices?: Array<{
-    message?: {
-      content?: string | Array<{ type?: string; text?: string }>;
-      reasoning_content?: string;
-    };
-  }>;
-  error?: {
-    message?: string;
-  };
-};
-
-const DEFAULT_PROVIDER_TIMEOUT_MS = 25_000;
-
-type GeminiGenerateContentResponse = {
-  candidates?: Array<{
-    content?: {
-      parts?: Array<{
-        text?: string;
-      }>;
-    };
-  }>;
-  error?: {
-    message?: string;
-  };
-};
-
-function buildGemmaNativeUserTurn(params: {
-  systemPrompt?: string;
-  userPrompt: string;
-}) {
-  const { systemPrompt, userPrompt } = params;
-  return systemPrompt
-    ? [
-        'Instructions:',
-        systemPrompt,
-        '',
-        'User request:',
-        userPrompt,
-      ].join('\n')
-    : userPrompt;
-}
 
 type AdvisorUserContext = {
   snapshotDate?: string;
@@ -520,159 +478,6 @@ function generateFallbackAdvisorResponse(params: {
   return lines.join('\n');
 }
 
-async function createAdvisorCompletion(provider: AiProvider, messages: ChatMessage[]) {
-  const { apiKey, apiBase } = getAiProviderEndpoint(provider);
-  const model = getAiProviderModel('advisor', provider);
-
-  if (!apiKey) {
-    throw new Error(`${provider.toUpperCase()} API key is not configured for AI Advisor.`);
-  }
-
-  if (provider === 'gemma' && getGemmaApiMode() === 'google-native') {
-    const [firstMessage, ...restMessages] = messages;
-    const systemInstruction = firstMessage?.role === 'system' ? firstMessage.content : '';
-    const conversation = firstMessage?.role === 'system' ? restMessages : messages;
-    const modelPath = model.startsWith('models/') ? model : `models/${model}`;
-
-    let response: Response;
-    try {
-      response = await fetch(`${apiBase}/${modelPath}:generateContent`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': apiKey,
-        },
-        body: JSON.stringify({
-          contents: conversation.map((message) => ({
-            role: message.role === 'assistant' ? 'model' : 'user',
-            parts: [{
-              text: message.role === 'user'
-                ? buildGemmaNativeUserTurn({
-                    systemPrompt: systemInstruction,
-                    userPrompt: message.content,
-                  })
-                : message.content,
-            }],
-          })),
-          generationConfig: {
-            temperature: 0.25,
-            topP: 0.9,
-            maxOutputTokens: 1600,
-          },
-        }),
-        cache: 'no-store',
-        signal: AbortSignal.timeout(DEFAULT_PROVIDER_TIMEOUT_MS),
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown Gemma request failure.';
-      throw new Error(/aborted|timeout/i.test(message) ? 'Gemma API request timed out' : `Gemma API request failed: ${message}`);
-    }
-
-    const json = await response.json().catch(() => null) as GeminiGenerateContentResponse | null;
-    if (!response.ok) {
-      throw new Error(json?.error?.message || `Gemma API request failed with status ${response.status}`);
-    }
-
-    const content = json?.candidates?.[0]?.content?.parts
-      ?.map((part) => part.text ?? '')
-      .join('')
-      .trim();
-    if (!content) {
-      throw new Error('The advisor returned an empty response.');
-    }
-
-    return content;
-  }
-
-  let response: Response;
-  try {
-    response = await fetch(`${apiBase}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model,
-        messages,
-        temperature: 0.25,
-        top_p: 0.9,
-        max_tokens: 1600,
-      }),
-      cache: 'no-store',
-      signal: AbortSignal.timeout(DEFAULT_PROVIDER_TIMEOUT_MS),
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : `Unknown ${provider.toUpperCase()} request failure.`;
-    throw new Error(/aborted|timeout/i.test(message) ? `${provider.toUpperCase()} API request timed out` : `${provider.toUpperCase()} API request failed: ${message}`);
-  }
-
-  const json = await response.json().catch(() => null) as NvidiaChatResponse | null;
-  if (!response.ok) {
-    throw new Error(json?.error?.message || `${provider.toUpperCase()} API request failed with status ${response.status}`);
-  }
-
-  const content = extractNvidiaAdvisorText(json);
-  if (!content) {
-    throw new Error(`The ${provider} advisor returned an empty response.`);
-  }
-
-  return content;
-}
-
-async function createMergedAdvisorCompletion(params: {
-  locale: 'ar' | 'en';
-  messages: ChatMessage[];
-  primaryProvider: AiProvider;
-  secondaryProvider: AiProvider;
-}) {
-  const { locale, messages, primaryProvider, secondaryProvider } = params;
-  const primaryDraft = await createAdvisorCompletion(primaryProvider, messages);
-  let secondaryDraft: string;
-
-  try {
-    secondaryDraft = await createAdvisorCompletion(secondaryProvider, messages);
-  } catch (error) {
-    console.error('[ai/chat] secondary advisor provider failed during merge, returning primary draft', error);
-    return primaryDraft;
-  }
-
-  const latestUserPrompt =
-    [...messages].reverse().find((message) => message.role === 'user')?.content ?? '';
-
-  const synthesisMessages: ChatMessage[] = [
-    {
-      role: 'system',
-      content: [
-        locale === 'ar'
-          ? 'أنت محرر نهائي للإجابة المالية. ادمج المسودتين في إجابة واحدة أفضل.'
-          : 'You are the final financial answer editor. Merge the two drafts into one stronger response.',
-        locale === 'ar'
-          ? 'الحفاظ على نفس اللغة المطلوبة ونفس الحقائق الواردة في بيانات Wealix. لا تذكر وجود مسودتين أو أكثر من نموذج.'
-          : 'Preserve the requested language and the facts grounded in the Wealix data. Do not mention multiple drafts or multiple models.',
-        locale === 'ar'
-          ? 'اختر الأدق والأكثر تحفظاً عندما يوجد تعارض، وابقِ الإجابة عملية ومباشرة.'
-          : 'Choose the more accurate and more conservative point when the drafts conflict, and keep the answer practical and direct.',
-      ].join(' '),
-    },
-    {
-      role: 'user',
-      content: [
-        locale === 'ar' ? `طلب المستخدم الأخير:\n${latestUserPrompt}` : `Latest user request:\n${latestUserPrompt}`,
-        locale === 'ar' ? `المسودة A:\n${primaryDraft}` : `Draft A:\n${primaryDraft}`,
-        locale === 'ar' ? `المسودة B:\n${secondaryDraft}` : `Draft B:\n${secondaryDraft}`,
-      ].join('\n\n'),
-    },
-  ];
-
-  try {
-    return await createAdvisorCompletion(primaryProvider, synthesisMessages);
-  } catch (error) {
-    console.error('[ai/chat] merged advisor synthesis failed, returning primary draft', error);
-    return primaryDraft;
-  }
-}
-
 export async function POST(request: NextRequest) {
   try {
     const authResult = await requirePaidTier('pro');
@@ -695,7 +500,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { messages, locale = 'ar', clientContext, sessionId: incomingSessionId } = body;
+    const { messages, locale = 'ar', clientContext, sessionId: incomingSessionId, selectedModelId } = body;
     const clientWorkspace = hasCompleteFinancialContext(clientContext?.workspace)
       ? clientContext.workspace as RemoteUserWorkspace
       : null;
@@ -858,44 +663,22 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const decision = getAiRouteDecision('advisor', authResult.userId!);
     let response: string;
-    let responseProvider = decision.primaryProvider;
-    const primaryConfigured = hasAiProviderApiKey(decision.primaryProvider);
-    const secondaryConfigured = decision.secondaryProvider
-      ? hasAiProviderApiKey(decision.secondaryProvider)
-      : false;
+    let responseProvider = 'nvidia';
+    let responseModelId = '';
     try {
-      if (!primaryConfigured && decision.secondaryProvider && secondaryConfigured) {
-        console.warn('[ai/chat] primary advisor provider is not configured, using secondary provider');
-        response = await createAdvisorCompletion(decision.secondaryProvider, apiMessages);
-        responseProvider = decision.secondaryProvider;
-      } else if (decision.strategy === 'fallback' && decision.secondaryProvider) {
-        try {
-          response = await createAdvisorCompletion(decision.primaryProvider, apiMessages);
-        } catch (primaryError) {
-          console.error('[ai/chat] primary advisor provider failed, trying fallback', primaryError);
-          response = await createAdvisorCompletion(decision.secondaryProvider, apiMessages);
-          responseProvider = decision.secondaryProvider;
-        }
-      } else if (decision.strategy === 'merge' && decision.secondaryProvider) {
-        if (!secondaryConfigured) {
-          console.warn('[ai/chat] merge strategy requested without a configured secondary provider, using primary provider only');
-          response = await createAdvisorCompletion(decision.primaryProvider, apiMessages);
-        } else {
-          response = await createMergedAdvisorCompletion({
-            locale: locale === 'ar' ? 'ar' : 'en',
-            messages: apiMessages,
-            primaryProvider: decision.primaryProvider,
-            secondaryProvider: decision.secondaryProvider,
-          });
-        }
-      } else {
-        response = await createAdvisorCompletion(decision.primaryProvider, apiMessages);
-      }
+      const selection = await getResolvedAIModelSelection(authResult.userId!);
+      const aiResult = await AIService.chat(apiMessages as AIServiceMessage[], {
+        models: selection.models,
+        selectedModelId: typeof selectedModelId === 'string' ? selectedModelId : selection.preferredModelId,
+        fallbackModelId: selection.defaultModelId,
+      });
+      response = aiResult.content;
+      responseProvider = aiResult.provider;
+      responseModelId = aiResult.model.modelId;
     } catch (error) {
       const message = error instanceof Error ? error.message : '';
-      if (/API key is not configured/i.test(message)) {
+      if (/API key is not configured|No active AI model is configured/i.test(message)) {
         throw error;
       }
 
@@ -944,7 +727,14 @@ export async function POST(request: NextRequest) {
         'Transfer-Encoding': 'chunked',
         ...(sessionId ? { 'X-Session-Id': sessionId } : {}),
         ...buildRateLimitHeaders(rateLimit),
-        ...buildAiRouteHeaders(decision, responseProvider),
+        ...buildAiRouteHeaders(
+          {
+            strategy: 'primary',
+            primaryProvider: responseProvider as any,
+            variant: responseModelId || responseProvider,
+          },
+          responseProvider as any
+        ),
       },
     });
   } catch (error) {

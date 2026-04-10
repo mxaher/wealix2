@@ -1,4 +1,5 @@
 export { StatCard } from './StatCard';
+export { AIModelSelector } from './AIModelSelector';
 export { CurrencyDisplay, formatCurrency } from './CurrencyDisplay';
 export { FeatureGate } from './FeatureGate';
 export { FinancialSettingsSyncBadge } from './FinancialSettingsSyncBadge';

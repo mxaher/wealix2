@@ -19,6 +19,7 @@ const isPublicRoute = createRouteMatcher([
 const isProtectedApiRoute = createRouteMatcher(['/api(.*)']);
 const isAppRoute = createRouteMatcher([
   '/app(.*)',
+  '/admin(.*)',
   '/dashboard(.*)',
   '/settings(.*)',
   '/advisor(.*)',
@@ -170,7 +171,7 @@ export default function middleware(req: NextRequest) {
   requestHeaders.set('Content-Security-Policy', buildContentSecurityPolicy(nonce));
 
   const { pathname } = req.nextUrl;
-  const blockedPaths = ['/wp-admin', '/wp-login', '/xmlrpc', '/.env', '/.git', '/admin', '/phpmyadmin'];
+  const blockedPaths = ['/wp-admin', '/wp-login', '/xmlrpc', '/.env', '/.git', '/phpmyadmin'];
   if (blockedPaths.some((p) => pathname.startsWith(p))) {
     return applySecurityHeaders(new NextResponse('Not Found', { status: 404 }), pathname, nonce);
   }

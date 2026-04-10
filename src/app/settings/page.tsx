@@ -32,8 +32,9 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { DashboardShell } from '@/components/layout';
-import { FinancialSettingsSyncBadge } from '@/components/shared';
+import { AIModelSelector, FinancialSettingsSyncBadge } from '@/components/shared';
 import { useAppStore } from '@/store/useAppStore';
+import { useAIModelStore } from '@/store/useAIModelStore';
 import { useFinancialSettingsStore } from '@/store/useFinancialSettingsStore';
 import { useTheme } from 'next-themes';
 import { toast } from '@/hooks/use-toast';
@@ -171,6 +172,7 @@ function SettingsPageContent() {
   const initialTab = validTabs.find((v) => v === activeTabParam) ?? 'profile';
   const [activeTab, setActiveTabState] = useState<(typeof validTabs)[number]>(initialTab);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
+  const loadAIModels = useAIModelStore((state) => state.loadFromBackend);
 
   const setActiveTab = (tab: string) => {
     const nextTab = validTabs.find((v) => v === tab) ?? 'profile';
@@ -265,6 +267,10 @@ function SettingsPageContent() {
       variant: 'destructive',
     });
   };
+
+  useEffect(() => {
+    void loadAIModels();
+  }, [loadAIModels]);
 
   useEffect(() => {
     if (activeTab === 'subscription') {
@@ -441,6 +447,18 @@ function SettingsPageContent() {
                     {getStartPageHref(startPage)}
                   </Link>
                 </p>
+                <Separator />
+                <div className="space-y-3 rounded-xl border p-4">
+                  <div>
+                    <Label>{isArabic ? 'تفضيلات الذكاء الاصطناعي' : 'AI Preferences'}</Label>
+                    <p className="text-sm text-muted-foreground">
+                      {isArabic
+                        ? 'اختر النموذج الذي يستخدمه وائل في المحادثة والتحليل.'
+                        : 'Choose which model Wael uses for chat and analysis.'}
+                    </p>
+                  </div>
+                  <AIModelSelector isArabic={isArabic} />
+                </div>
                 <Separator />
                 <div className="space-y-4">
                   <div className="flex items-start gap-3">

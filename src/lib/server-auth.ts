@@ -61,6 +61,58 @@ export async function requireAuthenticatedUser() {
   return { userId, error: null };
 }
 
+export async function isAdminUser(userId: string) {
+  const allowList = (process.env.WEALIX_ADMIN_EMAILS || '')
+    .split(',')
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean);
+
+  const e2eUser = getE2ETestUser();
+  if (userId === e2eUser.id) {
+    return true;
+  }
+
+  const client = await clerkClient();
+  const user = await client.users.getUser(userId);
+  const metadata = {
+    ...(user.publicMetadata ?? {}),
+    ...(user.privateMetadata ?? {}),
+  } as Record<string, unknown>;
+  const role = metadata.role;
+  if (role === 'admin' || metadata.isAdmin === true) {
+    return true;
+  }
+
+  const email = user.primaryEmailAddress?.emailAddress?.toLowerCase()
+    ?? user.emailAddresses[0]?.emailAddress?.toLowerCase()
+    ?? null;
+
+  return Boolean(email && allowList.includes(email));
+}
+
+export async function requireAdminUser() {
+  const authResult = await requireAuthenticatedUser();
+  if (authResult.error || !authResult.userId) {
+    return {
+      userId: null,
+      error: authResult.error,
+    };
+  }
+
+  const allowed = await isAdminUser(authResult.userId);
+  if (!allowed) {
+    return {
+      userId: authResult.userId,
+      error: Response.json({ error: 'Admin access required', code: 'ADMIN_REQUIRED' }, { status: 403 }),
+    };
+  }
+
+  return {
+    userId: authResult.userId,
+    error: null,
+  };
+}
+
 export async function getUserBillingState(userId: string): Promise<BillingState> {
   const e2eUser = getE2ETestUser();
   if (userId === e2eUser.id) {
