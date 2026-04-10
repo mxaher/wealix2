@@ -272,10 +272,14 @@ function SettingsPageContent() {
 
   return (
     <DashboardShell>
-      <div className="space-y-6 max-w-4xl mx-auto">
+      <div
+        dir={isArabic ? 'rtl' : 'ltr'}
+        lang={locale}
+        className={`settings-layout mx-auto max-w-4xl space-y-6 ${isArabic ? 'font-arabic text-end' : 'font-sans text-start'}`}
+      >
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <SettingsIcon className="w-6 h-6" />
+          <h1 className="flex items-center gap-2 text-2xl font-bold">
+            <SettingsIcon className="icon-no-flip h-6 w-6" />
             {isArabic ? 'الإعدادات' : 'Settings'}
           </h1>
           <p className="text-muted-foreground">
@@ -285,20 +289,20 @@ function SettingsPageContent() {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full">
-            <TabsTrigger value="profile">
-              <User className="w-4 h-4 mr-2" />
+            <TabsTrigger value="profile" className="btn-with-icon">
+              <User className="icon-no-flip me-2 h-4 w-4" />
               {isArabic ? 'الملف الشخصي' : 'Profile'}
             </TabsTrigger>
-            <TabsTrigger value="preferences">
-              <Globe className="w-4 h-4 mr-2" />
+            <TabsTrigger value="preferences" className="btn-with-icon">
+              <Globe className="icon-no-flip me-2 h-4 w-4" />
               {isArabic ? 'التفضيلات' : 'Preferences'}
             </TabsTrigger>
-            <TabsTrigger value="subscription">
-              <CreditCard className="w-4 h-4 mr-2" />
+            <TabsTrigger value="subscription" className="btn-with-icon">
+              <CreditCard className="icon-no-flip me-2 h-4 w-4" />
               {isArabic ? 'الاشتراك' : 'Subscription'}
             </TabsTrigger>
-            <TabsTrigger value="data">
-              <Download className="w-4 h-4 mr-2" />
+            <TabsTrigger value="data" className="btn-with-icon">
+              <Download className="icon-no-flip me-2 h-4 w-4" />
               {isArabic ? 'البيانات' : 'Data'}
             </TabsTrigger>
           </TabsList>
@@ -453,7 +457,7 @@ function SettingsPageContent() {
                       type="button"
                       onClick={() => handleModeChange('demo')}
                       disabled={!isSignedIn}
-                      className={`rounded-xl border p-4 text-left transition-colors ${
+                      className={`rounded-xl border p-4 text-start transition-colors ${
                         appMode === 'demo' ? 'border-gold bg-gold/10' : 'border-border hover:bg-muted/50'
                       }`}
                     >
@@ -466,7 +470,7 @@ function SettingsPageContent() {
                       type="button"
                       onClick={() => handleModeChange('live')}
                       disabled={!isSignedIn}
-                      className={`rounded-xl border p-4 text-left transition-colors ${
+                      className={`rounded-xl border p-4 text-start transition-colors ${
                         appMode === 'live' ? 'border-emerald-500 bg-emerald-500/10' : 'border-border hover:bg-muted/50'
                       }`}
                     >
@@ -759,12 +763,12 @@ function FinancialProfileSection({ isArabic, isSignedIn }: { isArabic: boolean; 
               value={form.monthlyIncome}
               onChange={(e) => setForm((p) => ({ ...p, monthlyIncome: e.target.value }))}
               placeholder="0"
-              className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className={`flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm ${isArabic ? 'text-end' : 'text-start'}`}
             />
             <select
               value={form.currency}
               onChange={(e) => setForm((p) => ({ ...p, currency: e.target.value }))}
-              className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className={`rounded-md border border-input bg-background px-3 py-2 text-sm ${isArabic ? 'text-end' : 'text-start'}`}
             >
               {CURRENCIES_LIST.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
@@ -823,7 +827,7 @@ function FinancialProfileSection({ isArabic, isSignedIn }: { isArabic: boolean; 
           <select
             value={form.retirementGoal}
             onChange={(e) => setForm((p) => ({ ...p, retirementGoal: e.target.value }))}
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            className={`w-full rounded-md border border-input bg-background px-3 py-2 text-sm ${isArabic ? 'text-end' : 'text-start'}`}
           >
             <option value="">{isArabic ? '— اختر —' : '— Select —'}</option>
             <option value="early_retirement">{isArabic ? 'التقاعد المبكر' : 'Early Retirement'}</option>
@@ -844,7 +848,7 @@ function FinancialProfileSection({ isArabic, isSignedIn }: { isArabic: boolean; 
               value={form.currentAge}
               onChange={(e) => setForm((p) => ({ ...p, currentAge: e.target.value }))}
               placeholder="30"
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className={`w-full rounded-md border border-input bg-background px-3 py-2 text-sm ${isArabic ? 'text-end' : 'text-start'}`}
             />
           </div>
           <div className="space-y-1.5">
@@ -856,13 +860,13 @@ function FinancialProfileSection({ isArabic, isSignedIn }: { isArabic: boolean; 
               value={form.retirementAge}
               onChange={(e) => setForm((p) => ({ ...p, retirementAge: e.target.value }))}
               placeholder="60"
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className={`w-full rounded-md border border-input bg-background px-3 py-2 text-sm ${isArabic ? 'text-end' : 'text-start'}`}
             />
           </div>
         </div>
 
-        <Button onClick={save} disabled={saving || !isSignedIn} className="w-full">
-          {saving ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
+        <Button onClick={save} disabled={saving || !isSignedIn} className="btn-with-icon w-full">
+          {saving ? <RefreshCw className="icon-no-flip me-2 h-4 w-4 animate-spin" /> : null}
           {isArabic ? 'حفظ الملف المالي' : 'Save Financial Profile'}
         </Button>
 

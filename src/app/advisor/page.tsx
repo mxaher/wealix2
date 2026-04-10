@@ -18,7 +18,6 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -345,17 +344,16 @@ export default function AdvisorPage() {
   return (
     <DashboardShell>
       <FeatureGate feature="ai.advisor">
-        <div className="flex h-[calc(100vh-8rem)] min-w-0 min-h-0 gap-4 overflow-hidden">
+        <div className="flex min-h-screen min-w-0 gap-4">
           {/* Sidebar - Session List */}
-          <Card className="hidden md:flex w-64 flex-col">
+          <Card className="hidden w-64 self-start md:sticky md:top-20 md:flex md:flex-col">
             <CardHeader className="border-b p-4">
-              <Button onClick={createNewSession} className="w-full gap-2">
-                <Plus className="w-4 h-4" />
+              <Button onClick={createNewSession} className="btn-with-icon w-full gap-2">
+                <Plus className="icon-no-flip h-4 w-4" />
                 {isArabic ? 'محادثة جديدة' : 'New Chat'}
               </Button>
             </CardHeader>
-            <ScrollArea className="flex-1">
-              <div className="p-2 space-y-1">
+            <div className="space-y-1 p-2">
                 {sessions.map(session => (
                   <div
                     key={session.id}
@@ -383,12 +381,11 @@ export default function AdvisorPage() {
                     )}
                   </div>
                 ))}
-              </div>
-            </ScrollArea>
+            </div>
           </Card>
 
           {/* Main Chat Area */}
-          <Card className="flex min-w-0 min-h-0 flex-1 flex-col overflow-hidden">
+          <Card className="flex min-w-0 flex-1 flex-col overflow-visible">
             {/* Header */}
             <CardHeader className="border-b p-4">
               <div className="flex items-center justify-between">
@@ -408,8 +405,8 @@ export default function AdvisorPage() {
                 <div className="flex items-center gap-4">
                   <Dialog>
                     <DialogTrigger asChild>
-                      <Button variant="outline" size="sm" className="gap-2">
-                        <BrainCircuit className="w-4 h-4" />
+                      <Button variant="outline" size="sm" className="btn-with-icon gap-2">
+                        <BrainCircuit className="icon-no-flip h-4 w-4" />
                         {isArabic ? 'Decision Check' : 'Decision Check'}
                       </Button>
                     </DialogTrigger>
@@ -422,25 +419,29 @@ export default function AdvisorPage() {
                             : 'Check any new investment idea against your portfolio, liquidity, net worth, and goals.'}
                         </DialogDescription>
                       </DialogHeader>
-                      <ScrollArea className="max-h-[72vh] pr-2">
+                      <div className="max-h-[72vh] overflow-y-auto pe-2">
                         <InvestmentDecisionCheck />
-                      </ScrollArea>
+                      </div>
                     </DialogContent>
                   </Dialog>
-                  <Button variant="outline" size="sm" onClick={() => inputRef.current?.focus()}>
-                    <RefreshCw className="w-4 h-4" />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    aria-label={isArabic ? 'التركيز على حقل الرسالة' : 'Focus message input'}
+                    onClick={() => inputRef.current?.focus()}
+                  >
+                    <RefreshCw className="icon-no-flip h-4 w-4" />
                   </Button>
                 </div>
               </div>
             </CardHeader>
 
             {/* Messages */}
-            <ScrollArea className="min-w-0 min-h-0 flex-1" data-testid="advisor-message-list">
-              <div className="p-4">
+            <div className="min-w-0 flex-1 p-4 pb-28" data-testid="advisor-message-list">
               {activeSession?.messages.length === 0 && !isLoading ? (
-                <div className="h-full flex flex-col items-center justify-center text-center">
+                <div className="flex min-h-[50vh] flex-col items-center justify-center text-center">
                   <div className="w-16 h-16 rounded-full bg-gold/10 flex items-center justify-center mb-4">
-                    <Sparkles className="w-8 h-8 text-gold" />
+                    <Sparkles className="icon-no-flip w-8 h-8 text-gold" />
                   </div>
                   <h3 className="text-lg font-medium mb-2">
                     {isArabic ? 'كيف أساعدك اليوم؟' : 'How can I help you today?'}
@@ -460,10 +461,10 @@ export default function AdvisorPage() {
                       <Button
                         key={index}
                         variant="outline"
-                        className="h-auto min-h-12 max-w-full whitespace-normal px-4 py-3 text-left sm:flex-[1_1_320px]"
+                        className="h-auto min-h-12 max-w-full whitespace-normal px-4 py-3 text-start sm:flex-[1_1_320px]"
                         onClick={() => sendMessage(isArabic ? prompt.ar : prompt.en)}
                       >
-                        <span className="block w-full break-words text-left text-sm leading-5">
+                        <span className="block w-full break-words text-start text-sm leading-5">
                           {isArabic ? prompt.ar : prompt.en}
                         </span>
                       </Button>
@@ -498,7 +499,7 @@ export default function AdvisorPage() {
                             className={`inline-block max-w-[85%] min-w-0 rounded-lg p-3 align-top ${
                               message.role === 'user'
                                 ? 'bg-primary text-primary-foreground'
-                                : 'max-h-[65vh] overflow-y-auto overscroll-contain bg-muted pr-2'
+                                : 'overflow-visible bg-muted pe-2'
                             }`}
                             dir={message.role === 'assistant' ? assistantDirection : undefined}
                           >
@@ -532,7 +533,7 @@ export default function AdvisorPage() {
                         </AvatarFallback>
                       </Avatar>
                       <div className={`min-w-0 flex-1 ${getAssistantMessageDirection(streamingContent) === 'rtl' ? 'text-right' : ''}`}>
-                        <div className="inline-block max-w-[85%] min-w-0 max-h-[65vh] overflow-y-auto overscroll-contain rounded-lg bg-muted p-3 pr-2 align-top">
+                        <div className="inline-block max-w-[85%] min-w-0 rounded-lg bg-muted p-3 pe-2 align-top">
                           <div
                             className="prose prose-sm max-w-none break-words leading-7 text-foreground dark:prose-invert [&_*]:break-words [&_code]:whitespace-pre-wrap [&_h1]:mb-3 [&_h1]:mt-0 [&_h2]:mb-2 [&_h2]:mt-4 [&_h3]:mb-2 [&_h3]:mt-4 [&_li]:my-1 [&_ol]:my-3 [&_ol]:ps-5 [&_p]:my-2 [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto [&_ul]:my-3 [&_ul]:list-disc [&_ul]:ps-5"
                             dir={getAssistantMessageDirection(streamingContent)}
@@ -568,11 +569,10 @@ export default function AdvisorPage() {
                   <div ref={messagesEndRef} />
                 </div>
               )}
-              </div>
-            </ScrollArea>
+            </div>
 
             {/* Input */}
-            <div className="p-4 border-t">
+            <div className="sticky bottom-0 z-10 border-t bg-background p-4">
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
@@ -599,7 +599,7 @@ export default function AdvisorPage() {
               </form>
               <div className="flex items-center gap-4 mt-2">
                 <Badge variant="outline" className="text-xs">
-                  <Paperclip className="w-3 h-3 mr-1" />
+                  <Paperclip className="icon-no-flip me-1 h-3 w-3" />
                   {isArabic ? 'بيانات Wealix مرفقة تلقائياً' : 'Wealix data attached automatically'}
                 </Badge>
                 <span className="text-xs text-muted-foreground">

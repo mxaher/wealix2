@@ -7,9 +7,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: "Tajawal", "Segoe UI", "Tahoma", Arial, sans-serif;
+  --font-sans: var(--font-body);
   --font-mono: "JetBrains Mono", "SF Mono", Consolas, monospace;
-  --font-arabic: "Tajawal", "Tahoma", "Geeza Pro", "Arial Unicode MS", sans-serif;
+  --font-arabic: var(--font-script-arabic);
   
   /* Sidebar */
   --color-sidebar-ring: var(--sidebar-ring);
@@ -70,6 +70,8 @@
 /* Light Theme */
 :root {
   --radius: 0.625rem;
+  --font-body: var(--font-inter), "Inter", system-ui, -apple-system, sans-serif;
+  --font-script-arabic: var(--font-tajawal), "Tajawal", sans-serif;
   
   /* Base Colors */
   --background: #ffffff;
@@ -184,16 +186,28 @@
   --loss: #ff6262;
 }
 
+@font-face {
+  font-family: "WealixBody";
+  src: local("Inter");
+  unicode-range: U+0020-007F, U+00A0-00FF;
+}
+
+@font-face {
+  font-family: "WealixBody";
+  src: local("Tajawal");
+  unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
   html {
-    font-family: var(--font-sans);
+    font-family: var(--font-body);
   }
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-sans);
+    font-family: "WealixBody", var(--font-body);
   }
   h1, h2, h3, h4, h5, h6 {
     letter-spacing: -0.025em;
@@ -201,8 +215,11 @@
 }
 
 /* RTL Support */
+html[lang="ar"] body,
+html[dir="rtl"] body,
+[lang="ar"],
 [dir="rtl"] {
-  font-family: var(--font-arabic), var(--font-sans);
+  font-family: var(--font-script-arabic);
 }
 
 [dir="rtl"] body,
@@ -220,7 +237,7 @@
 [dir="rtl"] p,
 [dir="rtl"] span,
 [dir="rtl"] div {
-  font-family: var(--font-arabic), var(--font-sans);
+  font-family: var(--font-script-arabic);
 }
 
 /* Custom Scrollbar */
@@ -256,7 +273,7 @@
   .brand-wordmark {
     direction: ltr;
     unicode-bidi: isolate;
-    font-family: var(--font-sans);
+    font-family: var(--font-body);
   }
 
   .logo-weal {
@@ -436,4 +453,21 @@
   height: 100% !important;
   object-fit: cover !important;
   object-position: center !important;
+}
+
+/* RTL Layout - Settings page and directional components */
+[dir="rtl"] .settings-layout {
+  direction: rtl;
+}
+
+[dir="rtl"] .btn-with-icon {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .icon-no-flip {
+  transform: none !important;
+}
+
+[dir="rtl"] .icon-directional {
+  transform: scaleX(-1);
 }

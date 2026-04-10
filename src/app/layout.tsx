@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
+import { Inter, Tajawal } from "next/font/google";
 import "@fontsource/tajawal/400.css";
 import "@fontsource/tajawal/500.css";
 import "@fontsource/tajawal/700.css";
@@ -9,6 +10,19 @@ import { ThemeProvider } from "next-themes";
 import { LocaleSync } from "@/components/layout/LocaleSync";
 import { ClerkSync } from "@/components/layout/ClerkSync";
 import { RemoteProfileSync } from "@/components/layout/RemoteProfileSync";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const tajawal = Tajawal({
+  subsets: ["arabic"],
+  weight: ["300", "400", "500", "700", "800"],
+  variable: "--font-tajawal",
+  display: "swap",
+});
 
 const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://wealix.app";
 
@@ -139,7 +153,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${inter.variable} ${tajawal.variable}`}
+    >
       <head>
         <script
           type="application/ld+json"

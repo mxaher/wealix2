@@ -582,7 +582,7 @@ function BillingPageContent() {
                         </div>
                         <h3 className="mt-3 text-4xl font-semibold financial-number">
                           ${price}
-                          <span className="ml-1 text-base font-normal text-muted-foreground">{suffix}</span>
+                          <span className="ms-1 text-base font-normal text-muted-foreground">{suffix}</span>
                         </h3>
                       </div>
                       <div className="flex flex-col items-end gap-2">
