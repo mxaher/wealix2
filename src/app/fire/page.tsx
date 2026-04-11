@@ -414,16 +414,10 @@ export default function FirePage() {
                   <div className="space-y-2">
                     <Label>{isArabic ? 'صافي الثروة الحالي' : 'Current Net Worth'}</Label>
                     <Input className={inputClassName} type="number" value={currentNetWorth} readOnly />
-                    <p className="text-xs text-muted-foreground">
-                      {isArabic ? 'هذا الرقم يأتي من نفس صافي الثروة المشترك مع لوحة التحكم وصافي الثروة وWael.' : 'This value comes from the same shared net-worth snapshot used by Dashboard, Net Worth, and Wael.'}
-                    </p>
                   </div>
                   <div className="space-y-2">
                     <Label>{isArabic ? 'المدخرات السنوية' : 'Annual Savings'}</Label>
                     <Input className={inputClassName} type="number" value={annualSavings} readOnly />
-                    <p className="text-xs text-muted-foreground">
-                      {isArabic ? 'تعتمد على الفائض السنوي الحقيقي من نفس اللقطة المالية الموحّدة.' : 'Based on your real annualized surplus from the shared financial snapshot.'}
-                    </p>
                   </div>
                 </CardContent>
               </Card>

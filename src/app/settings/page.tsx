@@ -704,28 +704,18 @@ function SettingsPageContent() {
 
 // ─── Financial Profile Section ────────────────────────────────────────────────
 
-const CURRENCIES_LIST = ['SAR', 'USD', 'AED', 'EGP', 'KWD', 'GBP', 'EUR'];
-
 function FinancialProfileSection({ isArabic, isSignedIn }: { isArabic: boolean; isSignedIn: boolean }) {
   const data = useFinancialSettingsStore((state) => state.data);
   const updateFields = useFinancialSettingsStore((state) => state.updateFields);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    monthlyIncome: data.monthlyIncome?.toString() ?? '',
-    currency: data.currency || 'SAR',
     riskTolerance: data.riskProfile ?? '',
-    fireTarget: data.fireTarget?.toString() ?? '',
-    monthlyExpenses: data.monthlyExpenses?.toString() ?? '',
     retirementAge: data.fireTargetAge?.toString() ?? '',
   });
 
   useEffect(() => {
     setForm({
-      monthlyIncome: data.monthlyIncome?.toString() ?? '',
-      currency: data.currency || 'SAR',
       riskTolerance: data.riskProfile ?? '',
-      fireTarget: data.fireTarget?.toString() ?? '',
-      monthlyExpenses: data.monthlyExpenses?.toString() ?? '',
       retirementAge: data.fireTargetAge?.toString() ?? '',
     });
   }, [data]);
@@ -735,17 +725,11 @@ function FinancialProfileSection({ isArabic, isSignedIn }: { isArabic: boolean; 
     setSaving(true);
     try {
       updateFields({
-        monthlyIncome: form.monthlyIncome ? parseFloat(form.monthlyIncome) : 0,
-        annualIncome: form.monthlyIncome ? parseFloat(form.monthlyIncome) * 12 : 0,
-        currency: form.currency,
         riskProfile:
           form.riskTolerance === 'conservative' || form.riskTolerance === 'aggressive'
             ? form.riskTolerance
             : 'moderate',
-        fireTarget: form.fireTarget ? parseFloat(form.fireTarget) : 0,
-        monthlyExpenses: form.monthlyExpenses ? parseFloat(form.monthlyExpenses) : 0,
         fireTargetAge: form.retirementAge ? parseInt(form.retirementAge, 10) : 60,
-        onboardingCompleted: true,
       });
       toast({ title: isArabic ? 'تم الحفظ' : 'Saved', description: isArabic ? 'تم تحديث ملفك المالي.' : 'Financial profile updated.' });
     } catch {
@@ -767,29 +751,6 @@ function FinancialProfileSection({ isArabic, isSignedIn }: { isArabic: boolean; 
         <FinancialSettingsSyncBadge isArabic={isArabic} className="pt-2" />
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="space-y-1.5">
-          <Label>{isArabic ? 'الدخل الشهري' : 'Monthly Income'}</Label>
-          <div className="flex gap-2">
-            <input
-              type="number"
-              min="0"
-              value={form.monthlyIncome}
-              onChange={(e) => setForm((p) => ({ ...p, monthlyIncome: e.target.value }))}
-              placeholder="0"
-              className={`flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm ${isArabic ? 'text-end' : 'text-start'}`}
-            />
-            <select
-              value={form.currency}
-              onChange={(e) => setForm((p) => ({ ...p, currency: e.target.value }))}
-              className={`rounded-md border border-input bg-background px-3 py-2 text-sm ${isArabic ? 'text-end' : 'text-start'}`}
-            >
-              {CURRENCIES_LIST.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-        </div>
-
-        <Separator />
-
         <div className="space-y-2">
           <Label>{isArabic ? 'تحمّل المخاطر' : 'Risk Tolerance'}</Label>
           <div className="flex flex-wrap gap-2">
@@ -811,32 +772,6 @@ function FinancialProfileSection({ isArabic, isSignedIn }: { isArabic: boolean; 
         </div>
 
         <Separator />
-
-        <div className="space-y-2">
-          <Label>{isArabic ? 'هدف FIRE' : 'FIRE Target'}</Label>
-          <input
-            type="number"
-            min="0"
-            value={form.fireTarget}
-            onChange={(e) => setForm((p) => ({ ...p, fireTarget: e.target.value }))}
-            placeholder="1000000"
-            className={`w-full rounded-md border border-input bg-background px-3 py-2 text-sm ${isArabic ? 'text-end' : 'text-start'}`}
-          />
-        </div>
-
-        <Separator />
-
-        <div className="space-y-2">
-          <Label>{isArabic ? 'المصروفات الشهرية' : 'Monthly Expenses'}</Label>
-          <input
-            type="number"
-            min="0"
-            value={form.monthlyExpenses}
-            onChange={(e) => setForm((p) => ({ ...p, monthlyExpenses: e.target.value }))}
-            placeholder="0"
-            className={`w-full rounded-md border border-input bg-background px-3 py-2 text-sm ${isArabic ? 'text-end' : 'text-start'}`}
-          />
-        </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">

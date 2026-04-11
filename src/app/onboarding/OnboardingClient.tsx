@@ -444,15 +444,11 @@ export default function OnboardingClient() {
       ...extra,
     };
 
-    try {
-      await fetch('/api/onboarding/profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-    } catch {
-      // Non-blocking — never prevent redirect
-    }
+    await fetch('/api/onboarding/profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
 
     const store = useAppStore.getState();
     const {
@@ -492,7 +488,7 @@ export default function OnboardingClient() {
       retirementAge,
     });
 
-    void useFinancialSettingsStore.getState().initializeFromOnboarding({
+    await useFinancialSettingsStore.getState().initializeFromOnboarding({
       monthlyIncome: monthlyIncome ?? 0,
       annualIncome: (monthlyIncome ?? 0) * 12,
       incomeSource: 'salary',
@@ -504,6 +500,7 @@ export default function OnboardingClient() {
           : 'moderate',
       onboardingCompleted: true,
     });
+    await useFinancialSettingsStore.getState().syncToBackend();
 
     updateStoreUser({
       onboardingDone: true,
