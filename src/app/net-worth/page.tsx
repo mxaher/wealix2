@@ -455,53 +455,6 @@ export default function NetWorthPage() {
           </div>
         </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between gap-4">
-            <div>
-              <CardTitle>{isArabic ? 'إعدادات صافي الثروة المشتركة' : 'Shared Net Worth Settings'}</CardTitle>
-              <CardDescription>
-                {isArabic
-                  ? 'أي تعديل هنا ينعكس فوراً في الإعدادات ولوحة التحكم والمحفظة.'
-                  : 'Changes here instantly sync with Settings, Dashboard, and Portfolio.'}
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-3">
-            <div className="space-y-2">
-              <Label>{isArabic ? 'إجمالي الأصول' : 'Total Assets'}</Label>
-              <Input
-                type="number"
-                min="0"
-                value={financialSettings.totalAssets}
-                onChange={(event) =>
-                  updateFinancialSettings({
-                    totalAssets: Number(event.target.value || 0),
-                  })
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>{isArabic ? 'إجمالي الالتزامات' : 'Total Liabilities'}</Label>
-              <Input
-                type="number"
-                min="0"
-                value={financialSettings.totalLiabilities}
-                onChange={(event) =>
-                  updateFinancialSettings({
-                    totalLiabilities: Number(event.target.value || 0),
-                  })
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>{isArabic ? 'صافي الثروة المحسوب' : 'Computed Net Worth'}</Label>
-              <div className="rounded-xl border border-input bg-muted/30 px-3 py-2 text-sm font-medium">
-                {formatCurrency(netWorth, financialSettings.currency, locale)}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
         {!isSignedIn && (
           <Card className="border-dashed">
             <CardContent className="p-4 text-sm text-muted-foreground">

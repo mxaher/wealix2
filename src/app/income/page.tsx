@@ -281,69 +281,6 @@ export default function IncomePage() {
           </Dialog>
         </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between gap-4">
-            <div>
-              <CardTitle>{isArabic ? 'إعدادات الدخل المشتركة' : 'Shared Income Settings'}</CardTitle>
-              <CardDescription>
-                {isArabic
-                  ? 'هذه القيم مرتبطة مباشرة بصفحات الإعدادات ولوحة التحكم و FIRE.'
-                  : 'These values stay in sync with Settings, Dashboard, and FIRE.'}
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-3">
-            <div className="space-y-2">
-              <Label>{isArabic ? 'الدخل الشهري' : 'Monthly Income'}</Label>
-              <Input
-                type="number"
-                min="0"
-                value={financialSettings.monthlyIncome}
-                onChange={(event) =>
-                  updateFinancialSettings({
-                    monthlyIncome: Number(event.target.value || 0),
-                    annualIncome: Number(event.target.value || 0) * 12,
-                  })
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>{isArabic ? 'مصدر الدخل الأساسي' : 'Primary Income Source'}</Label>
-              <Select
-                value={financialSettings.incomeSource}
-                onValueChange={(value) => {
-                  updateFinancialSettings({ incomeSource: value });
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {incomeSources.map((source) => (
-                    <SelectItem key={source.value} value={source.value}>
-                      {isArabic ? source.ar : source.en}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>{isArabic ? 'معدل الادخار الحالي %' : 'Current Savings Rate %'}</Label>
-              <Input
-                type="number"
-                min="0"
-                max="100"
-                value={financialSettings.currentSavingsRate}
-                onChange={(event) =>
-                  updateFinancialSettings({
-                    currentSavingsRate: Number(event.target.value || 0),
-                  })
-                }
-              />
-            </div>
-          </CardContent>
-        </Card>
-
         <div className="grid gap-4 md:grid-cols-3">
           <StatCard
             title={isArabic ? 'دخل هذا الشهر' : 'This Month'}

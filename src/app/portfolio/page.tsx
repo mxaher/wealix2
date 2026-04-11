@@ -1708,54 +1708,6 @@ export default function PortfolioPage() {
           </div>
         </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between gap-4">
-            <div>
-              <CardTitle>{isArabic ? 'إعدادات المحفظة المشتركة' : 'Shared Portfolio Settings'}</CardTitle>
-              <CardDescription>
-                {isArabic
-                  ? 'توزيع الاستثمار وملف المخاطر متزامنان مع الإعدادات ولوحة التحكم.'
-                  : 'Investment allocation and risk profile stay synced with Settings and Dashboard.'}
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label>{isArabic ? 'ملف المخاطر' : 'Risk Profile'}</Label>
-              <Select
-                value={financialSettings.riskProfile}
-                onValueChange={(value) =>
-                  updateFinancialSettings({
-                    riskProfile: value as 'conservative' | 'moderate' | 'aggressive',
-                  })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="conservative">{isArabic ? 'محافظ' : 'Conservative'}</SelectItem>
-                  <SelectItem value="moderate">{isArabic ? 'معتدل' : 'Moderate'}</SelectItem>
-                  <SelectItem value="aggressive">{isArabic ? 'عدواني' : 'Aggressive'}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>{isArabic ? 'التوزيع الاستثماري' : 'Investment Allocation'}</Label>
-              <Input
-                value={allocationDraft}
-                onChange={(event) => setAllocationDraft(event.target.value)}
-                onBlur={() =>
-                  updateFinancialSettings({
-                    investmentAllocation: parseAllocationDraft(allocationDraft),
-                  })
-                }
-                placeholder={isArabic ? 'أسهم:50, ذهب:20, نقد:30' : 'Equities:50, Gold:20, Cash:30'}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 auto-rows-fr">
           <StatCard
             title={isArabic ? 'القيمة الإجمالية' : 'Total Value'}

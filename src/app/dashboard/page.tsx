@@ -251,19 +251,6 @@ export default function DashboardPage() {
  </div>
  </section>
 
- <Card>
- <CardContent className="flex flex-col gap-3 p-5 md:flex-row md:items-center md:justify-between">
- <div>
- <p className="text-sm font-medium">{isArabic ? 'ملخص الإعدادات المالية المشتركة' : 'Shared Financial Settings'}</p>
- <p className="text-sm text-muted-foreground">
- {isArabic
- ? `دخل شهري ${formatCurrency(financialSettings.monthlyIncome, financialSettings.currency, locale)}، هدف FIRE ${formatCurrency(financialSettings.fireTarget, financialSettings.currency, locale)}، وصافي ثروة ${formatCurrency(financialSettings.netWorth, financialSettings.currency, locale)}.`
- : `Monthly income ${formatCurrency(financialSettings.monthlyIncome, financialSettings.currency, locale)}, FIRE target ${formatCurrency(financialSettings.fireTarget, financialSettings.currency, locale)}, and net worth ${formatCurrency(financialSettings.netWorth, financialSettings.currency, locale)}.`}
- </p>
- </div>
- </CardContent>
- </Card>
-
  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
  <StatCard
  title={isArabic ? 'صافي الثروة' : 'Net Worth'}
