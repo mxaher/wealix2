@@ -321,10 +321,6 @@ export function applyFinancialSettingsToSnapshot<T extends {
       monthlyExpenses: settings.monthlyExpenses,
       monthlySurplus: monthlySavings,
     },
-    netWorth: {
-      ...snapshot.netWorth,
-      net: settings.netWorth,
-    },
     fire: {
       ...snapshot.fire,
       annualExpenses: roundMoney(settings.monthlyExpenses * 12),
@@ -337,8 +333,8 @@ export function applyFinancialSettingsToSnapshot<T extends {
     monthlySavings,
     monthlySurplus: monthlySavings,
     savingsRate: settings.currentSavingsRate,
-    netWorthValue: settings.netWorth,
-    totalAssets: settings.totalAssets,
-    totalLiabilities: settings.totalLiabilities,
+    netWorthValue: snapshot.netWorth.net,
+    totalAssets: snapshot.totalAssets,
+    totalLiabilities: snapshot.totalLiabilities,
   };
 }

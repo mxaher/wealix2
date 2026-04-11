@@ -76,7 +76,6 @@ import {
   type AssetEntry,
   type LiabilityEntry,
 } from '@/store/useAppStore';
-import { useFinancialSettingsStore } from '@/store/useFinancialSettingsStore';
 import { BarChart2 } from 'lucide-react';
 import { useFinancialSnapshot } from '@/hooks/useFinancialSnapshot';
 import { toast } from '@/hooks/use-toast';
@@ -133,8 +132,6 @@ export default function NetWorthPage() {
   const { snapshot } = useFinancialSnapshot();
   const isArabic = locale === 'ar';
   const { isSignedIn } = useRuntimeUser();
-  const financialSettings = useFinancialSettingsStore((state) => state.data);
-  const updateFinancialSettings = useFinancialSettingsStore((state) => state.updateFields);
 
   const [showAddAsset, setShowAddAsset] = useState(false);
   const [showAddLiability, setShowAddLiability] = useState(false);
@@ -142,9 +139,9 @@ export default function NetWorthPage() {
   const [newLiability, setNewLiability] = useState({ name: '', category: 'loan', balance: '' });
 
   const portfolioInvestmentsValue = appMode === 'demo' ? 0 : snapshot.portfolio.totalInvestments;
-  const totalAssets = appMode === 'demo' ? 1170000 : financialSettings.totalAssets;
-  const totalLiabilities = appMode === 'demo' ? 585500 : financialSettings.totalLiabilities;
-  const netWorth = appMode === 'demo' ? 584500 : financialSettings.netWorth;
+  const totalAssets = appMode === 'demo' ? 1170000 : snapshot.totalAssets;
+  const totalLiabilities = appMode === 'demo' ? 585500 : snapshot.totalLiabilities;
+  const netWorth = appMode === 'demo' ? 584500 : snapshot.netWorth.net;
 
   const displayAssets = useMemo(
     () => [
