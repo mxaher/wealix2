@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { DashboardShell } from '@/components/layout';
-import { FinancialSettingsSyncBadge, StatCard, DashboardSkeleton } from '@/components/shared';
+import { StatCard, DashboardSkeleton } from '@/components/shared';
 import { useAppStore, formatCurrency } from '@/store/useAppStore';
 import { useFinancialSettingsStore } from '@/store/useFinancialSettingsStore';
 import { getFireMetrics, getMonthlyExpenses, getMonthlyIncome, getNetMonthlySurplus, getNetWorth } from '@/lib/financial-snapshot';
@@ -261,7 +261,6 @@ export default function DashboardPage() {
  : `Monthly income ${formatCurrency(financialSettings.monthlyIncome, financialSettings.currency, locale)}, FIRE target ${formatCurrency(financialSettings.fireTarget, financialSettings.currency, locale)}, and net worth ${formatCurrency(financialSettings.netWorth, financialSettings.currency, locale)}.`}
  </p>
  </div>
- <FinancialSettingsSyncBadge isArabic={isArabic} />
  </CardContent>
  </Card>
 

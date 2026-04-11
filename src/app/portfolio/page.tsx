@@ -43,7 +43,7 @@ import {
   YAxis,
 } from 'recharts';
 import { DashboardShell } from '@/components/layout';
-import { FinancialSettingsSyncBadge, StatCard, FeatureGate, formatCurrency } from '@/components/shared';
+import { StatCard, FeatureGate, formatCurrency } from '@/components/shared';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -1718,7 +1718,6 @@ export default function PortfolioPage() {
                   : 'Investment allocation and risk profile stay synced with Settings and Dashboard.'}
               </CardDescription>
             </div>
-            <FinancialSettingsSyncBadge isArabic={isArabic} />
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">

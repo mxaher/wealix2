@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { DashboardShell } from '@/components/layout';
-import { FinancialSettingsSyncBadge, StatCard, FeatureGate, formatCurrency } from '@/components/shared';
+import { StatCard, FeatureGate, formatCurrency } from '@/components/shared';
 import { useAppStore } from '@/store/useAppStore';
 import { useFinancialSettingsStore } from '@/store/useFinancialSettingsStore';
 import { useFinancialSnapshot } from '@/hooks/useFinancialSnapshot';
@@ -226,7 +226,6 @@ export default function FirePage() {
                   : 'Changes here instantly sync with Settings, Income, and Dashboard.'}
               </CardDescription>
             </div>
-            <FinancialSettingsSyncBadge isArabic={isArabic} />
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-3">
             <div className="space-y-2">

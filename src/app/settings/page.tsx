@@ -32,7 +32,7 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { DashboardShell } from '@/components/layout';
-import { AIModelSelector, FinancialSettingsSyncBadge } from '@/components/shared';
+import { AIModelSelector } from '@/components/shared';
 import { useAppStore } from '@/store/useAppStore';
 import { useAIModelStore } from '@/store/useAIModelStore';
 import { useFinancialSettingsStore } from '@/store/useFinancialSettingsStore';
@@ -748,7 +748,6 @@ function FinancialProfileSection({ isArabic, isSignedIn }: { isArabic: boolean; 
             ? 'يُستخدم هذا لتخصيص توصيات الذكاء الاصطناعي وتحليلات المحفظة.'
             : 'Used to personalise AI recommendations and portfolio analysis.'}
         </CardDescription>
-        <FinancialSettingsSyncBadge isArabic={isArabic} className="pt-2" />
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-2">

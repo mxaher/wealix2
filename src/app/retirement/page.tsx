@@ -20,7 +20,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { DashboardShell } from '@/components/layout';
-import { FinancialSettingsSyncBadge, StatCard, formatCurrency } from '@/components/shared';
+import { StatCard, formatCurrency } from '@/components/shared';
 import { useAppStore } from '@/store/useAppStore';
 import { useFinancialSettingsStore } from '@/store/useFinancialSettingsStore';
 import {
@@ -164,7 +164,6 @@ export default function RetirementPage() {
                   : 'Retirement age and target income stay synced with Settings and FIRE.'}
               </CardDescription>
             </div>
-            <FinancialSettingsSyncBadge isArabic={isArabic} />
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">

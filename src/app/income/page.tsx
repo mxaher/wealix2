@@ -12,7 +12,6 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { FinancialSettingsSyncBadge } from '@/components/shared';
 import { useAppStore, formatCurrency, type IncomeEntry, type IncomeFrequency, type IncomeSource } from '@/store/useAppStore';
 import { useFinancialSettingsStore } from '@/store/useFinancialSettingsStore';
 import { toast } from '@/hooks/use-toast';
@@ -292,7 +291,6 @@ export default function IncomePage() {
                   : 'These values stay in sync with Settings, Dashboard, and FIRE.'}
               </CardDescription>
             </div>
-            <FinancialSettingsSyncBadge isArabic={isArabic} />
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-3">
             <div className="space-y-2">

@@ -67,7 +67,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { DashboardShell } from '@/components/layout';
-import { FinancialSettingsSyncBadge } from '@/components/shared';
 import {
   useAppStore,
   formatCurrency,
@@ -466,7 +465,6 @@ export default function NetWorthPage() {
                   : 'Changes here instantly sync with Settings, Dashboard, and Portfolio.'}
               </CardDescription>
             </div>
-            <FinancialSettingsSyncBadge isArabic={isArabic} />
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-3">
             <div className="space-y-2">
