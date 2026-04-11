@@ -1,5 +1,3 @@
-import { getStoredFinancialSettings as getFinancialSettings } from '@/lib/financial-settings-storage';
-
 export type FinancialPersona = {
   userId: string;
   profile: {
@@ -204,8 +202,6 @@ function addMonths(dateString: string, months: number) {
   date.setUTCMonth(date.getUTCMonth() + months);
   return date.toISOString().slice(0, 10);
 }
-
-type FinancialSettingsSnapshot = Awaited<ReturnType<typeof getFinancialSettings>>['settings'];
 
 export function daysUntil(asOf: string, dueDate: string) {
   const start = new Date(`${asOf}T00:00:00Z`);
@@ -413,15 +409,9 @@ export function compareAwaeedVsHassad(principal: number, termMonths: number, has
 }
 
 export function buildHealthySavingsSnapshot(persona: FinancialPersona) {
-  let settings: FinancialSettingsSnapshot | null = null;
-  void getFinancialSettings(persona.userId).then((record) => {
-    settings = record.settings;
-  });
-  const monthlyIncome = settings?.monthlyIncome ?? persona.income.monthlyTotal;
-  const monthlySurplus = settings?.monthlyIncome != null
-    ? roundMoney(settings.monthlyIncome - persona.expenses.monthlyTotal)
-    : persona.cashFlow.netMonthlySurplus;
-  const savingsRate = settings?.currentSavingsRate ?? (monthlyIncome > 0 ? Number(((monthlySurplus / monthlyIncome) * 100).toFixed(1)) : 0);
+  const monthlyIncome = persona.income.monthlyTotal;
+  const monthlySurplus = persona.cashFlow.netMonthlySurplus;
+  const savingsRate = monthlyIncome > 0 ? Number(((monthlySurplus / monthlyIncome) * 100).toFixed(1)) : 0;
 
   return {
     monthlyIncome,
@@ -464,11 +454,7 @@ export function buildOmarTrackAssessment(persona: FinancialPersona) {
 }
 
 export function projectTemporaryIncomeDrop(persona: FinancialPersona, reducedIncome: number, months: number) {
-  let settings: FinancialSettingsSnapshot | null = null;
-  void getFinancialSettings(persona.userId).then((record) => {
-    settings = record.settings;
-  });
-  const baselineIncome = settings?.monthlyIncome ?? persona.income.monthlyTotal;
+  const baselineIncome = persona.income.monthlyTotal;
   const effectiveReducedIncome = reducedIncome ?? baselineIncome;
   const monthlyShortfall = roundMoney(effectiveReducedIncome - persona.expenses.monthlyTotal);
   const totalShortfall = roundMoney(monthlyShortfall * months);
@@ -512,13 +498,9 @@ export function buildIncomeChangeHeadline(persona: FinancialPersona, monthlyIncr
 }
 
 export function buildKhaledFireInsight(persona: FinancialPersona, monthlyContributionIncrease: number) {
-  let settings: FinancialSettingsSnapshot | null = null;
-  void getFinancialSettings(persona.userId).then((record) => {
-    settings = record.settings;
-  });
   const milestone = buildFireMilestone(persona, monthlyContributionIncrease);
-  const fireTarget = settings?.fireTarget ?? persona.fire.fireNumber;
-  const fireTargetAge = settings?.fireTargetAge ?? 60;
+  const fireTarget = persona.fire.fireNumber;
+  const fireTargetAge = 60;
 
   return [
     `Your FIRE progress is ${persona.fire.progressPct.toFixed(1)}% (${persona.fire.currentInvestableAssets.toLocaleString()} SAR / ${fireTarget.toLocaleString()} SAR).`,
@@ -611,16 +593,12 @@ export function buildAwaeedMaturityPlan(persona: FinancialPersona) {
 }
 
 export function buildPortfolioOverride(persona: FinancialPersona): PortfolioOverrideResult {
-  let settings: FinancialSettingsSnapshot | null = null;
-  void getFinancialSettings(persona.userId).then((record) => {
-    settings = record.settings;
-  });
   const ratio = portfolioToLiquidRatio(persona);
   const totalGap = totalObligationGap(persona);
   const energyValue = persona.portfolio.stocks.filter((item) => item.sector === 'Energy').reduce((sum, item) => sum + item.value, 0);
   const energyWeight = persona.portfolio.totalPortfolioValue > 0 ? Number(((energyValue / persona.portfolio.totalPortfolioValue) * 100).toFixed(1)) : 0;
-  const monthlyInvestmentCapacity = settings?.currentSavingsRate != null && (settings?.monthlyIncome ?? 0) > 0
-    ? roundMoney(((settings.monthlyIncome ?? 0) * settings.currentSavingsRate) / 100)
+  const monthlyInvestmentCapacity = persona.cashFlow.netMonthlySurplus > 0
+    ? roundMoney(persona.cashFlow.netMonthlySurplus)
     : 0;
 
   return {
@@ -647,14 +625,10 @@ export function buildPortfolioOverride(persona: FinancialPersona): PortfolioOver
 }
 
 export function modelHouseholdSpendIncrease(persona: FinancialPersona, newHouseholdAmount: number): HouseholdSpendScenario {
-  let settings: FinancialSettingsSnapshot | null = null;
-  void getFinancialSettings(persona.userId).then((record) => {
-    settings = record.settings;
-  });
   const currentHousehold = persona.expenses.categories.find((item) => /household/i.test(item.name))?.amount ?? 0;
   const delta = roundMoney(newHouseholdAmount - currentHousehold);
   const newSurplus = roundMoney(persona.cashFlow.netMonthlySurplus - delta);
-  const monthlyIncome = settings?.monthlyIncome ?? persona.income.monthlyTotal;
+  const monthlyIncome = persona.income.monthlyTotal;
   const newSavingsRate = monthlyIncome > 0 ? Number(((newSurplus / monthlyIncome) * 100).toFixed(1)) : 0;
 
   return {
@@ -691,12 +665,8 @@ export function modelPortfolioSaleForObligations(persona: FinancialPersona, sale
 }
 
 export function buildRecoveryPlan(persona: FinancialPersona): RecoveryPlan {
-  let settings: FinancialSettingsSnapshot | null = null;
-  void getFinancialSettings(persona.userId).then((record) => {
-    settings = record.settings;
-  });
-  const monthlyIncome = settings?.monthlyIncome ?? persona.income.monthlyTotal;
-  const monthlySavingsRate = settings?.currentSavingsRate ?? persona.cashFlow.surplusRate;
+  const monthlyIncome = persona.income.monthlyTotal;
+  const monthlySavingsRate = persona.cashFlow.surplusRate;
   const endingLiquidityEstimate = roundMoney(persona.cash.liquidBalance + Math.max(0, persona.cashFlow.netMonthlySurplus * 2));
   const remainingIqamaGap = roundMoney(Math.max(0, totalObligationGap(persona) - endingLiquidityEstimate));
 
