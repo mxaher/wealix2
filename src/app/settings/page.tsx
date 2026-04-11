@@ -35,10 +35,12 @@ import { DashboardShell } from '@/components/layout';
 import { AIModelSelector } from '@/components/shared';
 import { useAppStore } from '@/store/useAppStore';
 import { useAIModelStore } from '@/store/useAIModelStore';
+import { useAgentTaskStore } from '@/store/useAgentTaskStore';
 import { useFinancialSettingsStore } from '@/store/useFinancialSettingsStore';
 import { useTheme } from 'next-themes';
 import { toast } from '@/hooks/use-toast';
 import { getStartPageHref, type StartPage } from '@/lib/start-page';
+import { clearPreferredTrialPlan } from '@/lib/trial-selection';
 
 // ---------------------------------------------------------------------------
 // Pricing data — kept in sync with LandingPageClient.tsx pricingByCycle
@@ -173,6 +175,9 @@ function SettingsPageContent() {
   const [activeTab, setActiveTabState] = useState<(typeof validTabs)[number]>(initialTab);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
   const loadAIModels = useAIModelStore((state) => state.loadFromBackend);
+  const resetAIModels = useAIModelStore((state) => state.reset);
+  const resetFinancialSettings = useFinancialSettingsStore((state) => state.reset);
+  const resetAgentTasks = useAgentTaskStore((state) => state.reset);
 
   const setActiveTab = (tab: string) => {
     const nextTab = validTabs.find((v) => v === tab) ?? 'profile';
@@ -258,12 +263,42 @@ function SettingsPageContent() {
   };
 
   const handleDeleteAllData = () => {
+    if (!isSignedIn) { requireAccount(); return; }
+
     clearAllData();
+    resetFinancialSettings();
+    resetAIModels();
+    resetAgentTasks();
+
+    if (typeof window !== 'undefined') {
+      clearPreferredTrialPlan();
+
+      const localKeysToRemove = [
+        'wealix-storage-v4',
+        'wealthos-storage',
+        'wealix-storage-v3',
+        'wealix-financial-settings-v1',
+        'wealix-financial-settings-broadcast',
+        'wealix-ai-models-v1',
+        'wealix-ai-models-broadcast',
+        'wealix-agent-command-center-v1',
+        'wealix-agent-command-center-broadcast',
+        'wealix-advisor-chat-v1',
+        'wealix-cookie-consent',
+      ];
+
+      for (const key of localKeysToRemove) {
+        window.localStorage.removeItem(key);
+      }
+    }
+
     setTheme('light');
     router.replace('/settings?tab=profile');
     toast({
-      title: isArabic ? 'تم حذف البيانات' : 'All data deleted',
-      description: isArabic ? 'تمت إعادة تعيين بيانات التطبيق المحلية.' : 'The app has been reset and local data was cleared.',
+      title: isArabic ? 'تم حذف البيانات' : 'All data cleared',
+      description: isArabic
+        ? 'تمت إعادة تعيين جميع بيانات التطبيق بالكامل.'
+        : 'All app data has been fully reset across all stores.',
       variant: 'destructive',
     });
   };

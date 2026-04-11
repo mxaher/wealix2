@@ -39,6 +39,9 @@ function resetStore() {
     liabilities: [],
     budgetLimits: [],
     recurringObligations: [],
+    oneTimeExpenses: [],
+    savingsAccounts: [],
+    userProfile: {},
     sidebarCollapsed: false,
     activeDashboardTab: 'overview',
     selectedExchange: 'all',
@@ -339,5 +342,80 @@ describe('useAppStore mode isolation', () => {
       status: 'active',
     });
     expect(useAppStore.getState().financialStateVersion).toBe(6);
+  });
+
+  test('clearAllData restores the main workspace and UI state defaults', () => {
+    const store = useAppStore.getState();
+
+    store.syncClerkUser({
+      id: 'user_clear',
+      email: 'clear@example.com',
+      name: 'Clear User',
+      avatarUrl: null,
+      subscriptionTier: 'pro',
+    });
+
+    store.addIncomeEntry(buildIncomeEntry('income-clear', 'Salary'));
+    store.addExpenseEntry(buildExpenseEntry('expense-clear', 'Groceries'));
+    store.addAsset({
+      id: 'asset-clear',
+      name: 'Brokerage',
+      category: 'investment',
+      value: 12000,
+      currency: 'SAR',
+    });
+    store.addLiability({
+      id: 'liability-clear',
+      name: 'Card',
+      category: 'credit_card',
+      balance: 800,
+      currency: 'SAR',
+    });
+    store.setBudgetLimits([{ category: 'Food', limit: 1000, color: '#000' }]);
+    store.setStartPage('portfolio');
+    store.updateNotificationPreferences({ sms: true });
+    store.setAppMode('demo');
+    store.setUserProfile({ monthlyIncome: 12000, riskTolerance: 'medium' });
+    store.setSidebarCollapsed(true);
+    store.setActiveDashboardTab('net-worth');
+    store.setSelectedExchange('TASI');
+    store.toggleShariahFilter();
+    store.setSelectedMonth('2026-03');
+    store.setActiveChatSession('chat-1');
+    store.setAttachPortfolioContext(true);
+    store.setIsLoading(true);
+    store.setIsMobile(true);
+
+    useAppStore.getState().clearAllData();
+
+    const cleared = useAppStore.getState();
+
+    expect(cleared.appMode).toBe('live');
+    expect(cleared.user).toBeNull();
+    expect(cleared.startPage).toBe('dashboard');
+    expect(cleared.notificationPreferences.sms).toBe(false);
+    expect(cleared.incomeEntries).toEqual([]);
+    expect(cleared.expenseEntries).toEqual([]);
+    expect(cleared.assets).toEqual([]);
+    expect(cleared.liabilities).toEqual([]);
+    expect(cleared.budgetLimits).toEqual([]);
+    expect(cleared.portfolioHoldings).toEqual([]);
+    expect(cleared.receiptScans).toEqual([]);
+    expect(cleared.portfolioAnalysisHistory).toEqual([]);
+    expect(cleared.investmentDecisionHistory).toEqual([]);
+    expect(cleared.recurringObligations).toEqual([]);
+    expect(cleared.oneTimeExpenses).toEqual([]);
+    expect(cleared.savingsAccounts).toEqual([]);
+    expect(cleared.notificationFeed).toEqual([]);
+    expect(cleared.userProfile).toEqual({});
+    expect(cleared.sidebarCollapsed).toBe(false);
+    expect(cleared.activeDashboardTab).toBe('overview');
+    expect(cleared.selectedExchange).toBe('all');
+    expect(cleared.shariahFilterEnabled).toBe(false);
+    expect(cleared.selectedMonth).toBe(new Date().toISOString().slice(0, 7));
+    expect(cleared.activeChatSession).toBeNull();
+    expect(cleared.attachPortfolioContext).toBe(false);
+    expect(cleared.isLoading).toBe(false);
+    expect(cleared.isMobile).toBe(false);
   });
 });

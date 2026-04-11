@@ -1944,10 +1944,16 @@ export const useAppStore = create<AppState>()(
           const liveState = buildLiveState();
           return syncActiveProfileState(state, {
             ...liveState,
-            appMode: state.appMode,
-            user: state.user,
-            startPage: state.startPage,
-            notificationPreferences: state.notificationPreferences,
+            userProfile: {},
+            sidebarCollapsed: false,
+            activeDashboardTab: 'overview',
+            selectedExchange: 'all',
+            shariahFilterEnabled: false,
+            selectedMonth: new Date().toISOString().slice(0, 7),
+            activeChatSession: null,
+            attachPortfolioContext: false,
+            isLoading: false,
+            isMobile: false,
           });
         }),
       setSubscriptionTier: (tier) =>

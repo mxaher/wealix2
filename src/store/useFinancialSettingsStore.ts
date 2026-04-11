@@ -30,6 +30,7 @@ type FinancialSettingsStoreState = {
   initializeFromOnboarding: (patch: FinancialSettingsPatch) => Promise<void>;
   syncToBackend: () => Promise<void>;
   clearError: () => void;
+  reset: () => void;
 };
 
 type BroadcastPayload = {
@@ -340,6 +341,16 @@ export const useFinancialSettingsStore = create<FinancialSettingsStoreState>()(
         await flushSync();
       },
       clearError: () => set((state) => ({ ...state, error: null })),
+      reset: () =>
+        set({
+          data: DEFAULT_FINANCIAL_SETTINGS,
+          isLoading: false,
+          error: null,
+          lastSyncedAt: null,
+          syncStatus: 'idle',
+          hasLoadedFromBackend: false,
+          lastServerData: null,
+        }),
     }),
     {
       name: FINANCIAL_SETTINGS_STORAGE_KEY,

@@ -67,6 +67,7 @@ type AgentTaskStoreState = {
   broadcast: (agentId: string, message: string) => Promise<void>;
   setStatusFilter: (status: AgentTaskStoreData['activeStatusFilter']) => void;
   clearError: () => void;
+  reset: () => void;
 };
 
 const AGENT_TASK_STORAGE_KEY = 'wealix-agent-command-center-v1';
@@ -305,6 +306,14 @@ export const useAgentTaskStore = create<AgentTaskStoreState>()(
         }));
       },
       clearError: () => set((state) => ({ ...state, error: null })),
+      reset: () =>
+        set({
+          data: DEFAULT_DATA,
+          isLoading: false,
+          error: null,
+          lastSyncedAt: null,
+          syncStatus: 'idle',
+        }),
     }),
     {
       name: AGENT_TASK_STORAGE_KEY,

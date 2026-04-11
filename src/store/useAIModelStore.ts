@@ -35,6 +35,7 @@ type AIModelStoreState = {
   createModel: (input: AIModelConfigInput) => Promise<void>;
   updateModel: (id: string, patch: Partial<AIModelConfigInput>) => Promise<void>;
   clearError: () => void;
+  reset: () => void;
 };
 
 type BroadcastPayload = {
@@ -370,6 +371,18 @@ export const useAIModelStore = create<AIModelStoreState>()(
         }
       },
       clearError: () => set((state) => ({ ...state, error: null })),
+      reset: () =>
+        set({
+          data: normalizeData({
+            models: DEFAULT_AI_MODELS,
+            selectedModelId: resolveDefaultAIModelId(DEFAULT_AI_MODELS),
+          }),
+          isLoading: false,
+          error: null,
+          lastSyncedAt: null,
+          syncStatus: 'idle',
+          hasLoadedFromBackend: false,
+        }),
     }),
     {
       name: AI_MODEL_STORAGE_KEY,
