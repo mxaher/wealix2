@@ -34,7 +34,6 @@ const financialSettingsPatchSchema = z.object({
   monthlyExpenses: z.number().min(0).optional(),
   investmentAllocation: z.array(allocationEntrySchema).optional(),
   riskProfile: z.enum(['conservative', 'moderate', 'aggressive']).optional(),
-  onboardingCompleted: z.boolean().optional(),
   lastUpdated: z.string().optional(),
 });
 
@@ -58,7 +57,6 @@ async function buildBaseFinancialSettings(userId: string): Promise<FinancialSett
     annualIncome: (onboardingProfile?.monthlyIncome ?? 0) * 12,
     riskProfile: onboardingProfile?.riskTolerance ?? 'moderate',
     fireTargetAge: onboardingProfile?.retirementAge ?? 60,
-    onboardingCompleted: onboardingProfile?.onboardingDone ?? false,
     lastUpdated: onboardingProfile?.updatedAt ?? new Date().toISOString(),
   });
 }

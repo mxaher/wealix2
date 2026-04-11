@@ -320,10 +320,7 @@ export const useFinancialSettingsStore = create<FinancialSettingsStoreState>()(
         scheduleSync(patch);
       },
       initializeFromOnboarding: async (patch) => {
-        const next = mergeFinancialSettings(get().data, {
-          ...patch,
-          onboardingCompleted: true,
-        });
+        const next = mergeFinancialSettings(get().data, patch);
 
         set((state) => ({
           ...state,
@@ -337,10 +334,7 @@ export const useFinancialSettingsStore = create<FinancialSettingsStoreState>()(
           lastSyncedAt: get().lastSyncedAt,
           syncStatus: 'syncing',
         });
-        scheduleSync({
-          ...patch,
-          onboardingCompleted: true,
-        });
+        scheduleSync(patch);
       },
       syncToBackend: async () => {
         await flushSync();

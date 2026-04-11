@@ -498,7 +498,6 @@ export default function OnboardingClient() {
         data.riskTolerance === 'conservative' || data.riskTolerance === 'aggressive'
           ? data.riskTolerance
           : 'moderate',
-      onboardingCompleted: true,
     });
     await useFinancialSettingsStore.getState().syncToBackend();
 

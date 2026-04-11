@@ -26,7 +26,6 @@ export interface FinancialSettings {
   investmentAllocation: AllocationEntry[];
   riskProfile: FinancialRiskProfile;
   lastUpdated: string;
-  onboardingCompleted: boolean;
 }
 
 export type FinancialSettingsPatch = Partial<FinancialSettings>;
@@ -62,7 +61,6 @@ export const DEFAULT_FINANCIAL_SETTINGS: FinancialSettings = {
   investmentAllocation: [],
   riskProfile: 'moderate',
   lastUpdated: new Date(0).toISOString(),
-  onboardingCompleted: false,
 };
 
 function roundMoney(value: number) {
@@ -124,7 +122,6 @@ export function sanitizeFinancialSettings(input: unknown): FinancialSettings {
   const monthlyExpenses = roundMoney(Number(candidate.monthlyExpenses));
   const currentSavingsRate = clampPercentage(Number(candidate.currentSavingsRate));
   const fireTarget = roundMoney(Number(candidate.fireTarget));
-  const onboardingCompleted = candidate.onboardingCompleted === true;
   const riskProfile = candidate.riskProfile === 'conservative' || candidate.riskProfile === 'aggressive'
     ? candidate.riskProfile
     : 'moderate';
@@ -156,7 +153,6 @@ export function sanitizeFinancialSettings(input: unknown): FinancialSettings {
     lastUpdated: typeof candidate.lastUpdated === 'string' && candidate.lastUpdated
       ? candidate.lastUpdated
       : new Date().toISOString(),
-    onboardingCompleted,
   };
 }
 
@@ -237,7 +233,6 @@ export function deriveFinancialSettingsFromState(state: SnapshotLikeState): Fina
         ? state.userProfile.riskTolerance
         : snapshot.riskProfile,
     lastUpdated: state.financialStateUpdatedAt,
-    onboardingCompleted: Boolean(state.userProfile.monthlyIncome || state.userProfile.retirementAge),
   });
 }
 
@@ -278,7 +273,6 @@ export function deriveFinancialSettingsFromWorkspace(
         ? onboardingProfile.riskTolerance
         : snapshot.riskProfile,
     lastUpdated: onboardingProfile?.updatedAt ?? new Date().toISOString(),
-    onboardingCompleted: onboardingProfile?.onboardingDone ?? false,
   });
 }
 

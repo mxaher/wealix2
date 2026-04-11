@@ -62,7 +62,6 @@ export async function POST(request: Request) {
       savedProfile?.riskTolerance === 'conservative' || savedProfile?.riskTolerance === 'aggressive'
         ? savedProfile.riskTolerance
         : 'moderate',
-    onboardingCompleted: true,
   });
 
   const response = NextResponse.json({ success: true });
