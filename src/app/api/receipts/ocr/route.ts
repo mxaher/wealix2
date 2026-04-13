@@ -450,6 +450,7 @@ async function runNvidiaReceiptOcr(file: File) {
       max_tokens: 1400,
     }),
     cache: 'no-store',
+    signal: AbortSignal.timeout(30_000),
   });
 
   const json = await response.json().catch(() => null) as NvidiaVisionResponse | null;

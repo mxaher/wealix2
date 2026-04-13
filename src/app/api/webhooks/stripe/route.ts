@@ -206,10 +206,14 @@ export async function POST(req: NextRequest) {
         const subscription = event.data.object as Stripe.Subscription;
         const clerkUserId  = subscription.metadata?.clerkUserId;
         if (clerkUserId) {
-          const expanded = await stripe.subscriptions.retrieve(subscription.id, {
-            expand: ['default_payment_method'],
-          });
-          await updateUserFromSubscription(clerkUserId, expanded);
+          try {
+            const expanded = await stripe.subscriptions.retrieve(subscription.id, {
+              expand: ['default_payment_method'],
+            });
+            await updateUserFromSubscription(clerkUserId, expanded);
+          } catch (error) {
+            console.error('[stripe/webhook] failed to process subscription.updated', error);
+          }
         }
         break;
       }
@@ -219,10 +223,14 @@ export async function POST(req: NextRequest) {
         const subscription = event.data.object as Stripe.Subscription;
         const clerkUserId  = subscription.metadata?.clerkUserId;
         if (clerkUserId) {
-          const clerk = await clerkClient();
-          await clerk.users.updateUserMetadata(clerkUserId, {
-            publicMetadata: { trialWillEndSoon: true },
-          });
+          try {
+            const clerk = await clerkClient();
+            await clerk.users.updateUserMetadata(clerkUserId, {
+              publicMetadata: { trialWillEndSoon: true },
+            });
+          } catch (error) {
+            console.error('[stripe/webhook] failed to process trial_will_end', error);
+          }
         }
         break;
       }
@@ -254,13 +262,17 @@ export async function POST(req: NextRequest) {
             ? invoice.subscription
             : (invoice.subscription as { id: string } | null)?.id;
         if (subscriptionId) {
-          const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-          const clerkUserId  = subscription.metadata?.clerkUserId;
-          if (clerkUserId) {
-            const clerk = await clerkClient();
-            await clerk.users.updateUserMetadata(clerkUserId, {
-              publicMetadata: { subscriptionStatus: 'past_due', paymentAdded: true },
-            });
+          try {
+            const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+            const clerkUserId  = subscription.metadata?.clerkUserId;
+            if (clerkUserId) {
+              const clerk = await clerkClient();
+              await clerk.users.updateUserMetadata(clerkUserId, {
+                publicMetadata: { subscriptionStatus: 'past_due', paymentAdded: true },
+              });
+            }
+          } catch (error) {
+            console.error('[stripe/webhook] failed to process invoice.payment_failed', error);
           }
         }
         break;
@@ -271,21 +283,25 @@ export async function POST(req: NextRequest) {
         const subscription = event.data.object as Stripe.Subscription;
         const clerkUserId  = subscription.metadata?.clerkUserId;
         if (clerkUserId) {
-          const clerk = await clerkClient();
-          const plan  = getPlanFromSubscription(subscription);
-          await clerk.users.updateUserMetadata(clerkUserId, {
-            publicMetadata: {
-              ...(plan ? { plan, subscriptionTier: plan, trialPlan: plan } : {}),
-              subscriptionStatus: 'canceled',
-              stripeSubscriptionId: null,
-              cycle: null,
-              subscriptionCycle: null,
-              paymentAdded: false,
-              trialActive: false,
-              trialStatus: 'expired',
-              trialWillEndSoon: false,
-            },
-          });
+          try {
+            const clerk = await clerkClient();
+            const plan  = getPlanFromSubscription(subscription);
+            await clerk.users.updateUserMetadata(clerkUserId, {
+              publicMetadata: {
+                ...(plan ? { plan, subscriptionTier: plan, trialPlan: plan } : {}),
+                subscriptionStatus: 'canceled',
+                stripeSubscriptionId: null,
+                cycle: null,
+                subscriptionCycle: null,
+                paymentAdded: false,
+                trialActive: false,
+                trialStatus: 'expired',
+                trialWillEndSoon: false,
+              },
+            });
+          } catch (error) {
+            console.error('[stripe/webhook] failed to process subscription.deleted', error);
+          }
         }
         break;
       }
