@@ -50,10 +50,38 @@ export function useFinancialSnapshot() {
     savingsAccounts,
   ]);
 
-  const syncedSnapshot = useMemo(
-    () => applyFinancialSettingsToSnapshot(snapshot, financialSettings),
-    [financialSettings, snapshot]
-  );
+  const syncedSnapshot = useMemo(() => {
+    const withSettings = applyFinancialSettingsToSnapshot(snapshot, financialSettings);
+
+    // Income entries and expense entries are the authoritative source of truth
+    // for monthly income, expenses, and surplus. applyFinancialSettingsToSnapshot
+    // overwrites those fields with financialSettings.monthlyIncome which is a
+    // value frozen at onboarding time and not kept in sync with actual entries.
+    // Restore the live entry-computed values here so the dashboard always
+    // reflects what the user has entered on the Income / Expenses pages.
+    const liveMonthlyIncome = snapshot.income.monthlyNormalized;
+    const liveMonthlyExpenses = snapshot.expenses.monthlyNormalized;
+    const liveMonthlySurplus = liveMonthlyIncome - liveMonthlyExpenses;
+
+    return {
+      ...withSettings,
+      income: snapshot.income,
+      expenses: {
+        ...withSettings.expenses,
+        monthlyNormalized: liveMonthlyExpenses,
+      },
+      monthlyIncome: liveMonthlyIncome,
+      monthlyExpenses: liveMonthlyExpenses,
+      monthlySavings: liveMonthlySurplus,
+      monthlySurplus: liveMonthlySurplus,
+      budgetOverview: {
+        ...withSettings.budgetOverview,
+        monthlyIncome: liveMonthlyIncome,
+        monthlyExpenses: liveMonthlyExpenses,
+        monthlySurplus: liveMonthlySurplus,
+      },
+    };
+  }, [financialSettings, snapshot]);
 
   return {
     snapshot: syncedSnapshot,
