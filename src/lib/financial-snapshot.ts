@@ -594,8 +594,7 @@ function buildSnapshotFromRawData(params: FinancialWorkspaceData): FinancialSnap
 
   const assetsExcludingSavings = assets.reduce((sum, asset) => sum + asset.value, 0);
   const totalAssets = assetsExcludingSavings + savingsAccounts.reduce((sum, account) => sum + account.currentBalance, 0) + totalInvestments;
-  const totalLiabilities =
-    liabilities.reduce((sum, liability) => sum + liability.balance, 0) + syncedObligationLiabilityTotal;
+  const totalLiabilities = liabilities.reduce((sum, liability) => sum + liability.balance, 0);
   const grossNetWorth = liquidCash + totalLockedSavings + totalInvestments + assets
     .filter((asset) => asset.category !== 'cash')
     .reduce((sum, asset) => sum + asset.value, 0);

@@ -224,8 +224,8 @@ export async function generateReport(
     doc = React.createElement(InvestmentDoc, { workspace, date, aiInsights: options?.aiInsights });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const buffer = await renderToBuffer(doc as any);
+  // @ts-expect-error renderToBuffer accepts any React element
+  const buffer = await renderToBuffer(doc);
   return new Uint8Array(buffer);
 }
 

@@ -17,7 +17,7 @@ import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { DashboardShell } from '@/components/layout';
 import { StatCard, DashboardSkeleton } from '@/components/shared';
-import { useAppStore, formatCurrency } from '@/store/useAppStore';
+import { useAppStore, formatCurrency, getPersistableWorkspaceSnapshot } from '@/store/useAppStore';
 import { useFinancialSettingsStore } from '@/store/useFinancialSettingsStore';
 import { getFireMetrics, getMonthlyExpenses, getMonthlyIncome, getNetMonthlySurplus, getNetWorth } from '@/lib/financial-snapshot';
 import { useFinancialSnapshot } from '@/hooks/useFinancialSnapshot';
@@ -101,11 +101,41 @@ export default function DashboardPage() {
  const financialSettings = useFinancialSettingsStore((state) => state.data);
  const isArabic = locale === 'ar';
  const [isLoading, setIsLoading] = useState(true);
+ const [isGeneratingInsight, setIsGeneratingInsight] = useState(false);
+ const [aiInsights, setAiInsights] = useState<string[]>([]);
 
  useEffect(() => {
  const timer = setTimeout(() => setIsLoading(false), 450);
  return () => clearTimeout(timer);
  }, []);
+
+ const generateAIInsights = async () => {
+ setIsGeneratingInsight(true);
+ try {
+ const response = await fetch('/api/ai/dashboard-insight', {
+ method: 'POST',
+ headers: { 'Content-Type': 'application/json' },
+ body: JSON.stringify({
+ locale,
+ clientContext: {
+ workspace: getPersistableWorkspaceSnapshot(useAppStore.getState()),
+ },
+ }),
+ });
+
+ if (!response.ok) {
+ throw new Error('Failed to generate insights');
+ }
+
+ const data = await response.json();
+ setAiInsights(data.insights);
+ } catch (error) {
+ console.error('[dashboard] AI insight generation failed:', error);
+ // Fallback to existing static insights
+ } finally {
+ setIsGeneratingInsight(false);
+ }
+ };
 
  const isDemoMode = appMode === 'demo';
  const monthlyIncome = getMonthlyIncome(snapshot);
@@ -236,11 +266,22 @@ export default function DashboardPage() {
  </div>
  </div>
  <div className="flex flex-wrap gap-3">
- <Button asChild className="btn-primary gap-2 rounded-xl">
- <Link href="/advisor">
+ <Button 
+ onClick={generateAIInsights}
+ disabled={isGeneratingInsight}
+ className="btn-primary gap-2 rounded-xl"
+ >
+ {isGeneratingInsight ? (
+ <>
+ <Sparkles className="h-4 w-4 animate-pulse" />
+ {isArabic ? 'جارٍ التحليل...' : 'Analyzing...'}
+ </>
+ ) : (
+ <>
  <Sparkles className="h-4 w-4" />
  {isArabic ? 'تحليل ذكي' : 'Run AI Insight'}
- </Link>
+ </>
+ )}
  </Button>
  <Button asChild variant="outline" className="rounded-xl border-border bg-background/80">
  <Link href="/reports">
@@ -345,11 +386,18 @@ export default function DashboardPage() {
  <CardDescription>{isArabic ? 'أربع جمل مبنية على السياق المالي الموحد' : 'A four-sentence brief built from the unified financial context'}</CardDescription>
  </CardHeader>
  <CardContent className="grid gap-3 md:grid-cols-2">
- {aiInsightSentences.map((sentence, index) => (
+ {(aiInsights.length > 0 ? aiInsights : aiInsightSentences).map((sentence, index) => (
  <div key={index} className="rounded-xl border border-border bg-background/70 p-4 text-sm leading-6 text-foreground">
  {sentence}
  </div>
  ))}
+ {aiInsights.length === 0 && (
+ <div className="col-span-full text-center text-sm text-muted-foreground py-4">
+ {isArabic 
+ ? 'انقر على "تحليل ذكي" للحصول على رؤى مالية مخصصة.'
+ : 'Click "Run AI Insight" to get personalized financial insights.'}
+ </div>
+ )}
  </CardContent>
  </Card>
 
