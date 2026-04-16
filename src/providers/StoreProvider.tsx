@@ -8,7 +8,8 @@ import { createPortfolioStore, PortfolioStore } from '@/store/createPortfolioSto
 const StoreContext = createContext<PortfolioStore | null>(null);
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
-  const storeRef = useRef<PortfolioStore>();
+  // React 19: useRef requires an explicit initial value argument.
+  const storeRef = useRef<PortfolioStore | undefined>(undefined);
   if (!storeRef.current) {
     storeRef.current = createPortfolioStore();
   }
