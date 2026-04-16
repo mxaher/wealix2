@@ -1,7 +1,7 @@
 // BUG #015 FIX — Renamed from investment-decision; CMA-compliant with disclaimer
 import { auth } from '@clerk/nextjs/server';
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { dbFirst } from '@/lib/db';
 
 const MANDATORY_DISCLAIMER = {
   disclaimer:
@@ -12,17 +12,22 @@ const MANDATORY_DISCLAIMER = {
   disclaimerAcknowledgedRequired: true,
 };
 
+type UserRow = { clerkId: string; investmentDisclaimerAcceptedAt: string | null };
+
 export async function POST(req: NextRequest) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const user = await db.user.findUnique({
-    where: { clerkId: userId },
-    select: { investmentDisclaimerAcceptedAt: true },
-  });
+  const user = await dbFirst<UserRow>(
+    'SELECT clerkId, investmentDisclaimerAcceptedAt FROM users WHERE clerkId = ?',
+    [userId]
+  );
 
   if (!user?.investmentDisclaimerAcceptedAt) {
-    return NextResponse.json({ error: 'Investment disclaimer not accepted', ...MANDATORY_DISCLAIMER }, { status: 403 });
+    return NextResponse.json(
+      { error: 'Investment disclaimer not accepted', ...MANDATORY_DISCLAIMER },
+      { status: 403 }
+    );
   }
 
   return NextResponse.json({
