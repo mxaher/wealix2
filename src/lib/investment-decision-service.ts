@@ -387,7 +387,7 @@ function buildFallbackDecision(input: InvestmentDecisionInput, snapshot: Financi
   const obligationsAtRiskCount = wealixContext?.obligations.filter((item) => item.fundingGap > 0).length ?? 0;
   const portfolioToLiquidRatio = wealixContext?.portfolioToLiquidRatio ?? (snapshot.liquidReserves > 0 ? snapshot.portfolioValue / snapshot.liquidReserves : 0);
   const savingsRate = wealixContext?.savingsRate ?? snapshot.savingsRate;
-  const firstForecastPressure = snapshot.forecast.monthlyRows.find((row) => row.status !== 'HEALTHY') ?? snapshot.forecast.monthlyRows[0] ?? null;
+  const firstForecastPressure = snapshot.forecast.monthlyRows.find((row) => row.status !== 'ON_TRACK') ?? snapshot.forecast.monthlyRows[0] ?? null;
   const suggestedAmount = roundMoney(Math.max(0, Math.min(
     input.price,
     snapshot.netWorth.net * 0.08,
