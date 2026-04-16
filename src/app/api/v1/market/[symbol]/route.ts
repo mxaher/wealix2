@@ -1,51 +1,52 @@
-// BUG #022 FIX — Redis-cached market data (prevents rate limit exhaustion)
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 
-const CACHE_TTL = { realtime: 60, indices: 300 };
-
-// Lazy-load redis to avoid build errors if env vars not set at build time
-async function getRedis() {
-  const { redis } = await import('@/lib/redis');
-  return redis;
-}
-
+// Next.js 16: params is now a Promise — must be awaited
 export async function GET(
   req: NextRequest,
-  { params }: { params: { symbol: string } }
+  { params }: { params: Promise<{ symbol: string }> }
 ) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { symbol } = params;
-  const interval = req.nextUrl.searchParams.get('interval') ?? '1day';
-  const cacheKey = `market:${symbol}:${interval}`;
+  const { symbol } = await params;
+  if (!symbol) return NextResponse.json({ error: 'Symbol is required' }, { status: 400 });
+
+  const upperSymbol = symbol.toUpperCase();
 
   try {
-    const redis = await getRedis();
-
-    // Check Redis cache first
-    const cached = await redis.get(cacheKey);
-    if (cached) {
-      return NextResponse.json(cached, { headers: { 'X-Cache': 'HIT' } });
+    const apiKey = process.env.ALPHA_VANTAGE_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json({ error: 'Market data service not configured' }, { status: 503 });
     }
 
-    // Fetch from Twelve Data
-    const res = await fetch(
-      `https://api.twelvedata.com/time_series?symbol=${symbol}&interval=${interval}&apikey=${process.env.TWELVE_DATA_API_KEY}`
-    );
-    if (!res.ok) throw new Error(`Twelve Data error: ${res.status}`);
+    const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${upperSymbol}&apikey=${apiKey}`;
+    const response = await fetch(url, { next: { revalidate: 60 } });
 
-    const data = await res.json();
-    const ttl = interval === '1min' ? CACHE_TTL.realtime : CACHE_TTL.indices;
-    await redis.setex(cacheKey, ttl, data);
+    if (!response.ok) {
+      return NextResponse.json({ error: 'Failed to fetch market data' }, { status: 502 });
+    }
 
-    return NextResponse.json(data, { headers: { 'X-Cache': 'MISS' } });
-  } catch (error) {
-    console.error('[Market API] Error:', error);
-    return NextResponse.json(
-      { error: 'Market data temporarily unavailable' },
-      { status: 503 }
-    );
+    const data = await response.json() as Record<string, unknown>;
+    const quote = data['Global Quote'] as Record<string, string> | undefined;
+
+    if (!quote || Object.keys(quote).length === 0) {
+      return NextResponse.json({ error: `No data found for symbol: ${upperSymbol}` }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      symbol: upperSymbol,
+      price: quote['05. price'],
+      change: quote['09. change'],
+      changePercent: quote['10. change percent'],
+      volume: quote['06. volume'],
+      latestTradingDay: quote['07. latest trading day'],
+      previousClose: quote['08. previous close'],
+      open: quote['02. open'],
+      high: quote['03. high'],
+      low: quote['04. low'],
+    });
+  } catch {
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
