@@ -34,9 +34,10 @@ function getStripe(): Stripe {
     if (!secretKey) {
       throw new Error('STRIPE_SECRET_KEY environment variable is not set.');
     }
+    // apiVersion pinned to the latest version supported by stripe@17.7.0 types.
+    // Upgrade stripe package before bumping this value.
     _stripe = new Stripe(secretKey, {
-      apiVersion: '2025-03-31.basil',
-      typescript: true,
+      apiVersion: '2025-02-24.acacia',
     });
   }
   return _stripe;
