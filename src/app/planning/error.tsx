@@ -1,9 +1,9 @@
-// BUG #008 FIX — Standalone error boundary (no cross-directory relative import)
+// BUG #003 FIX — error.tsx for /planning
 'use client';
 
 import { ErrorCard } from '@/components/ui/ErrorCard';
 
-export default function DashboardError({
+export default function Error({
   error,
   reset,
 }: {
