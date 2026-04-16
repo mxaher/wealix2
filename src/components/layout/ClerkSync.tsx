@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { getBillingState } from '@/lib/billing-state';
+import { getE2ETestUser, isE2EAuthEnabled } from '@/lib/e2e-auth';
 import { useRuntimeUser } from '@/hooks/useRuntimeUser';
 
 export function ClerkSync() {
@@ -11,6 +12,21 @@ export function ClerkSync() {
   const clearClerkUser = useAppStore((state) => state.clearClerkUser);
 
   useEffect(() => {
+    if (isE2EAuthEnabled()) {
+      const e2eUser = getE2ETestUser();
+      const billingState = getBillingState(e2eUser.publicMetadata);
+
+      syncClerkUser({
+        id: e2eUser.id,
+        email: e2eUser.email,
+        name: e2eUser.name,
+        avatarUrl: e2eUser.imageUrl,
+        subscriptionTier: billingState.hasStandardAccess ? billingState.selectedPlan : 'none',
+      });
+
+      return;
+    }
+
     if (!isLoaded) {
       return;
     }

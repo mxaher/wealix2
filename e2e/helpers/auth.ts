@@ -25,7 +25,6 @@ export async function installE2EAuth(context: BrowserContext, baseURL: string) {
     {
       ...cookie,
       url: baseURL,
-      path: '/',
       sameSite: 'Lax',
       httpOnly: false,
       secure: baseURL.startsWith('https://'),

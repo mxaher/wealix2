@@ -13,7 +13,7 @@ export interface BudgetPlanningMessage {
   type: BudgetPlanningMessageType;
   title: string;
   body: string;
-  route: '/budget-planning' | '/obligations' | '/goals' | '/investments';
+  route: '/budget-planning' | '/portfolio' | '/fire' | '/reports';
   email?: string | null;
   phoneNumber?: string | null;
   whatsappNumber?: string | null;
@@ -108,6 +108,13 @@ async function sendViaCloudflareEmail(target: MessageTarget, message: BudgetPlan
 
   const appUrl = getPublicAppEnv().NEXT_PUBLIC_APP_URL.replace(/\/$/, '');
   const destinationUrl = `${appUrl}${message.route}`;
+  const escapedBody = message.body
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/\n/g, '<br />');
   const response = await fetch(
     `https://api.cloudflare.com/client/v4/accounts/${env.CLOUDFLARE_EMAIL_ACCOUNT_ID}/email/sending/send`,
     {
@@ -130,7 +137,7 @@ async function sendViaCloudflareEmail(target: MessageTarget, message: BudgetPlan
           : undefined,
         subject: message.title,
         text: `${message.body}\n\nOpen Wealix: ${destinationUrl}`,
-        html: `<p>${message.body}</p><p><a href="${destinationUrl}">Open in Wealix</a></p>`,
+        html: `<p>${escapedBody}</p><p><a href="${destinationUrl}">Open in Wealix</a></p>`,
       }),
     }
   );

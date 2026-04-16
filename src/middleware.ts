@@ -23,6 +23,9 @@ const isAppRoute = createRouteMatcher([
   '/app(.*)',
   '/dashboard(.*)',
   '/settings(.*)',
+  '/onboarding(.*)',
+]);
+const isDemoFeatureRoute = createRouteMatcher([
   '/advisor(.*)',
   '/budget(.*)',
   '/expenses(.*)',
@@ -32,8 +35,8 @@ const isAppRoute = createRouteMatcher([
   '/net-worth(.*)',
   '/fire(.*)',
   '/retirement(.*)',
-  '/onboarding(.*)',
-  '/planning(.*)'
+  '/planning(.*)',
+  '/budget-planning(.*)',
 ]);
 
 // ─── Clerk instance guard ──────────────────────────────────────────────────────
@@ -215,6 +218,18 @@ export default function middleware(req: NextRequest) {
       await auth.protect();
 
       if (!request.nextUrl.pathname.startsWith('/onboarding')) {
+        const onboardingDone = request.cookies.get(ONBOARDING_DONE_COOKIE)?.value;
+        if (!hasCompletedOnboardingCookie(onboardingDone)) {
+          return NextResponse.redirect(new URL('/onboarding', request.url));
+        }
+      }
+
+      return NextResponse.next({ request: { headers: requestHeaders } });
+    }
+
+    if (isDemoFeatureRoute(request)) {
+      const { userId } = await auth();
+      if (userId) {
         const onboardingDone = request.cookies.get(ONBOARDING_DONE_COOKIE)?.value;
         if (!hasCompletedOnboardingCookie(onboardingDone)) {
           return NextResponse.redirect(new URL('/onboarding', request.url));

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { getBillingState } from '@/lib/billing-state';
+import { isE2EAuthEnabled } from '@/lib/e2e-auth';
 import { createOpaqueId } from '@/lib/ids';
 import { DEFAULT_START_PAGE, isStartPage, type StartPage } from '@/lib/start-page';
 import { useRuntimeUser } from '@/hooks/useRuntimeUser';
@@ -1653,12 +1654,11 @@ export const useAppStore = create<AppState>()(
 
           if (existing) {
             // FIX: When an existing profile is found in localStorage, restore
-            // only identity/preference fields from it. Data arrays (income,
-            // expenses, portfolio, etc.) are intentionally left as empty live
-            // state here. hydrateRemoteWorkspace() is the sole authoritative
-            // path that populates real financial data from the server.
-            // This prevents a demo-contaminated localStorage profile from
-            // re-seeding demo rows into the live store on every sign-in.
+            // the sanitized persisted live profile immediately instead of
+            // resetting to an empty live shell. The empty-shell approach makes
+            // connected routes briefly render with zero assets/portfolio until
+            // remote hydration finishes, which races E2E flows and user-visible
+            // calculations. We still purge demo seeds from the restored profile.
             const updatedProfile: LocalProfile = {
               ...existing,
               label: authUser.name?.trim() || existing.label || 'User',
@@ -1674,11 +1674,10 @@ export const useAppStore = create<AppState>()(
               appMode: 'live',
             };
 
+            const restoredLiveState = purgeDemoDataFromState(profileToState(updatedProfile));
+
             return {
-              // Start with a clean live state for data arrays \u2014 real data will
-              // arrive via hydrateRemoteWorkspace. Only carry over identity and
-              // preferences from the existing profile.
-              ...buildLiveState(),
+              ...restoredLiveState,
               user: nextUser,
               startPage: existing.startPage ?? DEFAULT_START_PAGE,
               notificationPreferences: {
@@ -2055,6 +2054,16 @@ export const useAppStore = create<AppState>()(
     }
   )
 );
+
+if (typeof window !== 'undefined' && isE2EAuthEnabled()) {
+  const e2eWindow = window as Window & {
+    __WEALIX_E2E_GET_STATE__?: typeof useAppStore.getState;
+    __WEALIX_E2E_SET_STATE__?: typeof useAppStore.setState;
+  };
+
+  e2eWindow.__WEALIX_E2E_GET_STATE__ = useAppStore.getState;
+  e2eWindow.__WEALIX_E2E_SET_STATE__ = useAppStore.setState;
+}
 
 // \u2500\u2500\u2500 Derived selectors \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 

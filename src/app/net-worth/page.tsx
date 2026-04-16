@@ -132,16 +132,17 @@ export default function NetWorthPage() {
   const { snapshot } = useFinancialSnapshot();
   const isArabic = locale === 'ar';
   const { isSignedIn } = useRuntimeUser();
+  const isDemoMode = appMode === 'demo' && !isSignedIn;
 
   const [showAddAsset, setShowAddAsset] = useState(false);
   const [showAddLiability, setShowAddLiability] = useState(false);
   const [newAsset, setNewAsset] = useState({ name: '', category: 'real_estate', value: '' });
   const [newLiability, setNewLiability] = useState({ name: '', category: 'loan', balance: '' });
 
-  const portfolioInvestmentsValue = appMode === 'demo' ? 0 : snapshot.portfolio.totalInvestments;
-  const totalAssets = appMode === 'demo' ? 1170000 : snapshot.totalAssets;
-  const totalLiabilities = appMode === 'demo' ? 585500 : snapshot.totalLiabilities;
-  const netWorth = appMode === 'demo' ? 584500 : snapshot.netWorth.net;
+  const portfolioInvestmentsValue = isDemoMode ? 0 : snapshot.portfolio.totalInvestments;
+  const totalAssets = isDemoMode ? 1170000 : snapshot.totalAssets;
+  const totalLiabilities = isDemoMode ? 585500 : snapshot.totalLiabilities;
+  const netWorth = isDemoMode ? 584500 : snapshot.netWorth.net;
 
   const displayAssets = useMemo(
     () => [
@@ -194,7 +195,7 @@ export default function NetWorthPage() {
   );
 
   const historyData = useMemo(() => {
-    if (appMode === 'demo') {
+    if (isDemoMode) {
       return mockHistory;
     }
 
@@ -216,7 +217,7 @@ export default function NetWorthPage() {
         netWorth,
       },
     ];
-  }, [appMode, assets.length, liabilities.length, isArabic, netWorth, portfolioInvestmentsValue, snapshot.recurringObligations.length, snapshot.savings.savingsAccounts.length, totalAssets, totalLiabilities]);
+  }, [isDemoMode, assets.length, liabilities.length, isArabic, netWorth, portfolioInvestmentsValue, snapshot.recurringObligations.length, snapshot.savings.savingsAccounts.length, totalAssets, totalLiabilities]);
 
   const monthlyIncome = useTotalMonthlyIncome();
 
@@ -931,7 +932,7 @@ export default function NetWorthPage() {
                     {isArabic ? 'سجل صافي الثروة' : 'Net Worth History'}
                   </CardTitle>
                   <Badge variant="secondary">
-                    {appMode === 'demo' ? (isArabic ? 'آخر 6 أشهر' : 'Last 6 months') : (isArabic ? 'البيانات الحالية' : 'Current data')}
+                    {isDemoMode ? (isArabic ? 'آخر 6 أشهر' : 'Last 6 months') : (isArabic ? 'البيانات الحالية' : 'Current data')}
                   </Badge>
                 </div>
               </CardHeader>

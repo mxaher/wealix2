@@ -96,6 +96,14 @@ export function buildAdminPanelCookie(token: string) {
   };
 }
 
+export function getAdminPanelRateLimitKey(request: Pick<NextRequest, 'headers'>) {
+  const forwardedFor = request.headers.get('cf-connecting-ip')
+    ?? request.headers.get('x-forwarded-for')
+    ?? 'unknown';
+  const primaryIp = forwardedFor.split(',')[0]?.trim() || 'unknown';
+  return `admin-panel-login:${primaryIp}`;
+}
+
 export function clearAdminPanelCookie(response: NextResponse) {
   response.cookies.set({
     name: ADMIN_PANEL_SESSION_COOKIE,

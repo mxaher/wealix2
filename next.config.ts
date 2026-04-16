@@ -26,7 +26,7 @@ const nextConfig: NextConfig = {
     return [
       // Authenticated app routes — no caching, no indexing
       {
-        source: '/(app|settings|onboarding|sign-in|sign-up)/:path*',
+        source: '/(app|dashboard|settings|onboarding|sign-in|sign-up|admin)/:path*',
         headers: [
           { key: 'Cache-Control', value: 'private, no-store, no-cache, max-age=0, must-revalidate' },
           { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
@@ -40,10 +40,15 @@ const nextConfig: NextConfig = {
           { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
         ],
       },
-      // Feature pages — public landing shells, indexable
-      // Authenticated users see live data; guests see demo data.
+      // Demo-capable feature pages — public shells, indexable.
       {
         source: '/(advisor|budget|expenses|income|portfolio|reports|net-worth|fire|retirement)/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, s-maxage=60, stale-while-revalidate=300' },
+        ],
+      },
+      {
+        source: '/(planning|budget-planning)/:path*',
         headers: [
           { key: 'Cache-Control', value: 'public, s-maxage=60, stale-while-revalidate=300' },
         ],

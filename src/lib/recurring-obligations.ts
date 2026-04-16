@@ -79,8 +79,8 @@ export function getNextDueDate(
   }
 
   if (obligation.frequency === 'one_time') {
-    // For one-time: due date is start date + dueDay in start month, or just startDate
-    const dueDate = new Date(start.getFullYear(), start.getMonth(), obligation.dueDay);
+    // One-time obligations should respect the explicit ISO start date as the due date.
+    const dueDate = new Date(start);
     dueDate.setHours(0, 0, 0, 0);
     if (dueDate >= from && (!end || dueDate <= end)) {
       return dueDate;
@@ -136,7 +136,7 @@ export function getOccurrencesInRange(
   }
 
   if (obligation.frequency === 'one_time') {
-    const dueDate = new Date(start.getFullYear(), start.getMonth(), obligation.dueDay);
+    const dueDate = new Date(start);
     dueDate.setHours(0, 0, 0, 0);
     if (dueDate >= rangeStart && dueDate <= rangeEnd && (!end || dueDate <= end)) {
       occurrences.push(dueDate);

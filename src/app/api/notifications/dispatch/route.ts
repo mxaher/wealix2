@@ -7,7 +7,7 @@ const dispatchSchema = z.object({
   type: z.enum(['planning_update', 'status_change', 'reminder', 'budget_alert']),
   title: z.string().min(1).max(60),
   body: z.string().min(1).max(240),
-  route: z.enum(['/budget-planning', '/obligations', '/goals', '/investments']),
+  route: z.enum(['/budget-planning', '/portfolio', '/fire', '/reports']),
   phoneNumber: z.string().optional(),
   whatsappNumber: z.string().optional(),
   preferences: z.object({

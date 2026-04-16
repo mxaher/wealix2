@@ -55,8 +55,9 @@ function calculateYearsToFire(
   fireNumber: number,
   annualSavings: number,
   expectedReturn: number
-): number {
+) {
   if (currentNetWorth >= fireNumber) return 0;
+  if (annualSavings <= 0) return null;
   
   const rate = expectedReturn / 100;
   let years = 0;
@@ -67,7 +68,7 @@ function calculateYearsToFire(
     years++;
   }
   
-  return years;
+  return netWorth >= fireNumber ? years : null;
 }
 
 type FireFieldKey =
@@ -109,26 +110,44 @@ export default function FirePage() {
   const [fireType, setFireType] = useState<'lean' | 'regular' | 'fat'>('regular');
   const [errors, setErrors] = useState<FireErrors>({});
   const [additionalSavings, setAdditionalSavings] = useState(0);
-  const annualExpenses = financialSettings.monthlyExpenses * 12;
+  const annualExpenses = financialSettings.monthlyExpenses > 0
+    ? financialSettings.monthlyExpenses * 12
+    : snapshot.fire.annualExpenses;
   const currentNetWorth = snapshot.netWorth.net;
-  const annualSavings = (financialSettings.monthlyIncome - financialSettings.monthlyExpenses) * 12;
+  const currentInvestableAssets = snapshot.fire.currentInvestableAssets;
+  const annualSavings = financialSettings.monthlyIncome > 0 || financialSettings.monthlyExpenses > 0
+    ? (financialSettings.monthlyIncome - financialSettings.monthlyExpenses) * 12
+    : snapshot.fire.annualSavings;
 
   const fireNumber = useMemo(
-    () => financialSettings.fireTarget > 0 ? financialSettings.fireTarget : calculateFireNumber(annualExpenses, withdrawalRate),
-    [annualExpenses, financialSettings.fireTarget, withdrawalRate]
+    () => financialSettings.fireTarget > 0 ? financialSettings.fireTarget : snapshot.fire.fireNumber || calculateFireNumber(annualExpenses, withdrawalRate),
+    [annualExpenses, financialSettings.fireTarget, snapshot.fire.fireNumber, withdrawalRate]
   );
-  const yearsToFire = useMemo(() => calculateYearsToFire(currentNetWorth, fireNumber, annualSavings + additionalSavings, expectedReturn), [currentNetWorth, fireNumber, annualSavings, additionalSavings, expectedReturn]);
-  const progress = useMemo(() => Math.min((currentNetWorth / fireNumber) * 100, 100), [currentNetWorth, fireNumber]);
-  const projectionData = useMemo(() => calculateProjectedGrowth(currentNetWorth, annualSavings + additionalSavings, expectedReturn, Math.max((yearsToFire ?? 20) + 5, 20)), [currentNetWorth, annualSavings, additionalSavings, expectedReturn, yearsToFire]);
+  const yearsToFire = useMemo(
+    () => calculateYearsToFire(currentInvestableAssets, fireNumber, annualSavings + additionalSavings, expectedReturn),
+    [additionalSavings, annualSavings, currentInvestableAssets, expectedReturn, fireNumber]
+  );
+  const progress = useMemo(
+    () => (
+      financialSettings.fireTarget > 0
+        ? Number(Math.min((currentInvestableAssets / fireNumber) * 100, 100).toFixed(2))
+        : snapshot.fire.progressPct
+    ),
+    [currentInvestableAssets, financialSettings.fireTarget, fireNumber, snapshot.fire.progressPct]
+  );
+  const projectionData = useMemo(
+    () => calculateProjectedGrowth(currentInvestableAssets, annualSavings + additionalSavings, expectedReturn, Math.max((yearsToFire ?? 20) + 5, 20)),
+    [additionalSavings, annualSavings, currentInvestableAssets, expectedReturn, yearsToFire]
+  );
 
-  const yearsWithOriginalSavings = calculateYearsToFire(currentNetWorth, fireNumber, annualSavings, expectedReturn);
+  const yearsWithOriginalSavings = calculateYearsToFire(currentInvestableAssets, fireNumber, annualSavings, expectedReturn);
   const yearsSaved = (yearsWithOriginalSavings ?? yearsToFire ?? 0) - (yearsToFire ?? 0);
 
   const scenarios = useMemo(() => {
     const conservative = {
       expectedReturn: 5,
       inflationRate: 4,
-      yearsToFire: calculateYearsToFire(currentNetWorth, fireNumber, annualSavings, 5),
+      yearsToFire: calculateYearsToFire(currentInvestableAssets, fireNumber, annualSavings, 5),
     };
     const baseCase = {
       expectedReturn: 7,
@@ -138,10 +157,10 @@ export default function FirePage() {
     const optimistic = {
       expectedReturn: 9,
       inflationRate: 2,
-      yearsToFire: calculateYearsToFire(currentNetWorth, fireNumber, annualSavings, 9),
+      yearsToFire: calculateYearsToFire(currentInvestableAssets, fireNumber, annualSavings, 9),
     };
     return { conservative, baseCase, optimistic };
-  }, [currentNetWorth, fireNumber, annualSavings, yearsToFire]);
+  }, [annualSavings, currentInvestableAssets, fireNumber, yearsToFire]);
 
   const fireTypeMultipliers = { lean: 0.7, regular: 1, fat: 1.5 };
   const adjustedFireNumber = fireNumber * fireTypeMultipliers[fireType];

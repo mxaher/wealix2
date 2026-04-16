@@ -387,6 +387,7 @@ function buildFallbackDecision(input: InvestmentDecisionInput, snapshot: Financi
   const obligationsAtRiskCount = wealixContext?.obligations.filter((item) => item.fundingGap > 0).length ?? 0;
   const portfolioToLiquidRatio = wealixContext?.portfolioToLiquidRatio ?? (snapshot.liquidReserves > 0 ? snapshot.portfolioValue / snapshot.liquidReserves : 0);
   const savingsRate = wealixContext?.savingsRate ?? snapshot.savingsRate;
+  const firstForecastPressure = snapshot.forecast.monthlyRows.find((row) => row.status !== 'HEALTHY') ?? snapshot.forecast.monthlyRows[0] ?? null;
   const suggestedAmount = roundMoney(Math.max(0, Math.min(
     input.price,
     snapshot.netWorth.net * 0.08,
@@ -433,7 +434,7 @@ function buildFallbackDecision(input: InvestmentDecisionInput, snapshot: Financi
     proceed_with_caution: `The idea is financially workable, but the size should stay controlled. A smaller allocation is safer than taking the full position immediately.`,
     postpone: `The investment is not wrong, but the timing is early for your current liquidity and savings path. Waiting until your reserves are stronger gives you a cleaner entry.`,
     do_not_proceed: totalObligationGap > 0
-      ? `This should be blocked for now because obligation funding gaps total ${totalObligationGap.toLocaleString()} SAR, ${obligationsAtRiskCount} obligations are still at risk, and your portfolio-to-liquid ratio is ${portfolioToLiquidRatio.toFixed(1)}x. Protecting cash and closing those gaps is the higher-priority move.`
+      ? `This should be blocked for now because obligation funding gaps total ${totalObligationGap.toLocaleString()} SAR, ${obligationsAtRiskCount} obligations are still at risk, and your portfolio-to-liquid ratio is ${portfolioToLiquidRatio.toFixed(1)}x. ${firstForecastPressure ? `The ${firstForecastPressure.label} forecast is the cash window to protect.` : 'Protecting cash and closing those gaps is the higher-priority move.'}`
       : nearestAtRiskObligation
         ? `This should be blocked for now because your near-term obligation plan is already underfunded. Protecting cash and closing that gap is the higher-priority move.`
       : `This conflicts with your current financial health more than it helps. The opportunity cost and balance-sheet strain are too high relative to the benefit.`,

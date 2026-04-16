@@ -10,6 +10,7 @@ import {
   getStoredFinancialSettings,
   saveFinancialSettings,
 } from '@/lib/financial-settings-storage';
+import { getE2ETestUser, isE2EAuthEnabled } from '@/lib/e2e-auth';
 import { getOnboardingProfile } from '@/lib/onboarding-profile-storage';
 import { loadRemoteWorkspace } from '@/lib/remote-user-data';
 import { requireAuthenticatedUser } from '@/lib/server-auth';
@@ -37,9 +38,13 @@ const financialSettingsPatchSchema = z.object({
   lastUpdated: z.string().optional(),
 });
 
+function isSeededE2EUser(userId: string) {
+  return isE2EAuthEnabled() && userId === getE2ETestUser().id;
+}
+
 async function buildBaseFinancialSettings(userId: string): Promise<FinancialSettings> {
-  const stored = await getStoredFinancialSettings(userId);
-  if (stored.settings) {
+  const stored = isSeededE2EUser(userId) ? null : await getStoredFinancialSettings(userId);
+  if (stored?.settings) {
     return stored.settings;
   }
 

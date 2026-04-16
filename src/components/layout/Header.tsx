@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { Bell, Moon, Sun, Globe, Settings, PanelLeft, BookOpenText } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
-import { Show, UserButton } from '@clerk/nextjs';
 import { useAppStore } from '@/store/useAppStore';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,10 +15,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { WealixLogo } from '@/components/shared/WealixLogo';
+import { useRuntimeUser } from '@/hooks/useRuntimeUser';
 
 export function Header() {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
+  const { isSignedIn, user } = useRuntimeUser();
   const locale = useAppStore((state) => state.locale);
   const setLocale = useAppStore((state) => state.setLocale);
   const notificationFeed = useAppStore((state) => state.notificationFeed);
@@ -28,6 +29,7 @@ export function Header() {
   const unreadCount = notificationFeed.filter((item) => !item.read).length;
 
   const isArabic = locale === 'ar';
+  const userInitial = user?.fullName?.trim()?.[0] || user?.firstName?.trim()?.[0] || user?.primaryEmailAddress?.emailAddress?.[0] || 'W';
 
   const handleThemeToggle = () => {
     setTheme(theme === 'dark' ? 'light' : 'dark');
@@ -146,29 +148,24 @@ export function Header() {
         </Button>
 
         <div className="flex items-center gap-2 rounded-full border border-border bg-card px-1 py-1 shadow-sm">
-          <Show when="signed-out">
+          {!isSignedIn ? (
+            <>
             <Button asChild variant="ghost" size="sm" className="rounded-full">
               <Link href="/sign-in">{isArabic ? 'دخول' : 'Sign in'}</Link>
             </Button>
             <Button asChild size="sm" className="btn-primary rounded-full">
               <Link href="/sign-up">{isArabic ? 'إنشاء حساب' : 'Sign up'}</Link>
             </Button>
-          </Show>
-          <Show when="signed-in">
-            <div className="wealix-avatar-frame flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full">
-              <UserButton
-                appearance={{
-                  elements: {
-                    rootBox: 'flex h-9 w-9 items-center justify-center',
-                    userButtonBox: 'flex h-9 w-9 items-center justify-center',
-                    userButtonTrigger: 'flex h-9 w-9 items-center justify-center rounded-full p-0',
-                    avatarBox: 'h-9 w-9 overflow-hidden rounded-full',
-                    avatarImage: 'h-full w-full object-cover object-center',
-                  },
-                }}
-              />
-            </div>
-          </Show>
+            </>
+          ) : (
+            <Button asChild variant="ghost" size="icon" className="wealix-avatar-frame h-9 w-9 rounded-full">
+              <Link href="/settings?tab=profile" aria-label={isArabic ? 'الملف الشخصي' : 'Profile'}>
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+                  {userInitial.toUpperCase()}
+                </span>
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
     </header>

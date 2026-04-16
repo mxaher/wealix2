@@ -287,6 +287,7 @@ export function applyFinancialSettingsToSnapshot<T extends {
     annualSavings: number;
     fireNumber: number;
     progressPct: number;
+    currentInvestableAssets: number;
   };
   monthlyIncome: number;
   monthlyExpenses: number;
@@ -300,7 +301,7 @@ export function applyFinancialSettingsToSnapshot<T extends {
   const monthlySavings = roundMoney(settings.monthlyIncome - settings.monthlyExpenses);
   const annualSavings = roundMoney(monthlySavings * 12);
   const fireProgress = settings.fireTarget > 0
-    ? clampPercentage((settings.netWorth / settings.fireTarget) * 100)
+    ? clampPercentage((snapshot.fire.currentInvestableAssets / settings.fireTarget) * 100)
     : 0;
 
   return {

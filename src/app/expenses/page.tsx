@@ -113,6 +113,11 @@ export default function ExpensesPage() {
   const uploadInputId = useId();
   const cameraInputId = useId();
   const statementInputId = useId();
+  const expenseAmountInputId = useId();
+  const expenseDescriptionInputId = useId();
+  const expenseMerchantInputId = useId();
+  const expenseDateInputId = useId();
+  const expenseNotesInputId = useId();
   const [open, setOpen] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [statementOpen, setStatementOpen] = useState(false);
@@ -1089,8 +1094,9 @@ export default function ExpensesPage() {
             >
               <div className="space-y-4 overflow-y-auto px-4 pb-6 md:px-0">
                 <div className="space-y-2">
-                  <Label>{isArabic ? 'المبلغ' : 'Amount'}</Label>
+                  <Label htmlFor={expenseAmountInputId}>{isArabic ? 'المبلغ' : 'Amount'}</Label>
                   <Input
+                    id={expenseAmountInputId}
                     type="number"
                     value={form.amount}
                     onChange={(e) => setForm((current) => ({ ...current, amount: e.target.value }))}
@@ -1136,31 +1142,35 @@ export default function ExpensesPage() {
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label>{isArabic ? 'الوصف' : 'Description'}</Label>
+                    <Label htmlFor={expenseDescriptionInputId}>{isArabic ? 'الوصف' : 'Description'}</Label>
                     <Input
+                      id={expenseDescriptionInputId}
                       value={form.description}
                       onChange={(e) => setForm((current) => ({ ...current, description: e.target.value }))}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>{isArabic ? 'التاجر' : 'Merchant'}</Label>
+                    <Label htmlFor={expenseMerchantInputId}>{isArabic ? 'التاجر' : 'Merchant'}</Label>
                     <Input
+                      id={expenseMerchantInputId}
                       value={form.merchantName}
                       onChange={(e) => setForm((current) => ({ ...current, merchantName: e.target.value }))}
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>{isArabic ? 'التاريخ' : 'Date'}</Label>
+                  <Label htmlFor={expenseDateInputId}>{isArabic ? 'التاريخ' : 'Date'}</Label>
                   <Input
+                    id={expenseDateInputId}
                     type="date"
                     value={form.date}
                     onChange={(e) => setForm((current) => ({ ...current, date: e.target.value }))}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>{isArabic ? 'ملاحظات' : 'Notes'}</Label>
+                  <Label htmlFor={expenseNotesInputId}>{isArabic ? 'ملاحظات' : 'Notes'}</Label>
                   <Textarea
+                    id={expenseNotesInputId}
                     value={form.notes}
                     onChange={(e) => setForm((current) => ({ ...current, notes: e.target.value }))}
                   />

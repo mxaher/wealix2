@@ -74,7 +74,7 @@ export const PERSONAS: Record<PersonaName, RemoteWorkspaceSnapshot> = {
       { id: 'healthy-liability-card', name: 'Card Balance', category: 'credit_card', balance: 6500, currency: 'SAR' },
     ],
     recurringObligations: [
-      { id: 'healthy-obligation-renewal', title: 'Iqama Renewal Fund', category: 'household_allowance', amount: 4000, currency: 'SAR', dueDay: Number(plusDays(45).slice(-2)), startDate: minusDays(20), frequency: 'one_time', status: 'upcoming', lastPaidDate: null, notes: 'Already funded' },
+      { id: 'healthy-obligation-renewal', title: 'Iqama Renewal Fund', category: 'household_allowance', amount: 4000, currency: 'SAR', dueDay: Number(plusDays(45).slice(-2)), startDate: plusDays(45), frequency: 'one_time', status: 'upcoming', lastPaidDate: null, notes: 'Already funded' },
     ],
     savingsAccounts: [
       { id: 'healthy-savings-awaeed', name: 'Awaeed Growth', type: 'awaeed', provider: 'Al Rajhi', principal: 30000, currentBalance: 30000, annualProfitRate: 5, termMonths: 6, openedAt: minusDays(40), maturityDate: plusDays(120), purposeLabel: 'Summer travel', profitPayoutMethod: 'at_maturity', status: 'active', autoRenew: false, zakatHandledByInstitution: true, notes: null },
@@ -105,7 +105,7 @@ export const PERSONAS: Record<PersonaName, RemoteWorkspaceSnapshot> = {
       { id: 'pressure-liability-loan', name: 'Personal Loan', category: 'loan', balance: 28000, currency: 'SAR' },
     ],
     recurringObligations: [
-      { id: 'pressure-obligation-school', title: 'School Fees', category: 'education', amount: 18000, currency: 'SAR', dueDay: Number(plusDays(45).slice(-2)), startDate: todayIso, frequency: 'one_time', status: 'due_soon', lastPaidDate: null, notes: 'Underfunded' },
+      { id: 'pressure-obligation-school', title: 'School Fees', category: 'education', amount: 18000, currency: 'SAR', dueDay: Number(plusDays(45).slice(-2)), startDate: plusDays(45), frequency: 'one_time', status: 'due_soon', lastPaidDate: null, notes: 'Underfunded' },
     ],
     portfolioHoldings: [
       { id: 'pressure-holding-1', ticker: 'NVDA', name: 'NVIDIA', exchange: 'NASDAQ', shares: 12, avgCost: 110, currentPrice: 118, sector: 'Technology', isShariah: false },
@@ -130,8 +130,8 @@ export const PERSONAS: Record<PersonaName, RemoteWorkspaceSnapshot> = {
       { id: 'stress-liability-loan', name: 'Short Loan', category: 'loan', balance: 22000, currency: 'SAR' },
     ],
     recurringObligations: [
-      { id: 'stress-obligation-1', title: 'Visa Renewal', category: 'other', amount: 9000, currency: 'SAR', dueDay: Number(plusDays(25).slice(-2)), startDate: todayIso, frequency: 'one_time', status: 'due_soon', lastPaidDate: null, notes: null },
-      { id: 'stress-obligation-2', title: 'Family Medical Bill', category: 'healthcare', amount: 12000, currency: 'SAR', dueDay: Number(plusDays(58).slice(-2)), startDate: todayIso, frequency: 'one_time', status: 'upcoming', lastPaidDate: null, notes: null },
+      { id: 'stress-obligation-1', title: 'Visa Renewal', category: 'other', amount: 9000, currency: 'SAR', dueDay: Number(plusDays(25).slice(-2)), startDate: plusDays(25), frequency: 'one_time', status: 'due_soon', lastPaidDate: null, notes: null },
+      { id: 'stress-obligation-2', title: 'Family Medical Bill', category: 'healthcare', amount: 12000, currency: 'SAR', dueDay: Number(plusDays(58).slice(-2)), startDate: plusDays(58), frequency: 'one_time', status: 'upcoming', lastPaidDate: null, notes: null },
     ],
     oneTimeExpenses: [
       { id: 'stress-onetime-1', title: 'Laptop Replacement', amount: 6500, currency: 'SAR', dueDate: plusDays(35), category: 'other', notes: null, priority: 'high', fundingSource: 'Current Account', status: 'planned', paidDate: null },
