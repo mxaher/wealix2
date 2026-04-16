@@ -1,7 +1,9 @@
 // BUG #006 FIX — Redis-backed onboarding state (not cookie-only)
-import { db } from '@/lib/db';
+import { dbFirst } from '@/lib/db';
 
 const CACHE_TTL_SECONDS = 60;
+
+type UserRow = { clerkId: string; onboardingCompletedAt: string | null };
 
 async function getRedis() {
   const { redis } = await import('@/lib/redis');
@@ -20,12 +22,12 @@ export async function isOnboardingComplete(userId: string): Promise<boolean> {
     console.warn('[Onboarding] Redis unavailable, falling back to DB');
   }
 
-  const user = await db.user.findUnique({
-    where: { clerkId: userId },
-    select: { onboardingCompletedAt: true },
-  } as never);
+  const user = await dbFirst<UserRow>(
+    'SELECT clerkId, onboardingCompletedAt FROM users WHERE clerkId = ?',
+    [userId]
+  );
 
-  const isDone = !!(user as { onboardingCompletedAt?: Date } | null)?.onboardingCompletedAt;
+  const isDone = !!user?.onboardingCompletedAt;
 
   try {
     const redis = await getRedis();
