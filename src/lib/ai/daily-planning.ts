@@ -74,7 +74,7 @@ export interface DailyPlanningSnapshot {
     title: string;
     body: string;
     cta_label: string;
-    cta_route: '/budget-planning' | '/obligations' | '/goals' | '/investments';
+    cta_route: '/budget-planning' | '/portfolio' | '/fire' | '/reports';
     auto_dismiss_hours: number;
   }>;
   investment_note: {

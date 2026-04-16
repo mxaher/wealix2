@@ -17,11 +17,22 @@ function parseBooleanEnv(value: string | undefined) {
 }
 
 export function isE2EAuthEnabled() {
+  // CRITICAL: E2E auth bypass is NEVER allowed in production regardless of env vars.
+  // This is a hard security boundary — do not remove this guard.
+  if (process.env.NODE_ENV === 'production') {
+    return false;
+  }
   return parseBooleanEnv(process.env.NEXT_PUBLIC_E2E_AUTH_ENABLED);
 }
 
 export function getE2EAuthSecret() {
-  return process.env.E2E_AUTH_SECRET ?? '';
+  // No default fallback — secret must be explicitly set in the environment.
+  // A missing or weak secret (< 32 chars) disables the bypass system entirely.
+  const secret = process.env.E2E_AUTH_SECRET ?? '';
+  if (secret.length < 32) {
+    return '';
+  }
+  return secret;
 }
 
 export function getE2EStorageDir() {
@@ -50,12 +61,23 @@ export function getE2ETestUser(): E2ETestUser {
 }
 
 export function isValidE2EAuthCookie(value: string | null | undefined) {
+  // Double production guard — belt and suspenders.
+  if (process.env.NODE_ENV === 'production') {
+    return false;
+  }
+
   if (!isE2EAuthEnabled()) {
     return false;
   }
 
   const expectedSecret = getE2EAuthSecret();
-  return Boolean(expectedSecret) && value === expectedSecret;
+
+  // Both the stored secret and the provided cookie value must be non-empty and match exactly.
+  if (!expectedSecret || !value) {
+    return false;
+  }
+
+  return value === expectedSecret;
 }
 
 export function isE2ERequestAuthenticated(request: NextRequest) {

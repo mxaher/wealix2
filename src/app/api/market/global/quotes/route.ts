@@ -1,6 +1,10 @@
+// Bug #022 fix: Redis cache layer prevents rate limit exhaustion on repeated requests.
 import { NextResponse } from 'next/server';
 import { buildRateLimitHeaders, enforceRateLimit } from '@/lib/rate-limit';
 import { requireAuthenticatedUser } from '@/lib/server-auth';
+import { redis } from '@/lib/redis';
+
+const CACHE_TTL_SECONDS = 60;
 
 const DEFAULT_BASE_URL = 'https://api.twelvedata.com';
 
@@ -141,6 +145,12 @@ export async function POST(request: Request) {
       holding?.ticker && ['EGX', 'NASDAQ', 'NYSE'].includes(String(holding.exchange))
     );
 
+    const cacheKey = `market:global:v1:${uniqueHoldings.map(h => `${h.ticker}:${h.exchange}`).sort().join(',')}`;
+    const cached = await redis.get<{ quotes: Record<string, unknown>; fxRates: Record<string, unknown>; warnings: string[] }>(cacheKey).catch(() => null);
+    if (cached) {
+      return NextResponse.json(cached, { headers: { ...buildRateLimitHeaders(rateLimit), 'X-Cache': 'HIT' } });
+    }
+
     const quoteResults = await Promise.allSettled(
       uniqueHoldings.map(async (holding) => [holding.ticker.toUpperCase(), await fetchQuoteForHolding(holding, apiBase, apiKey)] as const)
     );
@@ -192,11 +202,13 @@ export async function POST(request: Request) {
       );
     }
 
-    return NextResponse.json({
+    const responseData = {
       quotes: Object.fromEntries(quoteEntries),
       fxRates: Object.fromEntries(fxEntries),
       warnings: [...quoteFailures, ...fxFailures],
-    }, { headers: buildRateLimitHeaders(rateLimit) });
+    };
+    await redis.set(cacheKey, responseData, { ex: CACHE_TTL_SECONDS }).catch(() => null);
+    return NextResponse.json(responseData, { headers: { ...buildRateLimitHeaders(rateLimit), 'X-Cache': 'MISS' } });
   } catch (error) {
     console.error('[market/global] request failed', {
       message: error instanceof Error ? error.message : String(error),

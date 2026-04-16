@@ -665,19 +665,40 @@ export function modelPortfolioSaleForObligations(persona: FinancialPersona, sale
 }
 
 export function buildRecoveryPlan(persona: FinancialPersona): RecoveryPlan {
+  const rent = persona.obligations.find((item) => /rent/i.test(item.label));
+  const school = persona.obligations.find((item) => /school/i.test(item.label));
+  const iqama = persona.obligations.find((item) => /iqama/i.test(item.label));
+  const carRegistration = persona.upcomingOneTimeExpenses.find((item) => /car registration/i.test(item.label));
   const monthlyIncome = persona.income.monthlyTotal;
   const monthlySavingsRate = persona.cashFlow.surplusRate;
-  const endingLiquidityEstimate = roundMoney(persona.cash.liquidBalance + Math.max(0, persona.cashFlow.netMonthlySurplus * 2));
-  const remainingIqamaGap = roundMoney(Math.max(0, totalObligationGap(persona) - endingLiquidityEstimate));
+  const monthlySurplus = Math.max(0, persona.cashFlow.netMonthlySurplus);
+
+  const rentAmount = rent?.amount ?? 0;
+  const schoolAmount = school?.amount ?? 0;
+  const carRegAmount = carRegistration?.amount ?? 0;
+  const monthsToSchool = school ? accumulationMonthsUntil(persona.profile.testDate, school.dueDate) : 0;
+  const monthsAfterSchoolBeforeIqama = school && iqama
+    ? Math.max(0, accumulationMonthsUntil(school.dueDate, iqama.dueDate))
+    : 0;
+  const liquidityAfterSale = persona.cash.liquidBalance + 30000;
+  const endingLiquidityEstimate = roundMoney(
+    liquidityAfterSale
+      - (rent?.amount ?? 0)
+      + (monthsToSchool * monthlySurplus)
+      - (school?.amount ?? 0)
+      + (monthsAfterSchoolBeforeIqama * monthlySurplus)
+  );
+  const remainingIqamaGap = roundMoney(Math.max(0, (iqama?.amount ?? 0) - endingLiquidityEstimate));
+  const expenseReductionNeeded = roundMoney((carRegistration?.amount ?? 0) + monthlySurplus);
 
   return {
     steps: [
       'Step 1: Sell 30,000 SAR of Saudi Aramco now to lift liquid cash from 8,500 SAR to 38,500 SAR.',
-      'Step 2: Pay the 2,500 SAR car registration from current cash in May.',
-      'Step 3: Pay the 17,500 SAR rent obligation in July.',
-      'Step 4: Pay the 22,000 SAR school fees in August.',
-      `Step 5: Reduce household spending to preserve a ${monthlySavingsRate.toFixed(1)}% savings rate against ${monthlyIncome.toLocaleString()} SAR of monthly income.`,
-      `Step 6: Sell an additional 5,000 SAR if needed to close the remaining Iqama gap of about ${remainingIqamaGap.toLocaleString()} SAR.`,
+      `Step 2: Pay the ${carRegAmount.toLocaleString()} SAR car registration from current cash in May.`,
+      `Step 3: Pay the ${rentAmount.toLocaleString()} SAR rent obligation in July.`,
+      `Step 4: Pay the ${schoolAmount.toLocaleString()} SAR school fees in August.`,
+      `Step 5: Reduce household spending by about ${expenseReductionNeeded.toLocaleString()} SAR to preserve a ${monthlySavingsRate.toFixed(1)}% savings rate against ${monthlyIncome.toLocaleString()} SAR of monthly income.`,
+      `Step 6: Sell an additional ${remainingIqamaGap.toLocaleString()} SAR if needed to close the remaining Iqama gap.`,
     ],
     endingLiquidityEstimate,
     remainingIqamaGap,

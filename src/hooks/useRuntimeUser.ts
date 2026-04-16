@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo, useSyncExternalStore } from 'react';
+import { useMemo } from 'react';
 import { useUser } from '@clerk/nextjs';
-import { getE2ETestUser, hasE2EAuthCookie, isE2EAuthEnabled } from '@/lib/e2e-auth';
+import { getE2ETestUser, isE2EAuthEnabled } from '@/lib/e2e-auth';
 
 type RuntimeUser = {
   id: string;
@@ -30,29 +30,18 @@ function buildRuntimeUser(): RuntimeUser {
   };
 }
 
-function subscribe(callback: () => void) {
-  if (typeof window === 'undefined') {
-    return () => undefined;
-  }
-
-  window.addEventListener('focus', callback);
-  window.addEventListener('storage', callback);
-
-  return () => {
-    window.removeEventListener('focus', callback);
-    window.removeEventListener('storage', callback);
-  };
-}
-
-function getSnapshot() {
-  return hasE2EAuthCookie();
-}
-
 export function useRuntimeUser() {
   const clerkState = useUser();
-  const hasE2ECookie = useSyncExternalStore(subscribe, getSnapshot, () => false);
 
   return useMemo(() => {
+    if (isE2EAuthEnabled()) {
+      return {
+        isLoaded: true,
+        isSignedIn: true,
+        user: buildRuntimeUser(),
+      };
+    }
+
     if (clerkState.isSignedIn && clerkState.user) {
       return {
         isLoaded: clerkState.isLoaded,
@@ -61,18 +50,10 @@ export function useRuntimeUser() {
       };
     }
 
-    if (isE2EAuthEnabled() && hasE2ECookie) {
-      return {
-        isLoaded: true,
-        isSignedIn: true,
-        user: buildRuntimeUser(),
-      };
-    }
-
     return {
       isLoaded: clerkState.isLoaded,
       isSignedIn: false,
       user: null,
     };
-  }, [clerkState.isLoaded, clerkState.isSignedIn, clerkState.user, hasE2ECookie]);
+  }, [clerkState.isLoaded, clerkState.isSignedIn, clerkState.user]);
 }

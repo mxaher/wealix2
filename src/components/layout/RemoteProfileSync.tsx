@@ -92,6 +92,7 @@ export function RemoteProfileSync() {
   // Previously keyed only on userId — mode toggles were silently ignored.
   const loadedSyncKeyRef = useRef<string | null>(null);
   const lastSavedSnapshotRef = useRef<string>('');
+  const serializedWorkspaceRef = useRef(serializedWorkspace);
   const remoteUpdatedAtRef = useRef<string | null>(null);
   const applyingRemoteRef = useRef(false);
   const saveTimerRef = useRef<number | null>(null);
@@ -104,6 +105,10 @@ export function RemoteProfileSync() {
   useEffect(() => {
     appModeRef.current = appMode;
   }, [appMode]);
+
+  useEffect(() => {
+    serializedWorkspaceRef.current = serializedWorkspace;
+  }, [serializedWorkspace]);
 
   useEffect(() => {
     if (!isLoaded) {
@@ -167,8 +172,9 @@ export function RemoteProfileSync() {
         //   2. User toggles to live mode
         //   3. Fetch completes — must call hydrateRemoteWorkspace, not stash
         const currentAppMode = appModeRef.current;
+        const hasUnsavedLocalChanges = serializedWorkspaceRef.current !== lastSavedSnapshotRef.current;
 
-        if (workspace && currentAppMode === 'live') {
+        if (workspace && currentAppMode === 'live' && !hasUnsavedLocalChanges) {
           applyingRemoteRef.current = true;
           hydrateRemoteWorkspace(workspace);
           lastSavedSnapshotRef.current = JSON.stringify(workspace);
@@ -176,6 +182,8 @@ export function RemoteProfileSync() {
           window.setTimeout(() => {
             applyingRemoteRef.current = false;
           }, 0);
+        } else if (workspace && currentAppMode === 'live') {
+          remoteUpdatedAtRef.current = updatedAt;
         } else if (workspace) {
           // Still in demo mode — stash the live workspace so the toggle
           // can restore it cleanly when the user switches back to live.

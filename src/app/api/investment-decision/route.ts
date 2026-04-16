@@ -124,6 +124,15 @@ export async function POST(request: NextRequest) {
       decisionJson: JSON.stringify(decision),
     });
 
+    // Bug #015 fix: mandatory regulatory disclaimer on every response.
+    // Under Saudi CMA regulations, automated analysis tools must not be mistaken
+    // for licensed investment advice. This disclaimer is non-negotiable and must
+    // be surfaced in the UI before the user acts on any decision output.
+    const disclaimer =
+      locale === 'ar'
+        ? 'هذه المعلومات لأغراض تحليلية فقط وليست توصية استثمارية. الأداء السابق لا يضمن النتائج المستقبلية. استشر مستشارًا ماليًا مرخصًا قبل اتخاذ أي قرار استثماري.'
+        : 'This output is for informational and analytical purposes only and does not constitute investment advice. Past performance does not guarantee future results. Consult a licensed financial advisor before making any investment decision.';
+
     return NextResponse.json(
       {
         investmentName: ticker,
@@ -131,6 +140,7 @@ export async function POST(request: NextRequest) {
         snapshot,
         decisionContext,
         decision,
+        disclaimer,
       },
       {
         headers: buildRateLimitHeaders({

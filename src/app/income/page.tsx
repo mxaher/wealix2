@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { Plus, Trash2, TrendingUp, Wallet } from 'lucide-react';
 import { DashboardShell } from '@/components/layout';
 import { StatCard } from '@/components/shared';
@@ -56,6 +56,10 @@ export default function IncomePage() {
   const financialSettings = useFinancialSettingsStore((state) => state.data);
   const replaceFinancialSettings = useFinancialSettingsStore((state) => state.replaceData);
   const updateFinancialSettings = useFinancialSettingsStore((state) => state.updateFields);
+  const incomeAmountInputId = useId();
+  const incomeSourceNameInputId = useId();
+  const incomeDateInputId = useId();
+  const incomeNotesInputId = useId();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(defaultForm);
 
@@ -189,8 +193,9 @@ export default function IncomePage() {
               </DialogHeader>
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>{isArabic ? 'المبلغ' : 'Amount'}</Label>
+                  <Label htmlFor={incomeAmountInputId}>{isArabic ? 'المبلغ' : 'Amount'}</Label>
                   <Input
+                    id={incomeAmountInputId}
                     type="number"
                     value={form.amount}
                     onChange={(e) => setForm((current) => ({ ...current, amount: e.target.value }))}
@@ -237,16 +242,18 @@ export default function IncomePage() {
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label>{isArabic ? 'اسم المصدر' : 'Source Name'}</Label>
+                    <Label htmlFor={incomeSourceNameInputId}>{isArabic ? 'اسم المصدر' : 'Source Name'}</Label>
                     <Input
+                      id={incomeSourceNameInputId}
                       value={form.sourceName}
                       onChange={(e) => setForm((current) => ({ ...current, sourceName: e.target.value }))}
                       placeholder={isArabic ? 'اسم الشركة أو العميل' : 'Employer or client'}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>{isArabic ? 'التاريخ' : 'Date'}</Label>
+                    <Label htmlFor={incomeDateInputId}>{isArabic ? 'التاريخ' : 'Date'}</Label>
                     <Input
+                      id={incomeDateInputId}
                       type="date"
                       value={form.date}
                       onChange={(e) => setForm((current) => ({ ...current, date: e.target.value }))}
@@ -266,8 +273,9 @@ export default function IncomePage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>{isArabic ? 'ملاحظات' : 'Notes'}</Label>
+                  <Label htmlFor={incomeNotesInputId}>{isArabic ? 'ملاحظات' : 'Notes'}</Label>
                   <Textarea
+                    id={incomeNotesInputId}
                     value={form.notes}
                     onChange={(e) => setForm((current) => ({ ...current, notes: e.target.value }))}
                     placeholder={isArabic ? 'ملاحظات اختيارية' : 'Optional notes'}

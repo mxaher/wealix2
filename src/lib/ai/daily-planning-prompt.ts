@@ -290,7 +290,7 @@ PART 4 — OUTPUT SCHEMA (strict JSON — no markdown, no prose)
       "title": "string — max 60 chars",
       "body": "string — max 120 chars. Specific amounts and dates required.",
       "cta_label": "string — e.g. 'Review Now' | 'See Budget' | 'View Obligation'",
-      "cta_route": "/budget-planning | /obligations | /goals | /investments",
+      "cta_route": "/budget-planning | /portfolio | /fire | /reports",
       "auto_dismiss_hours": number
     }
   ],

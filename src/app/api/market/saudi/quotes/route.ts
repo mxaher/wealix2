@@ -1,6 +1,10 @@
+// Bug #022 fix: Redis cache layer prevents rate limit exhaustion on repeated requests.
 import { NextResponse } from 'next/server';
 import { buildRateLimitHeaders, enforceRateLimit } from '@/lib/rate-limit';
 import { requireAuthenticatedUser } from '@/lib/server-auth';
+import { redis } from '@/lib/redis';
+
+const CACHE_TTL_SECONDS = 60;
 
 const DEFAULT_BASE_URL = 'https://app.sahmk.sa/api/v1';
 
@@ -95,6 +99,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ quotes: {} }, { headers: buildRateLimitHeaders(rateLimit) });
     }
 
+    const cacheKey = `market:saudi:v1:${[...symbols].sort().join(',')}`;
+    const cached = await redis.get<{ quotes: Record<string, unknown> }>(cacheKey).catch(() => null);
+    if (cached) {
+      return NextResponse.json(cached, { headers: { ...buildRateLimitHeaders(rateLimit), 'X-Cache': 'HIT' } });
+    }
+
     let quotePayloads: SahmkQuote[] = [];
 
     try {
@@ -161,7 +171,8 @@ export async function POST(request: Request) {
       );
     }
 
-    return NextResponse.json({ quotes }, { headers: buildRateLimitHeaders(rateLimit) });
+    await redis.set(cacheKey, { quotes }, { ex: CACHE_TTL_SECONDS }).catch(() => null);
+    return NextResponse.json({ quotes }, { headers: { ...buildRateLimitHeaders(rateLimit), 'X-Cache': 'MISS' } });
   } catch (error) {
     console.error('[market/saudi] request failed', {
       message: error instanceof Error ? error.message : String(error),

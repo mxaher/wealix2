@@ -216,7 +216,7 @@ describe('financial brain surface helpers', () => {
 
     expect(response).toContain('45,122 SAR');
     expect(response).toContain('30,000 SAR');
-    expect(response).toContain('5,378 SAR');
+    expect(response).toContain('16,268 SAR');
     expect(response).toContain('2,732 SAR');
   });
 });

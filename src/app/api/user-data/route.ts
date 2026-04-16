@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { buildRateLimitHeaders, enforceRateLimit } from '@/lib/rate-limit';
+import { getE2ETestUser, isE2EAuthEnabled } from '@/lib/e2e-auth';
 import { requireAuthenticatedUser } from '@/lib/server-auth';
 import {
   isRemotePersistenceConfigured,
@@ -54,6 +55,10 @@ function unavailableResponse() {
   );
 }
 
+function isRateLimitExemptUser(userId: string) {
+  return isE2EAuthEnabled() && userId === getE2ETestUser().id;
+}
+
 export async function GET() {
   const authResult = await requireAuthenticatedUser();
   if (authResult.error) {
@@ -69,8 +74,10 @@ export async function GET() {
   }
 
   try {
-    const rateLimit = await enforceRateLimit(`user-data:get:${authResult.userId}`, 120, 60 * 60 * 1000);
-    if (!rateLimit.allowed) {
+    const rateLimit = isRateLimitExemptUser(authResult.userId)
+      ? null
+      : await enforceRateLimit(`user-data:get:${authResult.userId}`, 120, 60 * 60 * 1000);
+    if (rateLimit && !rateLimit.allowed) {
       return NextResponse.json(
         { error: 'Rate limit exceeded', code: 'RATE_LIMITED' },
         { status: 429, headers: buildRateLimitHeaders(rateLimit) }
@@ -78,7 +85,10 @@ export async function GET() {
     }
 
     const { workspace, updatedAt } = await loadRemoteWorkspace(authResult.userId);
-    return NextResponse.json({ workspace, updatedAt }, { headers: buildRateLimitHeaders(rateLimit) });
+    return NextResponse.json(
+      { workspace, updatedAt },
+      { headers: rateLimit ? buildRateLimitHeaders(rateLimit) : undefined }
+    );
   } catch (error) {
     console.error('[user-data] load failed', error);
     return NextResponse.json(
@@ -106,8 +116,10 @@ export async function PUT(request: NextRequest) {
   }
 
   try {
-    const rateLimit = await enforceRateLimit(`user-data:put:${authResult.userId}`, 60, 60 * 60 * 1000);
-    if (!rateLimit.allowed) {
+    const rateLimit = isRateLimitExemptUser(authResult.userId)
+      ? null
+      : await enforceRateLimit(`user-data:put:${authResult.userId}`, 60, 60 * 60 * 1000);
+    if (rateLimit && !rateLimit.allowed) {
       return NextResponse.json(
         { error: 'Rate limit exceeded', code: 'RATE_LIMITED' },
         { status: 429, headers: buildRateLimitHeaders(rateLimit) }
@@ -127,7 +139,7 @@ export async function PUT(request: NextRequest) {
           error: 'Workspace payload is invalid.',
           code: 'INVALID_WORKSPACE',
         },
-        { status: 400, headers: buildRateLimitHeaders(rateLimit) }
+        { status: 400, headers: rateLimit ? buildRateLimitHeaders(rateLimit) : undefined }
       );
     }
 
@@ -141,7 +153,7 @@ export async function PUT(request: NextRequest) {
           error: 'Demo mode data cannot be persisted to the live workspace.',
           code: 'DEMO_WRITE_BLOCKED',
         },
-        { status: 409, headers: buildRateLimitHeaders(rateLimit) }
+        { status: 409, headers: rateLimit ? buildRateLimitHeaders(rateLimit) : undefined }
       );
     }
 
@@ -155,13 +167,13 @@ export async function PUT(request: NextRequest) {
           workspace: result.workspace,
           updatedAt: result.updatedAt,
         },
-        { status: 409, headers: buildRateLimitHeaders(rateLimit) }
+        { status: 409, headers: rateLimit ? buildRateLimitHeaders(rateLimit) : undefined }
       );
     }
 
     return NextResponse.json(
       { workspace: result.workspace, updatedAt: result.updatedAt, saved: true },
-      { headers: buildRateLimitHeaders(rateLimit) }
+      { headers: rateLimit ? buildRateLimitHeaders(rateLimit) : undefined }
     );
   } catch (error) {
     console.error('[user-data] save failed', error);

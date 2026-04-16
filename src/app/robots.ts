@@ -1,6 +1,5 @@
-import type { MetadataRoute } from 'next';
-
-const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://wealix.app';
+// BUG #004 FIX — Exclude authenticated routes from crawling
+import { MetadataRoute } from 'next';
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -8,10 +7,18 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: '*',
         allow: '/',
-        disallow: ['/app/', '/api/', '/settings/', '/onboarding/', '/sign-in/', '/sign-up/'],
+        disallow: [
+          '/app/',
+          '/dashboard/',
+          '/onboarding/',
+          '/settings/',
+          '/api/',
+          '/sign-in/',
+          '/sign-up/',
+          '/samples/',
+        ],
       },
     ],
-    sitemap: `${siteUrl}/sitemap.xml`,
-    host: siteUrl,
+    sitemap: `${process.env.NEXT_PUBLIC_APP_URL}/sitemap.xml`,
   };
 }

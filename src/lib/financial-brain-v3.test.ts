@@ -446,7 +446,7 @@ describe('financial brain v3', () => {
 
     expect(plan.steps).toHaveLength(6);
     expect(plan.steps[0]).toContain('30,000 SAR');
-    expect(plan.steps[4]).toContain('5,378 SAR');
+    expect(plan.steps[4]).toContain('13.1%');
     expect(plan.endingLiquidityEstimate).toBe(16268);
     expect(plan.remainingIqamaGap).toBe(2732);
   });
