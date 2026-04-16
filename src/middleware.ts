@@ -40,7 +40,7 @@ const isDemoFeatureRoute = createRouteMatcher([
 ]);
 
 // ─── Clerk instance guard ──────────────────────────────────────────────────────
-const VALID_KID = 'ins_3BXeeFpYvNEqGtajEpFP4w8d1q0';
+const VALID_KID = process.env.CLERK_EXPECTED_KID || 'ins_3BXeeFpYvNEqGtajEpFP4w8d1q0';
 function getHandshakeKid(token: string): string | null {
   try {
     const seg = token.split('.')[0];

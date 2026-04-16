@@ -9,6 +9,15 @@ type Props = {
   slug: string;
 };
 
+function sanitizeHtml(raw: string): string {
+  return raw
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+    .replace(/&lt;(\/?(?:br|p|div|span|h[1-6]|ul|ol|li|a|strong|em|code|pre|blockquote|img|table|thead|tbody|tr|th|td)\b[^&>]*)>/gi, '<$1>');
+}
+
 export function BlogSlugClient({ article }: Props) {
   const locale = useAppStore((state) => state.locale);
   const isArabic = locale === 'ar';
@@ -24,7 +33,7 @@ export function BlogSlugClient({ article }: Props) {
   };
 
   const rawContent = isArabic ? article.contentAr : article.content;
-  const htmlContent = rawContent.replace(/\n/g, '<br/>');
+  const htmlContent = sanitizeHtml(rawContent.replace(/\n/g, '<br/>'));
 
   return (
     <main className="min-h-screen bg-background">
