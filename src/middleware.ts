@@ -23,7 +23,6 @@ if (!ADMIN_PANEL_HOST) {
   console.warn('[Security] WEALIX_ADMIN_PANEL_HOST not set — admin panel routing disabled');
 }
 
-// ─── Route matchers ───────────────────────────────────────────────────────────────────────────
 const isPublicRoute = createRouteMatcher([
   '/',
   '/sign-in(.*)',
@@ -65,13 +64,6 @@ const isDemoFeatureRoute = createRouteMatcher([
   '/budget-planning(.*)',
 ]);
 
-// ─── Bug #11 fix: simplified stale handshake handler ───────────────────────────────────────
-// The previous hand-rolled JWT parsing checked 'kid' without verifying the token signature,
-// which meant a crafted token with a matching kid could pass the check.
-// Clerk's own middleware handles full session validation. We only redirect to strip
-// the __clerk_handshake query param when CLERK_EXPECTED_KID is configured and
-// the token's kid does not match — purely as a loop-prevention mechanism.
-// Signature verification is ALWAYS delegated to Clerk's SDK, not done here.
 function extractJwtKid(token: string): string | null {
   try {
     const seg = token.split('.')[0] ?? '';
@@ -79,7 +71,12 @@ function extractJwtKid(token: string): string | null {
     const padded = seg + '==='.slice(0, (4 - (seg.length & 3)) & 3);
     const decoded = atob(padded.replace(/-/g, '+').replace(/_/g, '/'));
     const header = JSON.parse(decoded) as unknown;
-    if (typeof header === 'object' && header !== null && 'kid' in header && typeof (header as Record<string, unknown>).kid === 'string') {
+    if (
+      typeof header === 'object' &&
+      header !== null &&
+      'kid' in header &&
+      typeof (header as Record<string, unknown>).kid === 'string'
+    ) {
       return (header as Record<string, string>).kid;
     }
     return null;
@@ -140,9 +137,6 @@ function nukeCookies(response: NextResponse, hostname: string) {
 function handleStaleHandshake(req: NextRequest): NextResponse | null {
   const handshake = req.nextUrl.searchParams.get('__clerk_handshake');
   if (!handshake) return null;
-
-  // Bug #17 fix: if CLERK_EXPECTED_KID is not configured, skip this check entirely.
-  // Never compare against a hardcoded fallback — that leaks internal identifiers.
   if (!VALID_KID) return null;
 
   const kid = extractJwtKid(handshake);
@@ -158,8 +152,6 @@ function handleStaleHandshake(req: NextRequest): NextResponse | null {
   return null;
 }
 
-// Bug #10 fix: replace 'unsafe-inline' in style-src with nonce-based directive.
-// This closes the CSS injection / attribute-selector exfiltration vector.
 function buildContentSecurityPolicy(nonce: string) {
   return `
     default-src 'self';
@@ -234,7 +226,6 @@ export default function middleware(req: NextRequest, event: NextFetchEvent) {
   const { pathname } = req.nextUrl;
   const hostname = req.nextUrl.hostname.toLowerCase();
 
-  // Bug #019 fix: expanded attack path blocklist.
   const blockedPaths = [
     '/wp-admin', '/wp-login', '/xmlrpc', '/.env', '/.git', '/phpmyadmin',
     '/vendor/', '/node_modules/', '/.DS_Store', '/backup/', '/dump/',
@@ -244,11 +235,8 @@ export default function middleware(req: NextRequest, event: NextFetchEvent) {
     return applySecurityHeaders(new NextResponse('Not Found', { status: 404 }), pathname, nonce);
   }
 
-  // Bug #2 fix: admin API routes on non-admin hostnames return 403, not 404.
   if (isAdminPanelRoute(req)) {
     if (hostname !== ADMIN_PANEL_HOST) {
-      // Distinguish: admin-panel page routes get 404 (no information leakage),
-      // but admin API routes on the wrong host get 403 (proper HTTP semantics).
       const isAdminApiRoute = pathname.startsWith('/api/v1/admin') || pathname.startsWith('/api/admin-panel');
       const status = isAdminApiRoute ? 403 : 404;
       return applySecurityHeaders(
@@ -263,7 +251,6 @@ export default function middleware(req: NextRequest, event: NextFetchEvent) {
   const staleResponse = handleStaleHandshake(req);
   if (staleResponse) return applySecurityHeaders(staleResponse, pathname, nonce);
 
-  // Bug #3 fix: pass the real NextFetchEvent instead of '{} as any'.
   const clerkHandler = clerkMiddleware(async (auth, request) => {
     if (request.nextUrl.pathname === '/') {
       const { userId } = await auth();
@@ -282,10 +269,6 @@ export default function middleware(req: NextRequest, event: NextFetchEvent) {
     }
 
     if (isProtectedApiRoute(request)) {
-      // Bug #014 fix: CSRF — reject cross-origin state-mutating requests.
-      // Browsers omit the Origin header for same-origin requests (those are safe).
-      // When Origin IS present it must match the app hostname; anything else is a
-      // cross-site request and gets rejected before auth even runs.
       const method = request.method.toUpperCase();
       if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
         const origin = request.headers.get('origin');
@@ -310,8 +293,6 @@ export default function middleware(req: NextRequest, event: NextFetchEvent) {
     }
 
     if (isAppRoute(request)) {
-      // Bug #006 fix: capture userId so the HMAC-signed cookie can be verified
-      // against the authenticated user — prevents cookie-swapping across accounts.
       const { userId } = await auth.protect();
 
       if (!request.nextUrl.pathname.startsWith('/onboarding')) {
@@ -324,9 +305,6 @@ export default function middleware(req: NextRequest, event: NextFetchEvent) {
       return NextResponse.next({ request: { headers: requestHeaders } });
     }
 
-    // Bug #1 fix: demo feature routes set x-demo-mode header.
-    // Authenticated users get their userId forwarded; unauthenticated users are explicitly
-    // flagged as demo-mode so components NEVER attempt to fetch real user financial data.
     if (isDemoFeatureRoute(request)) {
       const { userId } = await auth();
 
@@ -338,7 +316,6 @@ export default function middleware(req: NextRequest, event: NextFetchEvent) {
         requestHeaders.set('x-demo-mode', 'false');
         requestHeaders.set('x-user-id', userId);
       } else {
-        // Unauthenticated: enforce demo mode — components must render with mock data only.
         requestHeaders.set('x-demo-mode', 'true');
       }
 
@@ -348,7 +325,6 @@ export default function middleware(req: NextRequest, event: NextFetchEvent) {
     return NextResponse.next({ request: { headers: requestHeaders } });
   });
 
-  // Bug #3 fix: pass the real event object instead of '{} as any'.
   const response = clerkHandler(req, event) ?? NextResponse.next({ request: { headers: requestHeaders } });
   return Promise.resolve(response).then((resolvedResponse) =>
     applySecurityHeaders(
@@ -361,7 +337,7 @@ export default function middleware(req: NextRequest, event: NextFetchEvent) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|images|fonts|icons|.*\.png|.*\.jpg|.*\.svg|.*\.ico).*)',
+    '/((?!_next/static|_next/image|favicon.ico|images|fonts|icons|.*\\.png|.*\\.jpg|.*\\.svg|.*\\.ico).*)',
     '/(api|trpc)(.*)',
   ],
 };
