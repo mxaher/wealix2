@@ -16,7 +16,7 @@ export type D1LikeDatabase = {
 export function getD1Database(): D1LikeDatabase | null {
   try {
     const context = getCloudflareContext();
-    return (context?.env as Record<string, unknown> | undefined)?.WEALIX_DB as D1LikeDatabase | null;
+    return (context?.env as Partial<Env> | undefined)?.WEALIX_DB ?? null;
   } catch {
     return null;
   }

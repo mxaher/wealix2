@@ -3,6 +3,7 @@ import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { buildRateLimitHeaders, enforceRateLimit } from '@/lib/rate-limit';
 import { requireTier } from '@/lib/server-auth';
 import { dbRun } from '@/lib/db';
+import { getOptionalStorageBucket } from '@/lib/cloudflare-env';
 
 const MAX_RECEIPT_FILE_SIZE = 10 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
@@ -548,7 +549,7 @@ export async function POST(request: NextRequest) {
       const r2Key = `receipts/${userId}/${receiptId}.${fileExtension}`;
 
       const uploadToR2 = (async () => {
-        const storage = (cfCtx.env as Record<string, unknown>).WEALIX_STORAGE as R2Bucket | undefined;
+        const storage = await getOptionalStorageBucket();
         if (storage) {
           await storage.put(r2Key, normalizedBytes!.buffer as ArrayBuffer, {
             httpMetadata: { contentType: sanitizedImage.type },

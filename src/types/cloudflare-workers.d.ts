@@ -1,6 +1,17 @@
-// Minimal Cloudflare Workers type shims for R2Bucket
+// Minimal Cloudflare Workers type shims for Cloudflare bindings used by the app.
 // The full types are available at runtime via the Workers runtime.
 // This file only provides TypeScript-level declarations.
+
+declare interface D1PreparedStatement {
+  bind(...values: unknown[]): D1PreparedStatement;
+  first<T = unknown>(): Promise<T | null>;
+  all<T = unknown>(): Promise<{ results: T[] }>;
+  run(): Promise<unknown>;
+}
+
+declare interface D1Database {
+  prepare(query: string): D1PreparedStatement;
+}
 
 declare interface R2Bucket {
   put(
@@ -121,4 +132,10 @@ declare interface R2MultipartUpload {
 declare interface R2UploadedPart {
   partNumber: number;
   etag: string;
+}
+
+declare interface Env {
+  WEALIX_DB: D1Database;
+  WEALIX_STORAGE: R2Bucket;
+  ASSETS: Fetcher;
 }

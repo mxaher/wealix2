@@ -2,13 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { callCompanyAgents } from '@/lib/company-agents-client';
 import { requireAdminPanelApiAccess } from '@/lib/admin-panel-auth';
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ agentId: string }> }) {
+type RouteContext = {
+  params: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export async function POST(request: NextRequest, { params }: RouteContext) {
   const authError = requireAdminPanelApiAccess(request);
   if (authError) {
     return authError;
   }
 
-  const { agentId } = await params;
+  const { agentId } = (await params) as { agentId?: string };
+  if (!agentId) {
+    return NextResponse.json({ error: 'Agent id is required.' }, { status: 400 });
+  }
   try {
     const payload = await callCompanyAgents(`/api/v1/admin/agents/${agentId}/broadcast`, {
       method: 'POST',

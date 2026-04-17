@@ -1,24 +1,13 @@
 // BUG #011 FIX — Stripe webhook signature verification
-import Stripe from 'stripe';
 import { NextRequest, NextResponse } from 'next/server';
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2025-02-24.acacia' });
+import { verifyStripeWebhookSignature } from '@/lib/stripe-webhook-guard';
 
 export async function POST(req: NextRequest) {
-  const rawBody = await req.text();
-  const sig = req.headers.get('stripe-signature');
-
-  if (!sig) {
-    return NextResponse.json({ error: 'Missing stripe-signature header' }, { status: 400 });
+  const verification = await verifyStripeWebhookSignature(req);
+  if (verification.errorResponse) {
+    return verification.errorResponse;
   }
-
-  let event: Stripe.Event;
-  try {
-    event = stripe.webhooks.constructEvent(rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET!);
-  } catch (err) {
-    console.error('[Stripe Webhook] Signature verification failed:', err);
-    return NextResponse.json({ error: 'Webhook signature verification failed' }, { status: 400 });
-  }
+  const { event } = verification;
 
   switch (event.type) {
     case 'invoice.payment_succeeded':

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { dbFirst } from '@/lib/db';
-import { getCloudflareContext } from '@opennextjs/cloudflare';
+import { getOptionalStorageBucket } from '@/lib/cloudflare-env';
 
 
 type ReportRow = {
@@ -10,16 +10,23 @@ type ReportRow = {
   r2_pdf_key: string;
 };
 
+type RouteContext = {
+  params: Promise<Record<string, string | string[] | undefined>>;
+};
+
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: RouteContext
 ) {
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { id } = await params;
+  const { id } = (await params) as { id?: string };
+  if (!id) {
+    return NextResponse.json({ error: 'Report id is required' }, { status: 400 });
+  }
   const report = await dbFirst<ReportRow>(
     'SELECT id, title, r2_pdf_key FROM generated_reports WHERE id = ? AND user_id = ?',
     [id, userId]
@@ -29,8 +36,7 @@ export async function GET(
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
-  const ctx = await getCloudflareContext();
-  const storage = (ctx.env as Record<string, unknown>).WEALIX_STORAGE as R2Bucket | undefined;
+  const storage = await getOptionalStorageBucket();
   if (!storage) {
     return NextResponse.json({ error: 'Storage not available' }, { status: 500 });
   }

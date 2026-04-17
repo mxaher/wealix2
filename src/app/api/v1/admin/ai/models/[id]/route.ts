@@ -13,13 +13,20 @@ const updateSchema = z.object({
   description: z.string().nullable().optional(),
 });
 
-export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+type RouteContext = {
+  params: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export async function PUT(request: NextRequest, { params }: RouteContext) {
   const authError = requireAdminPanelApiAccess(request);
   if (authError) {
     return authError;
   }
 
-  const { id } = await params;
+  const { id } = (await params) as { id?: string };
+  if (!id) {
+    return NextResponse.json({ error: 'AI model id is required.' }, { status: 400 });
+  }
   const parsed = updateSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid AI model payload.' }, { status: 400 });

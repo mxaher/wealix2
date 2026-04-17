@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { z } from 'zod';
 import { generateReport, getReportTitle, type ReportType } from '@/lib/report-generator';
+import { getOptionalStorageBucket } from '@/lib/cloudflare-env';
 import { loadRemoteWorkspace } from '@/lib/remote-user-data';
-import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { dbRun } from '@/lib/db';
 
 export const runtime = 'nodejs';
@@ -42,8 +42,7 @@ export async function POST(request: Request) {
 
   const pdfBytes = await generateReport(reportType as ReportType, workspaceRecord.workspace, options);
 
-  const ctx = await getCloudflareContext();
-  const storage = (ctx.env as Record<string, unknown>).WEALIX_STORAGE as R2Bucket | undefined;
+  const storage = await getOptionalStorageBucket();
   if (!storage) {
     return NextResponse.json({ error: 'Storage not available' }, { status: 500 });
   }

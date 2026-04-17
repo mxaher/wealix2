@@ -1,15 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 
-// Next.js 16: params is now a Promise — must be awaited
+type RouteContext = {
+  params: Promise<Record<string, string | string[] | undefined>>;
+};
+
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ symbol: string }> }
+  { params }: RouteContext
 ) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { symbol } = await params;
+  const { symbol } = (await params) as { symbol?: string };
   if (!symbol) return NextResponse.json({ error: 'Symbol is required' }, { status: 400 });
 
   const upperSymbol = symbol.toUpperCase();

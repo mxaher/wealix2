@@ -1,19 +1,15 @@
 // BUG #016 FIX — StoreProvider scopes Zustand store per React tree
 'use client';
 
-import { createContext, useContext, useRef } from 'react';
+import { createContext, useContext, useState } from 'react';
 import { useStore } from 'zustand';
 import { createPortfolioStore, PortfolioStore } from '@/store/createPortfolioStore';
 
 const StoreContext = createContext<PortfolioStore | null>(null);
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
-  // React 19: useRef requires an explicit initial value argument.
-  const storeRef = useRef<PortfolioStore | undefined>(undefined);
-  if (!storeRef.current) {
-    storeRef.current = createPortfolioStore();
-  }
-  return <StoreContext.Provider value={storeRef.current}>{children}</StoreContext.Provider>;
+  const [store] = useState(createPortfolioStore);
+  return <StoreContext.Provider value={store}>{children}</StoreContext.Provider>;
 }
 
 export function usePortfolioStore<T>(

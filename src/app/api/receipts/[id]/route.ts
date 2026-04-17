@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { dbFirst, dbRun } from '@/lib/db';
-import { getCloudflareContext } from '@opennextjs/cloudflare';
+import { getOptionalStorageBucket } from '@/lib/cloudflare-env';
 
 
 type ReceiptRow = {
@@ -15,16 +15,23 @@ type ReceiptRow = {
   created_at: number;
 };
 
+type RouteContext = {
+  params: Promise<Record<string, string | string[] | undefined>>;
+};
+
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: RouteContext
 ) {
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { id } = await params;
+  const { id } = (await params) as { id?: string };
+  if (!id) {
+    return NextResponse.json({ error: 'Receipt id is required' }, { status: 400 });
+  }
   const receipt = await dbFirst<ReceiptRow>(
     'SELECT id, merchant, amount, currency, date, category, r2_image_key, created_at FROM receipts WHERE id = ? AND user_id = ?',
     [id, userId]
@@ -37,8 +44,7 @@ export async function GET(
   let imageUrl: string | null = null;
   if (receipt.r2_image_key) {
     try {
-      const ctx = await getCloudflareContext();
-      const storage = (ctx.env as Record<string, unknown>).WEALIX_STORAGE as R2Bucket | undefined;
+      const storage = await getOptionalStorageBucket();
       if (storage) {
         // R2 does not expose createSignedUrl in the Workers binding — return a
         // path-based URL instead that your app can proxy or gate via middleware.
@@ -54,14 +60,17 @@ export async function GET(
 
 export async function DELETE(
   _request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: RouteContext
 ) {
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { id } = await params;
+  const { id } = (await params) as { id?: string };
+  if (!id) {
+    return NextResponse.json({ error: 'Receipt id is required' }, { status: 400 });
+  }
   const receipt = await dbFirst<ReceiptRow>(
     'SELECT r2_image_key FROM receipts WHERE id = ? AND user_id = ?',
     [id, userId]
@@ -69,8 +78,7 @@ export async function DELETE(
 
   if (receipt?.r2_image_key) {
     try {
-      const ctx = await getCloudflareContext();
-      const storage = (ctx.env as Record<string, unknown>).WEALIX_STORAGE as R2Bucket | undefined;
+      const storage = await getOptionalStorageBucket();
       if (storage) {
         await storage.delete(receipt.r2_image_key);
       }

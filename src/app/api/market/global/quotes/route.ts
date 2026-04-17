@@ -1,8 +1,8 @@
-// Bug #022 fix: Redis cache layer prevents rate limit exhaustion on repeated requests.
+// Bug #022 fix: Worker-safe cache layer prevents rate limit exhaustion on repeated requests.
 import { NextResponse } from 'next/server';
 import { buildRateLimitHeaders, enforceRateLimit } from '@/lib/rate-limit';
+import { getCachedValue, setCachedValue } from '@/lib/runtime-cache';
 import { requireAuthenticatedUser } from '@/lib/server-auth';
-import { redis } from '@/lib/redis';
 
 const CACHE_TTL_SECONDS = 60;
 
@@ -146,7 +146,7 @@ export async function POST(request: Request) {
     );
 
     const cacheKey = `market:global:v1:${uniqueHoldings.map(h => `${h.ticker}:${h.exchange}`).sort().join(',')}`;
-    const cached = await redis.get<{ quotes: Record<string, unknown>; fxRates: Record<string, unknown>; warnings: string[] }>(cacheKey).catch(() => null);
+    const cached = await getCachedValue<{ quotes: Record<string, unknown>; fxRates: Record<string, unknown>; warnings: string[] }>(cacheKey);
     if (cached) {
       return NextResponse.json(cached, { headers: { ...buildRateLimitHeaders(rateLimit), 'X-Cache': 'HIT' } });
     }
@@ -207,7 +207,7 @@ export async function POST(request: Request) {
       fxRates: Object.fromEntries(fxEntries),
       warnings: [...quoteFailures, ...fxFailures],
     };
-    await redis.set(cacheKey, responseData, { ex: CACHE_TTL_SECONDS }).catch(() => null);
+    await setCachedValue(cacheKey, responseData, CACHE_TTL_SECONDS);
     return NextResponse.json(responseData, { headers: { ...buildRateLimitHeaders(rateLimit), 'X-Cache': 'MISS' } });
   } catch (error) {
     console.error('[market/global] request failed', {

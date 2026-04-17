@@ -1,8 +1,8 @@
-// Bug #022 fix: Redis cache layer prevents rate limit exhaustion on repeated requests.
+// Bug #022 fix: Worker-safe cache layer prevents rate limit exhaustion on repeated requests.
 import { NextResponse } from 'next/server';
 import { buildRateLimitHeaders, enforceRateLimit } from '@/lib/rate-limit';
+import { getCachedValue, setCachedValue } from '@/lib/runtime-cache';
 import { requireAuthenticatedUser } from '@/lib/server-auth';
-import { redis } from '@/lib/redis';
 
 const CACHE_TTL_SECONDS = 60;
 
@@ -100,7 +100,7 @@ export async function POST(request: Request) {
     }
 
     const cacheKey = `market:saudi:v1:${[...symbols].sort().join(',')}`;
-    const cached = await redis.get<{ quotes: Record<string, unknown> }>(cacheKey).catch(() => null);
+    const cached = await getCachedValue<{ quotes: Record<string, unknown> }>(cacheKey);
     if (cached) {
       return NextResponse.json(cached, { headers: { ...buildRateLimitHeaders(rateLimit), 'X-Cache': 'HIT' } });
     }
@@ -171,7 +171,7 @@ export async function POST(request: Request) {
       );
     }
 
-    await redis.set(cacheKey, { quotes }, { ex: CACHE_TTL_SECONDS }).catch(() => null);
+    await setCachedValue(cacheKey, { quotes }, CACHE_TTL_SECONDS);
     return NextResponse.json({ quotes }, { headers: { ...buildRateLimitHeaders(rateLimit), 'X-Cache': 'MISS' } });
   } catch (error) {
     console.error('[market/saudi] request failed', {
