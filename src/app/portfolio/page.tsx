@@ -1312,10 +1312,10 @@ export default function PortfolioPage() {
                 : 'Import a spreadsheet, add stocks or gold, and analyze the portfolio with organized buy, sell, and hold guidance.'}
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className={cn('flex gap-2', isArabic ? 'flex-wrap' : 'flex-wrap sm:flex-nowrap')}>
             <Button
               variant="outline"
-              className="gap-2"
+              className={cn('gap-2 justify-center', !isArabic && 'sm:w-[190px]')}
               disabled={!isSignedIn || isRefreshingPrices}
               onClick={handleRefreshAllPrices}
             >
@@ -1338,7 +1338,11 @@ export default function PortfolioPage() {
               }}
             >
               <DialogTrigger asChild>
-                <Button variant="outline" className="gap-2" disabled={!isSignedIn}>
+                <Button
+                  variant="outline"
+                  className={cn('gap-2 justify-center', !isArabic && 'sm:w-[190px]')}
+                  disabled={!isSignedIn}
+                >
                   <Plus className="w-4 h-4" />
                   {isArabic ? 'إضافة مركز' : 'Add Holding'}
                 </Button>
@@ -1574,7 +1578,11 @@ export default function PortfolioPage() {
                   ) : null}
 
                   <div className={cn('flex items-center gap-2', isArabic && 'flex-row-reverse')} dir={isArabic ? 'rtl' : 'ltr'}>
-                    <Switch checked={newHolding.isShariah} onCheckedChange={(checked) => updateHoldingDraft({ isShariah: checked })} />
+                    <Switch
+                      dir={isArabic ? 'rtl' : 'ltr'}
+                      checked={newHolding.isShariah}
+                      onCheckedChange={(checked) => updateHoldingDraft({ isShariah: checked })}
+                    />
                     <Label dir={isArabic ? 'rtl' : 'ltr'} className="font-normal">{isArabic ? 'متوافق مع الشريعة الإسلامية' : 'Shariah Compliant'}</Label>
                   </div>
                 </div>
@@ -1630,6 +1638,7 @@ export default function PortfolioPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Switch
+                      dir={isArabic ? 'rtl' : 'ltr'}
                       checked={newHolding.isShariah}
                       onCheckedChange={(checked) => setNewHolding({ ...newHolding, isShariah: checked })}
                     />
@@ -1661,7 +1670,11 @@ export default function PortfolioPage() {
 
             <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
               <DialogTrigger asChild>
-                <Button variant="outline" className="gap-2" disabled={!isSignedIn || isImporting}>
+                <Button
+                  variant="outline"
+                  className={cn('gap-2 justify-center', !isArabic && 'sm:w-[190px]')}
+                  disabled={!isSignedIn || isImporting}
+                >
                   <Upload className="w-4 h-4" />
                   {isImporting ? (isArabic ? 'جارٍ الاستيراد...' : 'Importing...') : (isArabic ? 'استيراد المراكز' : 'Import Holdings')}
                 </Button>
@@ -1775,7 +1788,11 @@ export default function PortfolioPage() {
             </SelectContent>
           </Select>
           <div className="flex items-center gap-2 rounded-lg bg-muted px-4 py-2">
-            <Switch checked={shariahFilterEnabled} onCheckedChange={toggleShariahFilter} />
+            <Switch
+              dir={isArabic ? 'rtl' : 'ltr'}
+              checked={shariahFilterEnabled}
+              onCheckedChange={toggleShariahFilter}
+            />
             <span className="text-sm">{isArabic ? 'الشريعة فقط' : 'Shariah Only'}</span>
           </div>
           </div>

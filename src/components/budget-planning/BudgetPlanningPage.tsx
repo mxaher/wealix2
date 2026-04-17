@@ -582,8 +582,8 @@ export function BudgetPlanningPage({
 
   const [showAddExpense, setShowAddExpense] = useState(false);
   const [showAddObligation, setShowAddObligation] = useState(false);
-  const [showAddOneTimeExpense, setShowAddOneTimeExpense] = useState(false);
   const [showAddSavingsAccount, setShowAddSavingsAccount] = useState(false);
+  const [expenseEntryType, setExpenseEntryType] = useState<'recurring' | 'one_time'>('recurring');
   const [newExpense, setNewExpense] = useState({ category: 'food', description: '', amount: '' });
   const [obligationForm, setObligationForm] = useState(defaultObligationForm);
   const [oneTimeExpenseForm, setOneTimeExpenseForm] = useState(defaultOneTimeExpenseForm);
@@ -684,38 +684,6 @@ export function BudgetPlanningPage({
     () => oneTimeExpenses.filter((item) => item.status !== 'paid'),
     [oneTimeExpenses]
   );
-
-  const handleAddOneTimeExpense = () => {
-    if (!isSignedIn) {
-      requireAccount();
-      return;
-    }
-
-    const amount = Number(oneTimeExpenseForm.amount);
-    if (!oneTimeExpenseForm.title.trim() || !Number.isFinite(amount) || amount <= 0) {
-      toast({
-        title: isArabic ? 'بيانات غير مكتملة' : 'Incomplete details',
-        description: isArabic ? 'أدخل الاسم والمبلغ وتاريخ الاستحقاق.' : 'Add a title, amount, and due date.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    addOneTimeExpense({
-      id: createOpaqueId('one-time-expense'),
-      title: oneTimeExpenseForm.title.trim(),
-      amount,
-      currency: 'SAR',
-      dueDate: oneTimeExpenseForm.dueDate,
-      category: oneTimeExpenseForm.category,
-      priority: oneTimeExpenseForm.priority,
-      fundingSource: oneTimeExpenseForm.fundingSource.trim() || null,
-      notes: oneTimeExpenseForm.notes.trim() || null,
-      status: 'planned',
-    });
-    setOneTimeExpenseForm(defaultOneTimeExpenseForm);
-    setShowAddOneTimeExpense(false);
-  };
 
   const submitSuggestion = async (
     endpoint: '/api/suggestions/savings-account-name' | '/api/suggestions/bank-name',
@@ -967,23 +935,50 @@ export function BudgetPlanningPage({
       requireAccount();
       return;
     }
-    if (!newExpense.description || !newExpense.amount) {
-      return;
-    }
+    if (expenseEntryType === 'one_time') {
+      const amount = Number(oneTimeExpenseForm.amount);
+      if (!oneTimeExpenseForm.title.trim() || !Number.isFinite(amount) || amount <= 0) {
+        toast({
+          title: isArabic ? 'بيانات غير مكتملة' : 'Incomplete details',
+          description: isArabic ? 'أدخل الاسم والمبلغ وتاريخ الاستحقاق.' : 'Add a title, amount, and due date.',
+          variant: 'destructive',
+        });
+        return;
+      }
 
-    addExpenseEntry({
-      id: createOpaqueId('budget-expense'),
-      category: budgetToExpenseCategory[newExpense.category] || 'Other',
-      description: newExpense.description,
-      amount: Number(newExpense.amount),
-      currency: 'SAR',
-      merchantName: null,
-      date: new Date().toISOString().slice(0, 10),
-      paymentMethod: 'Card',
-      notes: null,
-      receiptId: null,
-    });
-    setNewExpense({ category: 'food', description: '', amount: '' });
+      addOneTimeExpense({
+        id: createOpaqueId('one-time-expense'),
+        title: oneTimeExpenseForm.title.trim(),
+        amount,
+        currency: 'SAR',
+        dueDate: oneTimeExpenseForm.dueDate,
+        category: oneTimeExpenseForm.category,
+        priority: oneTimeExpenseForm.priority,
+        fundingSource: oneTimeExpenseForm.fundingSource.trim() || null,
+        notes: oneTimeExpenseForm.notes.trim() || null,
+        status: 'planned',
+      });
+      setOneTimeExpenseForm(defaultOneTimeExpenseForm);
+    } else {
+      if (!newExpense.description || !newExpense.amount) {
+        return;
+      }
+
+      addExpenseEntry({
+        id: createOpaqueId('budget-expense'),
+        category: budgetToExpenseCategory[newExpense.category] || 'Other',
+        description: newExpense.description,
+        amount: Number(newExpense.amount),
+        currency: 'SAR',
+        merchantName: null,
+        date: new Date().toISOString().slice(0, 10),
+        paymentMethod: 'Card',
+        notes: null,
+        receiptId: null,
+      });
+      setNewExpense({ category: 'food', description: '', amount: '' });
+    }
+    setExpenseEntryType('recurring');
     setShowAddExpense(false);
   };
 
@@ -1063,33 +1058,99 @@ export function BudgetPlanningPage({
                 <DialogTrigger asChild>
                   <Button className="shrink-0 gap-2" disabled={!isSignedIn}>
                     <Plus className="h-4 w-4" />
-                    {isArabic ? 'إضافة مصروف' : 'Add Expense'}
+                    {isArabic ? 'إضافة المصروفات' : 'Add Expenses'}
                   </Button>
                 </DialogTrigger>
                 <DialogContent dir={isArabic ? 'rtl' : 'ltr'}>
                   <DialogHeader>
-                    <DialogTitle>{isArabic ? 'إضافة مصروف جديد' : 'Add New Expense'}</DialogTitle>
+                    <DialogTitle>{isArabic ? 'إضافة المصروفات' : 'Add Expenses'}</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
-                      <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'الفئة' : 'Category'}</Label>
-                      <Select dir={isArabic ? 'rtl' : 'ltr'} value={newExpense.category} onValueChange={(value) => setNewExpense((current) => ({ ...current, category: value }))}>
-                        <SelectTrigger dir={isArabic ? 'rtl' : 'ltr'}><SelectValue /></SelectTrigger>
+                      <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'نوع المصروف' : 'Expense Type'}</Label>
+                      <Select
+                        dir={isArabic ? 'rtl' : 'ltr'}
+                        value={expenseEntryType}
+                        onValueChange={(value) => setExpenseEntryType(value as 'recurring' | 'one_time')}
+                      >
+                        <SelectTrigger dir={isArabic ? 'rtl' : 'ltr'}>
+                          <SelectValue />
+                        </SelectTrigger>
                         <SelectContent>
-                          {Object.entries(categoryLabels).map(([key, label]) => (
-                            <SelectItem key={key} value={key}>{isArabic ? label.ar : label.en}</SelectItem>
-                          ))}
+                          <SelectItem value="recurring">{isArabic ? 'متكرر' : 'Recurring'}</SelectItem>
+                          <SelectItem value="one_time">{isArabic ? 'لمرة واحدة' : 'One-time'}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
-                      <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'الوصف' : 'Description'}</Label>
-                      <Input dir={isArabic ? 'rtl' : 'ltr'} value={newExpense.description} onChange={(event) => setNewExpense((current) => ({ ...current, description: event.target.value }))} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'المبلغ (SAR)' : 'Amount (SAR)'}</Label>
-                      <Input dir={isArabic ? 'rtl' : 'ltr'} type="number" value={newExpense.amount} onChange={(event) => setNewExpense((current) => ({ ...current, amount: event.target.value }))} />
-                    </div>
+                    {expenseEntryType === 'one_time' ? (
+                      <>
+                        <div className="space-y-2">
+                          <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'العنوان' : 'Title'}</Label>
+                          <Input dir={isArabic ? 'rtl' : 'ltr'} value={oneTimeExpenseForm.title} onChange={(event) => setOneTimeExpenseForm((current) => ({ ...current, title: event.target.value }))} />
+                        </div>
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'المبلغ' : 'Amount'}</Label>
+                            <Input dir={isArabic ? 'rtl' : 'ltr'} type="number" value={oneTimeExpenseForm.amount} onChange={(event) => setOneTimeExpenseForm((current) => ({ ...current, amount: event.target.value }))} />
+                          </div>
+                          <div className="space-y-2">
+                            <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'تاريخ الاستحقاق' : 'Due date'}</Label>
+                            <Input dir={isArabic ? 'rtl' : 'ltr'} type="date" value={oneTimeExpenseForm.dueDate} onChange={(event) => setOneTimeExpenseForm((current) => ({ ...current, dueDate: event.target.value }))} />
+                          </div>
+                        </div>
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'الفئة' : 'Category'}</Label>
+                            <Select dir={isArabic ? 'rtl' : 'ltr'} value={oneTimeExpenseForm.category} onValueChange={(value) => setOneTimeExpenseForm((current) => ({ ...current, category: value }))}>
+                              <SelectTrigger dir={isArabic ? 'rtl' : 'ltr'}><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {Object.entries(categoryLabels).map(([key, label]) => (
+                                  <SelectItem key={key} value={key}>{isArabic ? label.ar : label.en}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'الأولوية' : 'Priority'}</Label>
+                            <Select dir={isArabic ? 'rtl' : 'ltr'} value={oneTimeExpenseForm.priority} onValueChange={(value) => setOneTimeExpenseForm((current) => ({ ...current, priority: value as OneTimeExpense['priority'] }))}>
+                              <SelectTrigger dir={isArabic ? 'rtl' : 'ltr'}><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="critical">{isArabic ? 'حرج' : 'Critical'}</SelectItem>
+                                <SelectItem value="high">{isArabic ? 'عالٍ' : 'High'}</SelectItem>
+                                <SelectItem value="medium">{isArabic ? 'متوسط' : 'Medium'}</SelectItem>
+                                <SelectItem value="low">{isArabic ? 'منخفض' : 'Low'}</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'مصدر التمويل' : 'Funding source'}</Label>
+                          <Input dir={isArabic ? 'rtl' : 'ltr'} value={oneTimeExpenseForm.fundingSource} onChange={(event) => setOneTimeExpenseForm((current) => ({ ...current, fundingSource: event.target.value }))} placeholder={isArabic ? 'مثال: حساب جاري أو وديعة لأجل' : 'Example: current account or time deposit'} />
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="space-y-2">
+                          <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'الفئة' : 'Category'}</Label>
+                          <Select dir={isArabic ? 'rtl' : 'ltr'} value={newExpense.category} onValueChange={(value) => setNewExpense((current) => ({ ...current, category: value }))}>
+                            <SelectTrigger dir={isArabic ? 'rtl' : 'ltr'}><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {Object.entries(categoryLabels).map(([key, label]) => (
+                                <SelectItem key={key} value={key}>{isArabic ? label.ar : label.en}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'الوصف' : 'Description'}</Label>
+                          <Input dir={isArabic ? 'rtl' : 'ltr'} value={newExpense.description} onChange={(event) => setNewExpense((current) => ({ ...current, description: event.target.value }))} />
+                        </div>
+                        <div className="space-y-2">
+                          <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'المبلغ (SAR)' : 'Amount (SAR)'}</Label>
+                          <Input dir={isArabic ? 'rtl' : 'ltr'} type="number" value={newExpense.amount} onChange={(event) => setNewExpense((current) => ({ ...current, amount: event.target.value }))} />
+                        </div>
+                      </>
+                    )}
                   </div>
                   <DialogFooter>
                     <Button variant="outline" onClick={() => setShowAddExpense(false)}>{isArabic ? 'إلغاء' : 'Cancel'}</Button>
@@ -1171,74 +1232,6 @@ export function BudgetPlanningPage({
                   <DialogFooter>
                     <Button variant="outline" onClick={() => setShowAddObligation(false)}>{isArabic ? 'إلغاء' : 'Cancel'}</Button>
                     <Button onClick={handleAddObligation}>{isArabic ? 'إضافة' : 'Add'}</Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-
-              <Dialog open={showAddOneTimeExpense} onOpenChange={setShowAddOneTimeExpense}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" className="shrink-0 gap-2" onClick={(event) => {
-                    if (!isSignedIn) {
-                      event.preventDefault();
-                      requireAccount();
-                    }
-                  }}>
-                    <AlertCircle className="h-4 w-4" />
-                    {isArabic ? 'مصروف لمرة واحدة' : 'One-Time Expense'}
-                  </Button>
-                </DialogTrigger>
-                <DialogContent dir={isArabic ? 'rtl' : 'ltr'}>
-                  <DialogHeader>
-                    <DialogTitle>{isArabic ? 'إضافة مصروف لمرة واحدة' : 'Add One-Time Expense'}</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'العنوان' : 'Title'}</Label>
-                      <Input dir={isArabic ? 'rtl' : 'ltr'} value={oneTimeExpenseForm.title} onChange={(event) => setOneTimeExpenseForm((current) => ({ ...current, title: event.target.value }))} />
-                    </div>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'المبلغ' : 'Amount'}</Label>
-                        <Input dir={isArabic ? 'rtl' : 'ltr'} type="number" value={oneTimeExpenseForm.amount} onChange={(event) => setOneTimeExpenseForm((current) => ({ ...current, amount: event.target.value }))} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'تاريخ الاستحقاق' : 'Due date'}</Label>
-                        <Input dir={isArabic ? 'rtl' : 'ltr'} type="date" value={oneTimeExpenseForm.dueDate} onChange={(event) => setOneTimeExpenseForm((current) => ({ ...current, dueDate: event.target.value }))} />
-                      </div>
-                    </div>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'الفئة' : 'Category'}</Label>
-                        <Select dir={isArabic ? 'rtl' : 'ltr'} value={oneTimeExpenseForm.category} onValueChange={(value) => setOneTimeExpenseForm((current) => ({ ...current, category: value }))}>
-                          <SelectTrigger dir={isArabic ? 'rtl' : 'ltr'}><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {Object.entries(categoryLabels).map(([key, label]) => (
-                              <SelectItem key={key} value={key}>{isArabic ? label.ar : label.en}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'الأولوية' : 'Priority'}</Label>
-                        <Select dir={isArabic ? 'rtl' : 'ltr'} value={oneTimeExpenseForm.priority} onValueChange={(value) => setOneTimeExpenseForm((current) => ({ ...current, priority: value as OneTimeExpense['priority'] }))}>
-                          <SelectTrigger dir={isArabic ? 'rtl' : 'ltr'}><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="critical">{isArabic ? 'حرج' : 'Critical'}</SelectItem>
-                            <SelectItem value="high">{isArabic ? 'عالٍ' : 'High'}</SelectItem>
-                            <SelectItem value="medium">{isArabic ? 'متوسط' : 'Medium'}</SelectItem>
-                            <SelectItem value="low">{isArabic ? 'منخفض' : 'Low'}</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'مصدر التمويل' : 'Funding source'}</Label>
-                      <Input dir={isArabic ? 'rtl' : 'ltr'} value={oneTimeExpenseForm.fundingSource} onChange={(event) => setOneTimeExpenseForm((current) => ({ ...current, fundingSource: event.target.value }))} placeholder={isArabic ? 'مثال: حساب جاري أو وديعة لأجل' : 'Example: current account or time deposit'} />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setShowAddOneTimeExpense(false)}>{isArabic ? 'إلغاء' : 'Cancel'}</Button>
-                    <Button onClick={handleAddOneTimeExpense}>{isArabic ? 'إضافة' : 'Add'}</Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>

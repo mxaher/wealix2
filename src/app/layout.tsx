@@ -2,9 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { headers } from "next/headers";
 import { Inter, Tajawal } from "next/font/google";
-import "@fontsource/tajawal/400.css";
-import "@fontsource/tajawal/500.css";
-import "@fontsource/tajawal/700.css";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "next-themes";
@@ -21,7 +18,7 @@ const inter = Inter({
 
 const tajawal = Tajawal({
   subsets: ["arabic"],
-  weight: ["300", "400", "500", "700", "800"],
+  weight: ["400", "500", "700"],
   variable: "--font-tajawal",
   display: "swap",
 });
