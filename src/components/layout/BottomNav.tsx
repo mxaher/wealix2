@@ -28,10 +28,10 @@ import {
 import { getStartPageHref } from '@/lib/start-page';
 
 const bottomNavItems = [
-  { href: 'start-page', label: { en: 'Home', ar: 'الرئيسية' }, icon: LayoutDashboard },
-  { href: '/income', label: { en: 'Income', ar: 'الدخل' }, icon: TrendingUp },
+  { href: '/portfolio', label: { en: 'Portfolio', ar: 'المحفظة' }, icon: Briefcase },
+  { href: '/budget-planning', label: { en: 'Budget', ar: 'الموازنة' }, icon: CalendarRange },
+  { href: '/net-worth', label: { en: 'Net Worth', ar: 'صافي الثروة' }, icon: Wallet },
   { href: '/expenses', label: { en: 'Expenses', ar: 'المصروفات' }, icon: Receipt },
-  { href: '/advisor', label: { en: 'AI', ar: 'المستشار' }, icon: Bot },
 ];
 
 const allNavItems = [
