@@ -41,6 +41,8 @@ export function RemoteProfileSync() {
   const recurringObligations = useAppStore((state) => state.recurringObligations);
   const oneTimeExpenses = useAppStore((state) => state.oneTimeExpenses);
   const savingsAccounts = useAppStore((state) => state.savingsAccounts);
+  const userGoals = useAppStore((state) => state.userGoals);
+  const dismissedAlertKeys = useAppStore((state) => state.dismissedAlertKeys);
 
   const remoteWorkspace = useMemo<RemoteWorkspaceSnapshot>(() => getPersistableWorkspaceSnapshot({
     appMode,
@@ -61,6 +63,8 @@ export function RemoteProfileSync() {
     recurringObligations,
     oneTimeExpenses,
     savingsAccounts,
+    userGoals,
+    dismissedAlertKeys,
   }), [
     activeProfileId,
     appMode,
@@ -80,6 +84,8 @@ export function RemoteProfileSync() {
     recurringObligations,
     oneTimeExpenses,
     savingsAccounts,
+    userGoals,
+    dismissedAlertKeys,
   ]);
 
   const serializedWorkspace = useMemo(

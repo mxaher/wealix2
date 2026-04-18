@@ -43,6 +43,8 @@ const remoteUserWorkspaceSchema = z.object({
   recurringObligations: z.array(z.unknown()).optional(),
   oneTimeExpenses: z.array(z.unknown()).optional(),
   savingsAccounts: z.array(z.unknown()).optional(),
+  userGoals: z.array(z.unknown()).optional(),
+  dismissedAlertKeys: z.array(z.unknown()).optional(),
 });
 
 function unavailableResponse() {

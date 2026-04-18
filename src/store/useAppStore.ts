@@ -179,6 +179,8 @@ export interface LocalProfile {
   recurringObligations: RecurringObligation[];
   oneTimeExpenses: OneTimeExpense[];
   savingsAccounts: SavingsAccount[];
+  userGoals: UserGoal[];
+  dismissedAlertKeys: string[];
 }
 
 interface AuthenticatedUserPayload {
@@ -375,6 +377,18 @@ export interface BudgetLimit {
   color: string;
 }
 
+export type GoalType = 'emergency' | 'fire' | 'home' | 'education' | 'vehicle' | 'travel' | 'custom';
+
+export interface UserGoal {
+  id: string;
+  name: string;
+  type: GoalType;
+  targetAmount: number;
+  currentAmount: number;
+  targetDate: string | null;
+  currency: string;
+}
+
 export interface RemoteWorkspaceSnapshot {
   appMode: AppMode;
   startPage: StartPage;
@@ -392,6 +406,8 @@ export interface RemoteWorkspaceSnapshot {
   recurringObligations: RecurringObligation[];
   oneTimeExpenses: OneTimeExpense[];
   savingsAccounts: SavingsAccount[];
+  userGoals: UserGoal[];
+  dismissedAlertKeys: string[];
 }
 
 type PersistedWorkspaceState = RemoteWorkspaceSnapshot & {
@@ -415,6 +431,8 @@ function workspaceFieldsToSnapshot(source: {
   recurringObligations: RecurringObligation[];
   oneTimeExpenses: OneTimeExpense[];
   savingsAccounts: SavingsAccount[];
+  userGoals: UserGoal[];
+  dismissedAlertKeys: string[];
 }): RemoteWorkspaceSnapshot {
   return {
     appMode: source.appMode,
@@ -433,6 +451,8 @@ function workspaceFieldsToSnapshot(source: {
     recurringObligations: source.recurringObligations,
     oneTimeExpenses: source.oneTimeExpenses,
     savingsAccounts: source.savingsAccounts,
+    userGoals: source.userGoals,
+    dismissedAlertKeys: source.dismissedAlertKeys,
   };
 }
 
@@ -1102,6 +1122,8 @@ function buildDemoState(): PersistedWorkspaceState {
     recurringObligations: defaultRecurringObligations,
     oneTimeExpenses: defaultOneTimeExpenses,
     savingsAccounts: defaultSavingsAccounts,
+    userGoals: [] as UserGoal[],
+    dismissedAlertKeys: [] as string[],
   };
 }
 
@@ -1124,6 +1146,8 @@ function buildLiveState(): PersistedWorkspaceState {
     recurringObligations: [] as RecurringObligation[],
     oneTimeExpenses: [] as OneTimeExpense[],
     savingsAccounts: [] as SavingsAccount[],
+    userGoals: [] as UserGoal[],
+    dismissedAlertKeys: [] as string[],
   };
 }
 
@@ -1150,6 +1174,8 @@ function sanitizeRemoteWorkspace(workspace: Partial<RemoteWorkspaceSnapshot> | u
     recurringObligations: Array.isArray(workspace?.recurringObligations) ? workspace.recurringObligations : live.recurringObligations,
     oneTimeExpenses: Array.isArray(workspace?.oneTimeExpenses) ? workspace.oneTimeExpenses : live.oneTimeExpenses,
     savingsAccounts: Array.isArray(workspace?.savingsAccounts) ? workspace.savingsAccounts : live.savingsAccounts,
+    userGoals: Array.isArray(workspace?.userGoals) ? workspace.userGoals : live.userGoals,
+    dismissedAlertKeys: Array.isArray(workspace?.dismissedAlertKeys) ? workspace.dismissedAlertKeys : live.dismissedAlertKeys,
   };
 }
 
@@ -1186,6 +1212,8 @@ function createProfileSnapshot(
     recurringObligations: state.recurringObligations,
     oneTimeExpenses: state.oneTimeExpenses,
     savingsAccounts: state.savingsAccounts,
+    userGoals: state.userGoals,
+    dismissedAlertKeys: state.dismissedAlertKeys,
   };
 }
 
@@ -1234,6 +1262,8 @@ function normalizeLocalProfiles(profiles: unknown): LocalProfile[] {
       recurringObligations: Array.isArray(item.recurringObligations) ? item.recurringObligations : [],
       oneTimeExpenses: Array.isArray(item.oneTimeExpenses) ? item.oneTimeExpenses : [],
       savingsAccounts: Array.isArray(item.savingsAccounts) ? item.savingsAccounts : [],
+      userGoals: Array.isArray(item.userGoals) ? item.userGoals : [],
+      dismissedAlertKeys: Array.isArray(item.dismissedAlertKeys) ? item.dismissedAlertKeys : [],
     }];
   });
 }
@@ -1256,6 +1286,8 @@ function profileToRemoteWorkspace(profile: LocalProfile): RemoteWorkspaceSnapsho
     recurringObligations: profile.recurringObligations,
     oneTimeExpenses: profile.oneTimeExpenses,
     savingsAccounts: profile.savingsAccounts,
+    userGoals: profile.userGoals,
+    dismissedAlertKeys: profile.dismissedAlertKeys,
   });
 }
 
@@ -1283,6 +1315,8 @@ function snapshotActiveProfile(state: AppState): LocalProfile {
     recurringObligations: state.recurringObligations,
     oneTimeExpenses: state.oneTimeExpenses,
     savingsAccounts: state.savingsAccounts,
+    userGoals: state.userGoals,
+    dismissedAlertKeys: state.dismissedAlertKeys,
   };
 }
 
@@ -1306,6 +1340,7 @@ function syncActiveProfileState(state: AppState, partial: Partial<AppState>) {
     'recurringObligations',
     'oneTimeExpenses',
     'savingsAccounts',
+    'userGoals',
   ];
   const hasFinancialMutation = financialMutationKeys.some((key) => key in partial);
   const nextVersion = hasFinancialMutation ? state.financialStateVersion + 1 : state.financialStateVersion;
@@ -1363,6 +1398,8 @@ function profileToState(profile: LocalProfile): PersistedWorkspaceState {
     recurringObligations: Array.isArray(profile.recurringObligations) ? profile.recurringObligations : [],
     oneTimeExpenses: Array.isArray(profile.oneTimeExpenses) ? profile.oneTimeExpenses : [],
     savingsAccounts: Array.isArray(profile.savingsAccounts) ? profile.savingsAccounts : [],
+    userGoals: Array.isArray(profile.userGoals) ? profile.userGoals : [],
+    dismissedAlertKeys: Array.isArray(profile.dismissedAlertKeys) ? profile.dismissedAlertKeys : [],
   };
 }
 
@@ -1397,6 +1434,14 @@ export interface AppState {
   clearClerkUser: () => void;
   financialStateVersion: number;
   financialStateUpdatedAt: string;
+  userGoals: UserGoal[];
+  setUserGoals: (goals: UserGoal[]) => void;
+  addUserGoal: (goal: UserGoal) => void;
+  deleteUserGoal: (id: string) => void;
+  dismissedAlertKeys: string[];
+  setDismissedAlertKeys: (keys: string[]) => void;
+  dismissAlertKey: (key: string) => void;
+  restoreAllDismissedAlerts: () => void;
   incomeEntries: IncomeEntry[];
   addIncomeEntry: (entry: IncomeEntry) => void;
   addIncomeEntries: (entries: IncomeEntry[]) => void;
@@ -1715,6 +1760,41 @@ export const useAppStore = create<AppState>()(
         })),
       financialStateVersion: 0,
       financialStateUpdatedAt: new Date().toISOString(),
+      userGoals: initialGuestProfile.userGoals,
+      setUserGoals: (goals) => set((state) =>
+        syncActiveProfileState(state, {
+          userGoals: goals,
+        })
+      ),
+      addUserGoal: (goal) => set((state) =>
+        syncActiveProfileState(state, {
+          userGoals: [...state.userGoals, goal],
+        })
+      ),
+      deleteUserGoal: (id) => set((state) =>
+        syncActiveProfileState(state, {
+          userGoals: state.userGoals.filter((goal) => goal.id !== id),
+        })
+      ),
+      dismissedAlertKeys: initialGuestProfile.dismissedAlertKeys,
+      setDismissedAlertKeys: (keys) => set((state) =>
+        syncActiveProfileState(state, {
+          dismissedAlertKeys: keys,
+        })
+      ),
+      dismissAlertKey: (key) => set((state) => {
+        if (state.dismissedAlertKeys.includes(key)) {
+          return {};
+        }
+        return syncActiveProfileState(state, {
+          dismissedAlertKeys: [...state.dismissedAlertKeys, key],
+        });
+      }),
+      restoreAllDismissedAlerts: () => set((state) =>
+        syncActiveProfileState(state, {
+          dismissedAlertKeys: [],
+        })
+      ),
       incomeEntries: initialGuestProfile.incomeEntries,
       addIncomeEntry: (entry) => set((state) =>
         syncActiveProfileState(state, {
@@ -2015,6 +2095,8 @@ export const useAppStore = create<AppState>()(
         activeProfileId: state.activeProfileId,
         financialStateVersion: state.financialStateVersion,
         financialStateUpdatedAt: state.financialStateUpdatedAt,
+        userGoals: state.userGoals,
+        dismissedAlertKeys: state.dismissedAlertKeys,
         incomeEntries: state.incomeEntries,
         expenseEntries: state.expenseEntries,
         receiptScans: state.receiptScans,
@@ -2102,6 +2184,8 @@ export function getPersistableWorkspaceSnapshot(
     | 'recurringObligations'
     | 'oneTimeExpenses'
     | 'savingsAccounts'
+    | 'userGoals'
+    | 'dismissedAlertKeys'
   >
 ): RemoteWorkspaceSnapshot {
   if (state.appMode === 'demo') {
@@ -2128,6 +2212,8 @@ export function getPersistableWorkspaceSnapshot(
     recurringObligations: state.recurringObligations,
     oneTimeExpenses: state.oneTimeExpenses,
     savingsAccounts: state.savingsAccounts,
+    userGoals: state.userGoals,
+    dismissedAlertKeys: state.dismissedAlertKeys,
   });
 }
 

@@ -58,15 +58,6 @@ import { createOpaqueId } from '@/lib/ids';
 import type { FinancialGoalSnapshot } from '@/lib/financial-snapshot';
 
 type GoalType = 'emergency' | 'fire' | 'home' | 'education' | 'vehicle' | 'travel' | 'custom';
-interface UserGoal {
-  id: string;
-  name: string;
-  type: GoalType;
-  targetAmount: number;
-  currentAmount: number;
-  targetDate: string | null;
-  currency: string;
-}
 
 const GOAL_ICONS: Record<GoalType, React.ElementType> = {
   emergency: ShieldCheck,
@@ -104,12 +95,14 @@ export default function GoalsPage() {
   const locale = useAppStore((s) => s.locale);
   const appMode = useAppStore((s) => s.appMode);
   const currency = useAppStore((s) => s.user?.currency ?? 'SAR');
+  const userGoals = useAppStore((s) => s.userGoals);
+  const addUserGoal = useAppStore((s) => s.addUserGoal);
+  const deleteUserGoalFromStore = useAppStore((s) => s.deleteUserGoal);
   const { snapshot } = useFinancialSnapshot();
   const { isSignedIn } = useRuntimeUser();
   const isArabic = locale === 'ar';
   const isDemoMode = appMode === 'demo' && !isSignedIn;
 
-  const [userGoals, setUserGoals] = useState<UserGoal[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [newGoal, setNewGoal] = useState({
     name: '',
@@ -200,24 +193,21 @@ export default function GoalsPage() {
     if (!newGoal.name || !newGoal.targetAmount) return;
     const target = parseFloat(newGoal.targetAmount);
     const current = parseFloat(newGoal.currentAmount) || 0;
-    setUserGoals((prev) => [
-      ...prev,
-      {
-        id: createOpaqueId('goal'),
-        name: newGoal.name,
-        type: newGoal.type,
-        targetAmount: target,
-        currentAmount: current,
-        targetDate: newGoal.targetDate || null,
-        currency,
-      },
-    ]);
+    addUserGoal({
+      id: createOpaqueId('goal'),
+      name: newGoal.name,
+      type: newGoal.type,
+      targetAmount: target,
+      currentAmount: current,
+      targetDate: newGoal.targetDate || null,
+      currency,
+    });
     setNewGoal({ name: '', type: 'custom', targetAmount: '', currentAmount: '', targetDate: '' });
     setShowAdd(false);
   }
 
   function deleteUserGoal(id: string) {
-    setUserGoals((prev) => prev.filter((g) => g.id !== id));
+    deleteUserGoalFromStore(id);
   }
 
   const goalTypeOptions: { value: GoalType; en: string; ar: string }[] = [

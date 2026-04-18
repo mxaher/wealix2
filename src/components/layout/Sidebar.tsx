@@ -92,6 +92,20 @@ export function Sidebar() {
         ? 'Core'
         : isArabic ? 'الاشتراك' : 'Free';
 
+  const isNavItemActive = (href: string) => {
+    if (pathname === href) return true;
+
+    if (href === '/budget-planning') {
+      return pathname === '/budget' || pathname === '/planning' || pathname.startsWith('/budget-planning/');
+    }
+
+    if (href === '/alerts') {
+      return pathname.startsWith('/alerts') || pathname.startsWith('/notifications');
+    }
+
+    return pathname.startsWith(`${href}/`);
+  };
+
   return (
     <TooltipProvider delayDuration={0}>
       <motion.aside
@@ -134,10 +148,7 @@ export function Sidebar() {
                 )}
                 <div className="space-y-0.5">
                   {section.items.map((item) => {
-                    const isActive =
-                      pathname === item.href ||
-                      (item.href === '/budget-planning' &&
-                        (pathname === '/budget' || pathname === '/planning'));
+                    const isActive = isNavItemActive(item.href);
                     const Icon = item.icon;
                     const isLocked = item.pro && !isPro;
 

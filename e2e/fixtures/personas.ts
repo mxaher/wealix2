@@ -48,6 +48,8 @@ function emptyWorkspace(): RemoteWorkspaceSnapshot {
     recurringObligations: [],
     oneTimeExpenses: [],
     savingsAccounts: [],
+    userGoals: [],
+    dismissedAlertKeys: [],
   };
 }
 

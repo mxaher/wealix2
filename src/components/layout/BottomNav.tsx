@@ -64,6 +64,20 @@ export function BottomNav() {
   const isArabic = locale === 'ar';
   const startPageHref = getStartPageHref(startPage);
 
+  const isNavItemActive = (href: string) => {
+    if (pathname === href) return true;
+
+    if (href === '/budget-planning') {
+      return pathname === '/budget' || pathname === '/planning' || pathname.startsWith('/budget-planning/');
+    }
+
+    if (href === '/alerts') {
+      return pathname.startsWith('/alerts') || pathname.startsWith('/notifications');
+    }
+
+    return pathname.startsWith(`${href}/`);
+  };
+
   return (
     <>
       {/* Mobile Bottom Navigation */}
@@ -71,7 +85,7 @@ export function BottomNav() {
         <div className="flex items-center justify-around h-16 px-2">
           {bottomNavItems.map((item) => {
             const href = item.href === 'start-page' ? startPageHref : item.href;
-            const isActive = pathname === href;
+            const isActive = isNavItemActive(href);
             const Icon = item.icon;
 
             return (
@@ -112,7 +126,7 @@ export function BottomNav() {
                 <ScrollArea className="h-[calc(60vh-5rem)]">
                   <div className="grid grid-cols-3 gap-4">
                     {allNavItems.map((item) => {
-                      const isActive = pathname === item.href || (item.href === '/budget-planning' && (pathname === '/budget' || pathname === '/planning'));
+                      const isActive = isNavItemActive(item.href);
                       const Icon = item.icon;
                       const isLocked = item.pro && !isPro;
 

@@ -29,6 +29,8 @@ async function flushWorkspaceToRemote(page: Page) {
       recurringObligations: state.recurringObligations,
       oneTimeExpenses: state.oneTimeExpenses,
       savingsAccounts: state.savingsAccounts,
+      userGoals: state.userGoals ?? [],
+      dismissedAlertKeys: state.dismissedAlertKeys ?? [],
     };
 
     const response = await fetch('/api/user-data', {

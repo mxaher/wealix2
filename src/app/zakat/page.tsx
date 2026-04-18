@@ -135,7 +135,7 @@ export default function ZakatPage() {
 
   return (
     <DashboardShell>
-      <div className="space-y-6 max-w-2xl">
+      <div className="w-full space-y-6">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Moon className="h-6 w-6 text-gold" />

@@ -16,6 +16,7 @@ import type {
   ReceiptScanResult,
   RecurringObligation,
   SavingsAccount,
+  UserGoal,
 } from '@/store/useAppStore';
 import type { StartPage } from '@/lib/start-page';
 
@@ -36,6 +37,8 @@ export type RemoteUserWorkspace = {
   recurringObligations?: RecurringObligation[];
   oneTimeExpenses?: OneTimeExpense[];
   savingsAccounts?: SavingsAccount[];
+  userGoals?: UserGoal[];
+  dismissedAlertKeys?: string[];
 };
 
 export type RemoteWorkspaceRecord = {

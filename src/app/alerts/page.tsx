@@ -64,9 +64,15 @@ function cardBgClass(severity: AlertSummary['severity']) {
   return '';
 }
 
+function getAlertKey(alert: AlertSummary, index: number) {
+  return `${alert.severity}|${alert.category}|${alert.title}|${alert.description}|${index}`;
+}
+
 export default function AlertsPage() {
   const locale = useAppStore((s) => s.locale);
   const appMode = useAppStore((s) => s.appMode);
+  const dismissedAlertKeys = useAppStore((s) => s.dismissedAlertKeys);
+  const setDismissedAlertKeys = useAppStore((s) => s.setDismissedAlertKeys);
   const { snapshot } = useFinancialSnapshot();
   const { isSignedIn } = useRuntimeUser();
   const isArabic = locale === 'ar';
@@ -74,7 +80,7 @@ export default function AlertsPage() {
 
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>('all');
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
-  const [dismissed, setDismissed] = useState<Set<number>>(new Set());
+  const dismissed = useMemo(() => new Set(dismissedAlertKeys), [dismissedAlertKeys]);
 
   const rawAlerts = isDemoMode
     ? (isArabic ? DEMO_ALERTS_AR : DEMO_ALERTS)
@@ -83,8 +89,8 @@ export default function AlertsPage() {
   const filtered = useMemo(
     () =>
       rawAlerts
-        .map((alert, idx) => ({ ...alert, idx }))
-        .filter((a) => !dismissed.has(a.idx))
+        .map((alert, idx) => ({ ...alert, idx, alertKey: getAlertKey(alert, idx) }))
+        .filter((a) => !dismissed.has(a.alertKey))
         .filter((a) => severityFilter === 'all' || a.severity === severityFilter)
         .filter((a) => categoryFilter === 'all' || a.category === categoryFilter),
     [rawAlerts, dismissed, severityFilter, categoryFilter]
@@ -96,12 +102,13 @@ export default function AlertsPage() {
     info: rawAlerts.filter((a) => a.severity === 'info').length,
   }), [rawAlerts]);
 
-  function dismiss(idx: number) {
-    setDismissed((prev) => new Set([...prev, idx]));
+  function dismiss(alertKey: string) {
+    setDismissedAlertKeys([...dismissed, alertKey]);
   }
 
   function dismissAll() {
-    setDismissed(new Set(rawAlerts.map((_, i) => i)));
+    const keys = rawAlerts.map((alert, idx) => getAlertKey(alert, idx));
+    setDismissedAlertKeys(Array.from(new Set([...dismissed, ...keys])));
   }
 
   const categoryLabels: Record<CategoryFilter, { en: string; ar: string }> = {
@@ -252,7 +259,7 @@ export default function AlertsPage() {
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7 shrink-0"
-                          onClick={() => dismiss(alert.idx)}
+                          onClick={() => dismiss(alert.alertKey)}
                         >
                           <X className="h-3.5 w-3.5" />
                         </Button>
@@ -267,11 +274,11 @@ export default function AlertsPage() {
 
         {dismissed.size > 0 && (
           <p className="text-xs text-muted-foreground text-center">
-            {dismissed.size} {isArabic ? 'تنبيه مُتجاهَل' : 'alert(s) dismissed this session'}
+            {dismissed.size} {isArabic ? 'تنبيه مُتجاهَل' : 'alert(s) dismissed'}
             {' · '}
             <button
               className="underline hover:text-foreground"
-              onClick={() => setDismissed(new Set())}
+              onClick={() => setDismissedAlertKeys([])}
             >
               {isArabic ? 'استعادة' : 'Restore'}
             </button>

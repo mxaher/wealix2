@@ -34,6 +34,8 @@ describe('saveRemoteWorkspace', () => {
         liabilities: [],
         budgetLimits: [],
         recurringObligations: [],
+        userGoals: [],
+        dismissedAlertKeys: [],
       })
     ).rejects.toThrow('Refusing to persist non-live workspace data.');
   });

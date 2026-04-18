@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeftRight, Info } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -51,6 +51,8 @@ const CURRENCY_ORDER = ['SAR', 'USD', 'EUR', 'GBP', 'AED', 'KWD', 'QAR', 'BHD', 
 export default function ConverterPage() {
   const locale = useAppStore((s) => s.locale);
   const isArabic = locale === 'ar';
+  const [ratesVsSar, setRatesVsSar] = useState(RATES_VS_SAR);
+  const [lastRatesSync, setLastRatesSync] = useState<string | null>(null);
 
   const [amount, setAmount] = useState('1000');
   const [from, setFrom] = useState('SAR');
@@ -59,14 +61,53 @@ export default function ConverterPage() {
   const [goldGrams, setGoldGrams] = useState('1');
   const [tab, setTab] = useState<'currency' | 'gold'>('currency');
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function syncRates() {
+      try {
+        const res = await fetch('https://open.er-api.com/v6/latest/SAR');
+        if (!res.ok) return;
+        const data = (await res.json()) as { rates?: Record<string, number> };
+        if (!data.rates) return;
+
+        const nextRates = { ...RATES_VS_SAR };
+        for (const code of Object.keys(nextRates)) {
+          if (code === 'SAR') continue;
+          const liveRate = data.rates[code];
+          if (typeof liveRate === 'number' && Number.isFinite(liveRate) && liveRate > 0) {
+            nextRates[code] = { ...nextRates[code], rate: liveRate };
+          }
+        }
+
+        if (!cancelled) {
+          setRatesVsSar(nextRates);
+          setLastRatesSync(new Date().toISOString());
+        }
+      } catch {
+        // Keep static fallback rates on any network failure.
+      }
+    }
+
+    void syncRates();
+    const intervalId = window.setInterval(() => {
+      void syncRates();
+    }, 6 * 60 * 60 * 1000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, []);
+
   const result = useMemo(() => {
     const num = parseFloat(amount);
     if (isNaN(num) || num < 0) return null;
-    const fromRate = RATES_VS_SAR[from]?.rate ?? 1;
-    const toRate = RATES_VS_SAR[to]?.rate ?? 1;
+    const fromRate = ratesVsSar[from]?.rate ?? 1;
+    const toRate = ratesVsSar[to]?.rate ?? 1;
     const sarAmount = num / fromRate;
     return sarAmount * toRate;
-  }, [amount, from, to]);
+  }, [amount, from, to, ratesVsSar]);
 
   const goldResult = useMemo(() => {
     const grams = parseFloat(goldGrams);
@@ -75,10 +116,10 @@ export default function ConverterPage() {
   }, [goldGrams, goldKarat]);
 
   const crossRate = useMemo(() => {
-    const fromRate = RATES_VS_SAR[from]?.rate ?? 1;
-    const toRate = RATES_VS_SAR[to]?.rate ?? 1;
+    const fromRate = ratesVsSar[from]?.rate ?? 1;
+    const toRate = ratesVsSar[to]?.rate ?? 1;
     return toRate / fromRate;
-  }, [from, to]);
+  }, [from, to, ratesVsSar]);
 
   function swap() {
     setFrom(to);
@@ -96,7 +137,7 @@ export default function ConverterPage() {
 
   return (
     <DashboardShell>
-      <div className="space-y-6 max-w-2xl">
+      <div className="w-full space-y-6">
         <div>
           <h1 className="text-2xl font-bold">{isArabic ? 'محول العملات' : 'Currency Converter'}</h1>
           <p className="text-sm text-muted-foreground">
@@ -150,8 +191,8 @@ export default function ConverterPage() {
                       <SelectContent>
                         {CURRENCY_ORDER.map((code) => (
                           <SelectItem key={code} value={code}>
-                            <span className="font-mono me-2">{RATES_VS_SAR[code]?.symbol}</span>
-                            {code} — {isArabic ? RATES_VS_SAR[code]?.nameAr : RATES_VS_SAR[code]?.name}
+                            <span className="font-mono me-2">{ratesVsSar[code]?.symbol}</span>
+                            {code} — {isArabic ? ratesVsSar[code]?.nameAr : ratesVsSar[code]?.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -171,8 +212,8 @@ export default function ConverterPage() {
                       <SelectContent>
                         {CURRENCY_ORDER.map((code) => (
                           <SelectItem key={code} value={code}>
-                            <span className="font-mono me-2">{RATES_VS_SAR[code]?.symbol}</span>
-                            {code} — {isArabic ? RATES_VS_SAR[code]?.nameAr : RATES_VS_SAR[code]?.name}
+                            <span className="font-mono me-2">{ratesVsSar[code]?.symbol}</span>
+                            {code} — {isArabic ? ratesVsSar[code]?.nameAr : ratesVsSar[code]?.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -187,12 +228,17 @@ export default function ConverterPage() {
                   </p>
                   <p className="text-3xl font-bold text-primary">
                     {result !== null
-                      ? `${RATES_VS_SAR[to]?.symbol ?? ''} ${result.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`
+                      ? `${ratesVsSar[to]?.symbol ?? ''} ${result.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`
                       : '—'}
                   </p>
                   <p className="text-xs text-muted-foreground mt-2">
                     1 {from} = {crossRate.toFixed(6)} {to}
                   </p>
+                  {lastRatesSync && (
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      {isArabic ? 'آخر تحديث:' : 'Last sync:'} {new Date(lastRatesSync).toLocaleTimeString(isArabic ? 'ar-SA' : 'en-US')}
+                    </p>
+                  )}
                 </div>
 
                 {/* Disclaimer */}
@@ -215,8 +261,8 @@ export default function ConverterPage() {
               <CardContent className="p-4 pt-0">
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                   {popularPairs.map((pair) => {
-                    const fromRate = RATES_VS_SAR[pair.from]?.rate ?? 1;
-                    const toRate = RATES_VS_SAR[pair.to]?.rate ?? 1;
+                    const fromRate = ratesVsSar[pair.from]?.rate ?? 1;
+                    const toRate = ratesVsSar[pair.to]?.rate ?? 1;
                     const rate = toRate / fromRate;
                     return (
                       <button

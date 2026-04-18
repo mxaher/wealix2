@@ -82,6 +82,8 @@ export async function seedWorkspace(page: Page, workspace: RemoteWorkspaceSnapsh
       recurringObligations: nextWorkspace.recurringObligations ?? [],
       oneTimeExpenses: nextWorkspace.oneTimeExpenses ?? [],
       savingsAccounts: nextWorkspace.savingsAccounts ?? [],
+      userGoals: nextWorkspace.userGoals ?? [],
+      dismissedAlertKeys: nextWorkspace.dismissedAlertKeys ?? [],
     };
 
     window.localStorage.setItem('wealix-storage-v4', JSON.stringify({
@@ -108,6 +110,8 @@ export async function seedWorkspace(page: Page, workspace: RemoteWorkspaceSnapsh
         recurringObligations: nextWorkspace.recurringObligations ?? [],
         oneTimeExpenses: nextWorkspace.oneTimeExpenses ?? [],
         savingsAccounts: nextWorkspace.savingsAccounts ?? [],
+        userGoals: nextWorkspace.userGoals ?? [],
+        dismissedAlertKeys: nextWorkspace.dismissedAlertKeys ?? [],
       },
       version: parsed?.version ?? 0,
     }));
