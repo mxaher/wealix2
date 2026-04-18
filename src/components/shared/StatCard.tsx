@@ -61,7 +61,7 @@ export function StatCard({
             'relative'
           )}
         >
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/[0.07] to-transparent" />
+          
 
           <div className="relative flex items-start justify-between">
             <div className="flex-1">

@@ -411,7 +411,7 @@ export default function AdvisorPage() {
             <CardHeader className="border-b p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[radial-gradient(circle_at_top,_#fff3c4,_#e0a63a_55%,_#8b5e10)] shadow-[0_10px_30px_rgba(224,166,58,0.35)]">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
                     <BrainCircuit className="h-5 w-5 text-navy-dark" />
                   </div>
                   <div>
@@ -513,7 +513,7 @@ export default function AdvisorPage() {
                         }`}
                       >
                         <Avatar className="w-8 h-8">
-                          <AvatarFallback className={message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-[radial-gradient(circle_at_top,_#fff3c4,_#e0a63a_55%,_#8b5e10)] text-navy-dark'}>
+                          <AvatarFallback className={message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-primary/10 text-primary'}>
                             {message.role === 'user' ? <User className="w-4 h-4" /> : <BrainCircuit className="w-4 h-4" />}
                           </AvatarFallback>
                         </Avatar>
@@ -564,7 +564,7 @@ export default function AdvisorPage() {
                       className="flex min-w-0 gap-3"
                     >
                       <Avatar className="w-8 h-8">
-                        <AvatarFallback className="bg-[radial-gradient(circle_at_top,_#fff3c4,_#e0a63a_55%,_#8b5e10)] text-navy-dark">
+                        <AvatarFallback className="bg-primary/10 text-primary">
                           <BrainCircuit className="w-4 h-4" />
                         </AvatarFallback>
                       </Avatar>
@@ -589,7 +589,7 @@ export default function AdvisorPage() {
                       className="flex gap-3"
                     >
                       <Avatar className="w-8 h-8">
-                        <AvatarFallback className="bg-[radial-gradient(circle_at_top,_#fff3c4,_#e0a63a_55%,_#8b5e10)] text-navy-dark">
+                        <AvatarFallback className="bg-primary/10 text-primary">
                           <BrainCircuit className="w-4 h-4" />
                         </AvatarFallback>
                       </Avatar>

@@ -176,7 +176,7 @@ export function InvestmentDecisionCheck() {
 
   return (
     <div className="space-y-4" dir={isArabic ? 'rtl' : 'ltr'}>
-      <Card className="border-border/70 bg-gradient-to-br from-background via-background to-secondary/20 shadow-sm">
+      <Card className="border-border">
         <CardHeader className="space-y-2">
           <CardTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
@@ -241,7 +241,7 @@ export function InvestmentDecisionCheck() {
                   {isArabic ? 'فحص القرار اعتمد على صافي الثروة، السيولة، مسار الادخار، والأهداف الحالية.' : 'The verdict was built from net worth, liquidity, savings trajectory, and active goals.'}
                 </CardDescription>
               </div>
-              <div className="rounded-2xl border border-border bg-muted/30 px-4 py-3 text-sm">
+              <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm">
                 <p className="text-muted-foreground">{isArabic ? 'الحجم المقترح الآن' : 'Suggested size now'}</p>
                 <p className="mt-1 text-lg font-semibold">{formatCurrency(result.decision.suggestedAllocation.amount, 'SAR', locale)}</p>
                 <p className="text-xs text-muted-foreground">
@@ -252,15 +252,15 @@ export function InvestmentDecisionCheck() {
           </CardHeader>
           <CardContent className="space-y-5 p-5">
             <div className="grid gap-4 md:grid-cols-3">
-              <div className="rounded-2xl border border-border bg-muted/30 p-4">
+              <div className="rounded-lg border border-border bg-muted/30 p-4">
                 <p className="text-sm text-muted-foreground">{isArabic ? 'المبلغ المدخل' : 'Entered amount'}</p>
                 <p className="mt-1 font-semibold">{formatCurrency(result.price, 'SAR', locale)}</p>
               </div>
-              <div className="rounded-2xl border border-border bg-muted/30 p-4">
+              <div className="rounded-lg border border-border bg-muted/30 p-4">
                 <p className="text-sm text-muted-foreground">{isArabic ? 'من السيولة الحالية' : 'Of liquid reserves'}</p>
                 <p className="mt-1 font-semibold">{result.decision.suggestedAllocation.percentOfLiquidReserves.toFixed(1)}%</p>
               </div>
-              <div className="rounded-2xl border border-border bg-muted/30 p-4">
+              <div className="rounded-lg border border-border bg-muted/30 p-4">
                 <p className="text-sm text-muted-foreground">{isArabic ? 'موعد إعادة النظر' : 'Revisit plan'}</p>
                 <p className="mt-1 font-semibold">
                   {result.decision.revisitPlan.month ?? (isArabic ? 'لا حاجة' : 'Not needed')}
@@ -269,7 +269,7 @@ export function InvestmentDecisionCheck() {
             </div>
 
             {result.decision.revisitPlan.month && result.decision.revisitPlan.savingsMilestone ? (
-              <div className="rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4 text-sm">
+              <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 p-4 text-sm">
                 <p className="font-medium text-foreground">
                   {isArabic
                     ? `أعد النظر في ${result.decision.revisitPlan.month} عندما تصل السيولة إلى ${formatCurrency(result.decision.revisitPlan.savingsMilestone, 'SAR', locale)}.`
@@ -278,7 +278,7 @@ export function InvestmentDecisionCheck() {
               </div>
             ) : null}
 
-            <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm">
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-4 text-sm">
               <p className="font-medium text-foreground">{isArabic ? 'بديل أفضل' : 'Better alternative'}</p>
               <p className="mt-2 text-muted-foreground">{result.decision.alternativeSuggestion}</p>
             </div>
@@ -292,7 +292,7 @@ export function InvestmentDecisionCheck() {
                   {result.decision.dimensions.map((dimension) => (
                     <div
                       key={dimension.key}
-                      className={`rounded-2xl border p-4 ${getDimensionClass(dimension.status)}`}
+                      className={`rounded-lg border p-4 ${getDimensionClass(dimension.status)}`}
                     >
                       <div className="flex items-center justify-between gap-3">
                         <p className="font-medium text-foreground">{dimension.title}</p>

@@ -130,7 +130,7 @@ export function ReemAgent() {
         >
           <Button
             onClick={() => setIsOpen(true)}
-            className="h-auto rounded-2xl bg-gradient-to-r from-teal-500 via-emerald-500 to-teal-600 px-4 py-3 text-white shadow-xl shadow-teal-900/15 hover:opacity-95"
+            className="h-auto rounded-lg bg-primary px-4 py-3 text-primary-foreground hover:bg-primary/90"
           >
             <HelpCircle className="mr-2 h-4 w-4" />
             {isArabic ? 'اسأل ريم' : 'Ask Reem'}
@@ -151,9 +151,9 @@ export function ReemAgent() {
               isArabic ? 'left-4 md:left-6' : 'right-4 md:right-6'
             )}
           >
-            <div className="flex items-center justify-between bg-gradient-to-r from-teal-500 via-emerald-500 to-teal-600 px-4 py-3 text-white">
+            <div className="flex items-center justify-between bg-primary px-4 py-3 text-primary-foreground">
               <div className={cn('flex items-center gap-3', isArabic && 'flex-row-reverse')}>
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/15">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/15">
                   <Sparkles className="h-4 w-4" />
                 </div>
                 <div className={cn(isArabic && 'text-right')}>
@@ -200,7 +200,7 @@ export function ReemAgent() {
                       <div className={cn('flex', message.role === 'user' ? 'justify-end' : 'justify-start')}>
                         <div
                           className={cn(
-                            'max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-6',
+                            'max-w-[85%] rounded-lg px-3.5 py-2.5 text-sm leading-6',
                             message.role === 'user'
                               ? 'rounded-tr-sm bg-primary text-primary-foreground'
                               : 'rounded-tl-sm bg-muted text-foreground'
@@ -239,7 +239,7 @@ export function ReemAgent() {
 
                   {isTyping ? (
                   <div className="flex justify-start">
-                      <div className="rounded-2xl rounded-tl-sm bg-muted px-4 py-3 text-sm text-muted-foreground">
+                      <div className="rounded-lg rounded-tl-sm bg-muted px-4 py-3 text-sm text-muted-foreground">
                         {isArabic ? 'ريم تكتب...' : 'Reem is typing...'}
                       </div>
                     </div>
@@ -249,7 +249,7 @@ export function ReemAgent() {
                 </div>
 
                 <div className="border-t border-border px-3 py-3">
-                  <div className="flex items-center gap-2 rounded-2xl border border-border bg-background px-3 py-2 shadow-sm">
+                  <div className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 shadow-sm">
                     <input
                       value={input}
                       onChange={(event) => setInput(event.target.value)}

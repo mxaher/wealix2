@@ -428,7 +428,7 @@ export default function ReportsPage() {
 
             return (
               <motion.div key={report.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-                <Card className={`h-full ${report.tier === 'pro' ? 'border-gold/30 bg-gradient-to-br from-gold/5 to-transparent' : ''}`}>
+                <Card className={`h-full ${report.tier === 'pro' ? 'border-primary/20' : ''}`}>
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <div className={`rounded-lg p-2 ${report.tier === 'pro' ? 'bg-gold/20 text-gold' : 'bg-muted text-muted-foreground'}`}>

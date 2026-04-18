@@ -1033,7 +1033,7 @@ export function BudgetPlanningPage({
   return (
     <DashboardShell>
       <div dir={isArabic ? 'rtl' : 'ltr'} className={cn('space-y-6', isArabic && 'text-right')}>
-        <div className="flex flex-col gap-4 rounded-3xl border border-border/60 bg-gradient-to-br from-background via-background to-primary/5 p-6 shadow-card">
+        <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-2">
@@ -1392,7 +1392,7 @@ export function BudgetPlanningPage({
 
           <TabsContent value="digest" className="space-y-6">
             <div className="grid gap-6">
-              <Card {...cardProps} className={`overflow-hidden border-primary/20 bg-gradient-to-br from-primary/10 via-background to-background ${cardProps.className}`}>
+              <Card {...cardProps} className={`overflow-hidden border-border bg-card ${cardProps.className}`}>
                 <CardHeader className={isArabic ? 'text-right' : ''}>
                   <div dir={isArabic ? 'rtl' : 'ltr'} className="flex items-center justify-between gap-3">
                     <div>
@@ -1419,7 +1419,7 @@ export function BudgetPlanningPage({
                   </div>
                 </CardHeader>
                 <CardContent className={`grid gap-4 md:grid-cols-3 ${isArabic ? 'text-right' : ''}`}>
-                  <div dir={isArabic ? 'rtl' : 'ltr'} className="rounded-2xl border bg-background/70 p-4">
+                  <div dir={isArabic ? 'rtl' : 'ltr'} className="rounded-lg border bg-background/70 p-4">
                     {hasAiSnapshot ? (
                       <>
                         <p className="text-sm text-muted-foreground">{isArabic ? 'حالة الميزانية' : 'Budget Status'}</p>
@@ -1441,11 +1441,11 @@ export function BudgetPlanningPage({
                       </>
                     )}
                   </div>
-                  <div dir={isArabic ? 'rtl' : 'ltr'} className="rounded-2xl border bg-background/70 p-4">
+                  <div dir={isArabic ? 'rtl' : 'ltr'} className="rounded-lg border bg-background/70 p-4">
                     <p className="text-sm text-muted-foreground">{isArabic ? 'أيام متبقية' : 'Days Remaining'}</p>
                     <p className="mt-2 text-xl font-semibold">{dailySnapshot.budget_status.days_remaining}</p>
                   </div>
-                  <div dir={isArabic ? 'rtl' : 'ltr'} className="rounded-2xl border bg-background/70 p-4">
+                  <div dir={isArabic ? 'rtl' : 'ltr'} className="rounded-lg border bg-background/70 p-4">
                     <p className="text-sm text-muted-foreground">
                       {hasAiSnapshot
                         ? (isArabic ? 'قناة الإشعار الأساسية' : 'Primary Channel')
@@ -1469,18 +1469,18 @@ export function BudgetPlanningPage({
                 </CardHeader>
                 <CardContent className={`space-y-3 ${isArabic ? 'text-right' : ''}`}>
                   {!hasAiSnapshot ? (
-                    <div className="rounded-2xl border border-dashed p-6 text-sm text-muted-foreground">
+                    <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
                       {isArabic
                         ? 'سيظهر هنا ملخص الأولويات بمجرد انتهاء التحليل الذكي لهذا اليوم.'
                         : 'Your top priorities will appear here as soon as today’s AI analysis finishes.'}
                     </div>
                   ) : dailySnapshot.tips.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed p-6 text-sm text-muted-foreground">
+                    <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
                       {isArabic ? 'سيظهر هنا الموجز اليومي عند توفر بيانات أكثر.' : 'The daily digest will show richer guidance here as more data becomes available.'}
                     </div>
                   ) : (
                     dailySnapshot.tips.map((tip) => (
-                      <div key={tip.tip_id} dir={isArabic ? 'rtl' : 'ltr'} className="rounded-2xl border p-4">
+                      <div key={tip.tip_id} dir={isArabic ? 'rtl' : 'ltr'} className="rounded-lg border p-4">
                         <div dir={isArabic ? 'rtl' : 'ltr'} className="flex items-start justify-between gap-3">
                           <div>
                             <p className="font-semibold">{tip.title}</p>
@@ -1508,18 +1508,18 @@ export function BudgetPlanningPage({
                 </CardHeader>
                 <CardContent className={`space-y-3 ${isArabic ? 'text-right' : ''}`}>
                   {!hasAiSnapshot ? (
-                    <div className="rounded-2xl border border-dashed p-6 text-sm text-muted-foreground">
+                    <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
                       {isArabic
                         ? `ستظهر هنا التنبيهات اليومية عند توفر شيء يحتاج انتباهك. التوصيل الحالي: داخل التطبيق${notificationPreferences.whatsapp && notificationPreferences.planningUpdates ? ' + واتساب' : ''}.`
                         : `Action alerts will appear here whenever something needs attention. Current delivery setup: in-app${notificationPreferences.whatsapp && notificationPreferences.planningUpdates ? ' + WhatsApp' : ''}.`}
                     </div>
                   ) : dailySnapshot.notifications.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed p-6 text-sm text-muted-foreground">
+                    <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
                       {isArabic ? 'لا توجد إجراءات عاجلة خلال 72 ساعة.' : 'No urgent actions in the next 72 hours.'}
                     </div>
                   ) : (
                     dailySnapshot.notifications.map((item) => (
-                      <div key={item.notification_id} dir={isArabic ? 'rtl' : 'ltr'} className="rounded-2xl border p-4">
+                      <div key={item.notification_id} dir={isArabic ? 'rtl' : 'ltr'} className="rounded-lg border p-4">
                         <div dir={isArabic ? 'rtl' : 'ltr'} className="flex items-center justify-between gap-3">
                           <p className="font-semibold">{item.title}</p>
                           <Badge variant={item.urgency === 'critical' ? 'destructive' : 'outline'}>
@@ -1548,7 +1548,7 @@ export function BudgetPlanningPage({
                 </CardHeader>
                 <CardContent className={`space-y-4 ${isArabic ? 'text-right' : ''}`}>
                   {visibleBudgetRows.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed p-6 text-sm text-muted-foreground">
+                    <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
                       <p className="font-medium text-foreground">
                         {isArabic ? 'ابدأ بتحديد حدود الفئات.' : 'Start by setting category limits.'}
                       </p>
@@ -1569,10 +1569,10 @@ export function BudgetPlanningPage({
                       const Icon = categoryIcons[item.category] ?? MoreHorizontal;
 
                       return (
-                        <div key={item.category} dir={isArabic ? 'rtl' : 'ltr'} className="rounded-2xl border p-4">
+                        <div key={item.category} dir={isArabic ? 'rtl' : 'ltr'} className="rounded-lg border p-4">
                           <div dir={isArabic ? 'rtl' : 'ltr'} className="flex items-center justify-between gap-3">
                             <div dir={isArabic ? 'rtl' : 'ltr'} className="flex items-center gap-3">
-                              <div className="flex h-10 w-10 items-center justify-center rounded-2xl" style={{ backgroundColor: `${item.color}18` }}>
+                              <div className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ backgroundColor: `${item.color}18` }}>
                                 <Icon className="h-4 w-4" style={{ color: item.color }} />
                               </div>
                               <div>
@@ -1601,17 +1601,17 @@ export function BudgetPlanningPage({
                 </CardHeader>
                 <CardContent className={`space-y-4 ${isArabic ? 'text-right' : ''}`}>
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-2xl border bg-background/70 p-4">
+                    <div className="rounded-lg border bg-background/70 p-4">
                       <p className="text-sm text-muted-foreground">{isArabic ? 'فئات مفعلة' : 'Active Categories'}</p>
                       <p className="mt-2 text-2xl font-semibold">{configuredBudgetCategories}/{budgetLimits.length}</p>
                     </div>
-                    <div className="rounded-2xl border bg-background/70 p-4">
+                    <div className="rounded-lg border bg-background/70 p-4">
                       <p className="text-sm text-muted-foreground">{isArabic ? 'إجمالي الحدود' : 'Total Budgeted'}</p>
                       <p className="mt-2 text-2xl font-semibold">{formatCurrency(totalBudgetCapacity, 'SAR', locale)}</p>
                     </div>
                   </div>
                   {configuredBudgetCategories === 0 && (
-                    <div className="rounded-2xl border border-dashed p-4 text-sm text-muted-foreground">
+                    <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
                       {isArabic
                         ? 'أدخل حدّاً شهرياً واحداً على الأقل لتبدأ قراءة الالتزام لكل فئة.'
                         : 'Enter at least one monthly limit to start reading category pacing and overages.'}
@@ -1641,14 +1641,14 @@ export function BudgetPlanningPage({
               </CardHeader>
               <CardContent className={isArabic ? 'text-right' : ''}>
                 {expenseEntries.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed p-6 text-sm text-muted-foreground">
+                  <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
                     {isArabic ? 'لا توجد مصروفات حتى الآن.' : 'No expenses yet.'}
                   </div>
                 ) : (
                   <ScrollArea className="h-96">
                     <div className="space-y-3">
                       {expenseEntries.map((expense) => (
-                        <div key={expense.id} dir={isArabic ? 'rtl' : 'ltr'} className="flex items-center gap-4 rounded-2xl border p-4">
+                        <div key={expense.id} dir={isArabic ? 'rtl' : 'ltr'} className="flex items-center gap-4 rounded-lg border p-4">
                           <div className="min-w-0 flex-1">
                             <p className="font-medium">{expense.description}</p>
                             <p className="text-sm text-muted-foreground">{expense.date} • {categoryLabel(budgetToExpenseCategory[expense.category] ?? expense.category.toLowerCase(), isArabic)}</p>
@@ -1675,12 +1675,12 @@ export function BudgetPlanningPage({
                 </CardHeader>
                 <CardContent className={`space-y-3 ${isArabic ? 'text-right' : ''}`}>
                   {actionableUpcomingObligations.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed p-6 text-sm text-muted-foreground">
+                    <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
                       {isArabic ? 'لا توجد التزامات خلال 90 يوماً.' : 'No obligations due in the next 90 days.'}
                     </div>
                   ) : (
                     actionableUpcomingObligations.slice(0, 10).map((item) => (
-                      <div key={`${item.obligationId}-${item.dueDate}`} dir={isArabic ? 'rtl' : 'ltr'} className="flex items-center gap-3 rounded-2xl border p-4">
+                      <div key={`${item.obligationId}-${item.dueDate}`} dir={isArabic ? 'rtl' : 'ltr'} className="flex items-center gap-3 rounded-lg border p-4">
                         <div className="min-w-0 flex-1">
                           <p className="font-medium">{item.title}</p>
                           <p className="text-sm text-muted-foreground">{item.dueDate} • {item.daysUntilDue <= 0 ? (isArabic ? 'اليوم' : 'Today') : `${item.daysUntilDue}d`}</p>
@@ -1718,12 +1718,12 @@ export function BudgetPlanningPage({
                 </CardHeader>
                 <CardContent className={`space-y-3 ${isArabic ? 'text-right' : ''}`}>
                   {recurringObligations.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed p-6 text-sm text-muted-foreground">
+                    <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
                       {isArabic ? 'أضف الإيجار أو المدارس أو الرسوم الثابتة هنا.' : 'Add rent, school fees, and other recurring commitments here.'}
                     </div>
                   ) : (
                     recurringObligations.map((item) => (
-                      <div key={item.id} dir={isArabic ? 'rtl' : 'ltr'} className="flex items-center gap-3 rounded-2xl border p-4" data-testid={`obligation-card-${item.id}`}>
+                      <div key={item.id} dir={isArabic ? 'rtl' : 'ltr'} className="flex items-center gap-3 rounded-lg border p-4" data-testid={`obligation-card-${item.id}`}>
                         <div className="min-w-0 flex-1">
                           <p className="font-medium">{item.title}</p>
                           <p className="text-sm text-muted-foreground">
@@ -1749,12 +1749,12 @@ export function BudgetPlanningPage({
                 </CardHeader>
                 <CardContent className={`space-y-3 ${isArabic ? 'text-right' : ''}`}>
                   {oneTimeExpenses.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed p-6 text-sm text-muted-foreground">
+                    <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
                       {isArabic ? 'أضف رسوم سنوية أو مصروفاً كبيراً لمرة واحدة هنا.' : 'Add annual fees or other one-time obligations here.'}
                     </div>
                   ) : (
                     oneTimeExpenses.map((item) => (
-                      <div key={item.id} dir={isArabic ? 'rtl' : 'ltr'} className="flex items-center gap-3 rounded-2xl border p-4">
+                      <div key={item.id} dir={isArabic ? 'rtl' : 'ltr'} className="flex items-center gap-3 rounded-lg border p-4">
                         <div className="min-w-0 flex-1">
                           <p className="font-medium">{item.title}</p>
                           <p className="text-sm text-muted-foreground">{item.dueDate} • {item.priority}</p>
@@ -1776,12 +1776,12 @@ export function BudgetPlanningPage({
                 </CardHeader>
                 <CardContent className={`space-y-3 ${isArabic ? 'text-right' : ''}`}>
                   {savingsAccounts.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed p-6 text-sm text-muted-foreground">
+                    <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
                       {isArabic ? 'أضف حساباً جارياً أو ادخاراً أو وديعة لأجل لربط التمويل بالالتزامات.' : 'Add a current, saving, or time-deposit account here.'}
                     </div>
                   ) : (
                     savingsAccounts.map((account) => (
-                      <div key={account.id} dir={isArabic ? 'rtl' : 'ltr'} className="rounded-2xl border p-4" data-testid={`savings-account-card-${account.id}`}>
+                      <div key={account.id} dir={isArabic ? 'rtl' : 'ltr'} className="rounded-lg border p-4" data-testid={`savings-account-card-${account.id}`}>
                         <div dir={isArabic ? 'rtl' : 'ltr'} className="flex items-center justify-between gap-3">
                           <div>
                             <p className="font-medium">{account.name}</p>
@@ -1817,7 +1817,7 @@ export function BudgetPlanningPage({
                 </CardHeader>
               <CardContent className={`space-y-3 ${isArabic ? 'text-right' : ''}`}>
                 {financialBrainAlerts.slice(0, 4).map((alert) => (
-                  <div key={`${alert.category}-${alert.title}`} className="rounded-2xl border p-4">
+                  <div key={`${alert.category}-${alert.title}`} className="rounded-lg border p-4">
                     <div dir={isArabic ? 'rtl' : 'ltr'} className="flex items-center justify-between gap-3">
                       <p className="font-medium">{alert.title}</p>
                       <Badge variant={alert.severity === 'CRITICAL' ? 'destructive' : 'outline'}>{alert.severity}</Badge>
@@ -1885,7 +1885,7 @@ export function BudgetPlanningPage({
                   <div
                     key={period.month}
                     dir={isArabic ? 'rtl' : 'ltr'}
-                    className="grid gap-2 rounded-2xl border p-4 md:grid-cols-7"
+                    className="grid gap-2 rounded-lg border p-4 md:grid-cols-7"
                     data-testid={`planning-forecast-row-${period.month}`}
                   >
                     <div>

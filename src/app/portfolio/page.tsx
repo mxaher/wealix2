@@ -2003,10 +2003,10 @@ export default function PortfolioPage() {
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -8 }}
-                        className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/8 via-background to-accent/10 p-5"
+                        className="relative overflow-hidden rounded-lg border border-border bg-card p-5"
                       >
                         <motion.div
-                          className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/10 to-transparent"
+                          className="hidden"
                           animate={{ x: ['-100%', '100%'] }}
                           transition={{ repeat: Infinity, duration: 2.2, ease: 'linear' }}
                         />
@@ -2061,7 +2061,7 @@ export default function PortfolioPage() {
                           data-testid={index === 0 ? 'portfolio-analysis-output' : undefined}
                         >
                           <Collapsible defaultOpen={index === 0}>
-                            <div className="overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-br from-background via-background to-secondary/20 shadow-sm">
+                            <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
                               <div className="flex items-start justify-between gap-3 border-b border-border/70 px-4 py-4 md:px-5">
                                 <CollapsibleTrigger asChild>
                                   <button
@@ -2143,7 +2143,7 @@ export default function PortfolioPage() {
                               <CollapsibleContent className="data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
                                 <div className="space-y-5 px-4 py-5 md:px-5">
                                   {(record.executionSummary?.length ?? 0) > 0 ? (
-                                    <div className="overflow-hidden rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-background to-background">
+                                    <div className="overflow-hidden rounded-lg border border-border bg-card">
                                       <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
                                         <Coins className="h-4 w-4 text-amber-600" />
                                         <p className="text-sm font-semibold text-foreground">
@@ -2200,7 +2200,7 @@ export default function PortfolioPage() {
                                       </ScrollArea>
                                     </div>
                                   ) : record.tradePlan.length > 0 ? (
-                                    <div className="overflow-hidden rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-background to-background">
+                                    <div className="overflow-hidden rounded-lg border border-border bg-card">
                                       <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
                                         <Coins className="h-4 w-4 text-amber-600" />
                                         <p className="text-sm font-semibold text-foreground">
@@ -2302,7 +2302,7 @@ export default function PortfolioPage() {
                                   ) : null}
 
                                   {(record.topPerformers?.length ?? 0) > 0 ? (
-                                    <div className="overflow-hidden rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 via-background to-background">
+                                    <div className="overflow-hidden rounded-lg border border-border bg-card">
                                       <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
                                         <TrendingUp className="h-4 w-4 text-emerald-600" />
                                         <p className="text-sm font-semibold text-foreground">
@@ -2340,7 +2340,7 @@ export default function PortfolioPage() {
                                   ) : null}
 
                                   {(record.underperformers?.length ?? 0) > 0 ? (
-                                    <div className="overflow-hidden rounded-2xl border border-rose-500/20 bg-gradient-to-br from-rose-500/10 via-background to-background">
+                                    <div className="overflow-hidden rounded-lg border border-border bg-card">
                                       <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
                                         <TrendingDown className="h-4 w-4 text-rose-600" />
                                         <p className="text-sm font-semibold text-foreground">
@@ -2435,7 +2435,7 @@ export default function PortfolioPage() {
                                   ) : null}
 
                                   {(record.healthBreakdown?.length ?? 0) > 0 || typeof record.healthScore === 'number' ? (
-                                    <div className="overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-background to-background">
+                                    <div className="overflow-hidden rounded-lg border border-border bg-card">
                                       <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
                                         <ShieldAlert className="h-4 w-4 text-primary" />
                                         <p className="text-sm font-semibold text-foreground">

@@ -464,7 +464,7 @@ export default function NetWorthPage() {
         )}
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          <Card className="border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 to-emerald-500/5" data-testid="networth-liquid">
+          <Card className="border-border" data-testid="networth-liquid">
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
                 <div className="rounded-full bg-emerald-500/20 p-3">
@@ -477,7 +477,7 @@ export default function NetWorthPage() {
               </div>
             </CardContent>
           </Card>
-          <Card className="border-sky-500/20 bg-gradient-to-br from-sky-500/10 to-sky-500/5" data-testid="networth-locked">
+          <Card className="border-border" data-testid="networth-locked">
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
                 <div className="rounded-full bg-sky-500/20 p-3">
@@ -490,7 +490,7 @@ export default function NetWorthPage() {
               </div>
             </CardContent>
           </Card>
-          <Card className="border-violet-500/20 bg-gradient-to-br from-violet-500/10 to-violet-500/5" data-testid="networth-investments">
+          <Card className="border-border" data-testid="networth-investments">
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
                 <div className="rounded-full bg-violet-500/20 p-3">
@@ -503,7 +503,7 @@ export default function NetWorthPage() {
               </div>
             </CardContent>
           </Card>
-          <Card className="border-rose-500/20 bg-gradient-to-br from-rose-500/10 to-rose-500/5">
+          <Card className="border-border">
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
                 <div className="rounded-full bg-rose-500/20 p-3">
@@ -516,7 +516,7 @@ export default function NetWorthPage() {
               </div>
             </CardContent>
           </Card>
-          <Card className="border-gold/20 bg-gradient-to-br from-gold/10 to-gold/5" data-testid="networth-net">
+          <Card className="border-border" data-testid="networth-net">
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
                 <div className="rounded-full bg-gold/20 p-3">
@@ -533,7 +533,7 @@ export default function NetWorthPage() {
               </div>
             </CardContent>
           </Card>
-          <Card className="border-amber-500/20 bg-gradient-to-br from-amber-500/10 to-amber-500/5">
+          <Card className="border-border">
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
                 <div className="rounded-full bg-amber-500/20 p-3">

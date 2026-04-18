@@ -155,7 +155,7 @@ export default function RetirementPage() {
         </div>
 
         {/* Status Card */}
-        <Card className={isOnTrack ? 'bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border-emerald-500/30' : 'bg-gradient-to-br from-amber-500/10 to-amber-500/5 border-amber-500/30'}>
+        <Card className={isOnTrack ? 'border-border' : 'border-border'}>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
               {isOnTrack ? (

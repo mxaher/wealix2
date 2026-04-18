@@ -239,7 +239,7 @@ export default function FirePage() {
         </div>
 
         {/* FIRE Number Hero */}
-        <Card className="bg-gradient-to-br from-orange-500/10 via-gold/10 to-emerald-500/10 border-gold/30">
+        <Card className="border-border">
           <CardContent className="p-8">
             <div className="text-center">
               <p className="text-lg text-muted-foreground mb-2">
