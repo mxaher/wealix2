@@ -90,11 +90,22 @@ export default function DashboardPage() {
   const appMode = useAppStore((s) => s.appMode);
   const expenseEntries = useAppStore((s) => s.expenseEntries);
   const { snapshot } = useFinancialSnapshot();
-  const { isSignedIn } = useRuntimeUser();
+  const { isSignedIn, user } = useRuntimeUser();
   const isArabic = locale === 'ar';
   const isDemoMode = appMode === 'demo' && !isSignedIn;
 
   const healthScore = useMemo(() => computeHealthScore(snapshot), [snapshot]);
+
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    const timeOfDay = hour < 12
+      ? (isArabic ? 'صباح الخير' : 'Good morning')
+      : hour < 17
+        ? (isArabic ? 'مساء الخير' : 'Good afternoon')
+        : (isArabic ? 'مساء الخير' : 'Good evening');
+    const firstName = isDemoMode ? 'John' : (user?.firstName ?? '');
+    return { timeOfDay, firstName };
+  }, [isArabic, isDemoMode, user]);
 
   const recentExpenses = useMemo(
     () =>
@@ -128,6 +139,21 @@ export default function DashboardPage() {
       { name: isArabic ? 'مدخرات مقيدة' : 'Locked', value: locked },
     ].filter((d) => d.value > 0);
   }, [snapshot, isArabic]);
+
+  const scoreBreakdown = useMemo(() => {
+    const savings = isDemoMode ? 85 : Math.min((snapshot.savingsRate ?? 0) * 2, 100);
+    const budget = isDemoMode ? 92 : Math.max(0, Math.min(100,
+      (1 - snapshot.monthlyExpenses / Math.max(snapshot.monthlyIncome, 1)) * 100 + 40
+    ));
+    const emergency = isDemoMode ? 78 : Math.min(((snapshot.emergencyFundMonths ?? 0) / 6) * 100, 100);
+    const investment = isDemoMode ? 74 : Math.min((snapshot.fire.progressPct ?? 0) * 1.5, 100);
+    return [
+      { label: { en: 'Savings Rate', ar: 'معدل الادخار' }, value: savings, color: '#22c55e' },
+      { label: { en: 'Budget Adherence', ar: 'الالتزام بالميزانية' }, value: budget, color: '#06b6d4' },
+      { label: { en: 'Emergency Fund', ar: 'صندوق الطوارئ' }, value: emergency, color: '#3b82f6' },
+      { label: { en: 'Investment Growth', ar: 'نمو الاستثمار' }, value: investment, color: '#f59e0b' },
+    ];
+  }, [snapshot, isDemoMode]);
 
   const upcomingObligations = snapshot.obligations.pending.slice(0, 3);
   const criticalAlerts = snapshot.alerts.filter((a) => a.severity === 'critical');
@@ -169,51 +195,70 @@ export default function DashboardPage() {
   return (
     <DashboardShell>
       <div className="rhythm-page w-full space-y-6">
-        {/* Page header */}
+        {/* Personalized greeting */}
         <div>
           <h1 className="text-2xl font-bold">
-            {isArabic ? 'لوحة التحكم' : 'Dashboard'}
+            {isArabic
+              ? `${greeting.timeOfDay}${greeting.firstName ? `، ${greeting.firstName}` : ''}! 👋`
+              : `${greeting.timeOfDay}${greeting.firstName ? `, ${greeting.firstName}` : ''}! 👋`}
           </h1>
           <p className="text-muted-foreground text-sm">
-            {isArabic ? 'نظرة شاملة على وضعك المالي' : 'Your complete financial overview'}
+            {isArabic ? 'نظرة شاملة على وضعك المالي' : "Here's your financial overview"}
           </p>
         </div>
 
         {/* Health score + KPIs */}
         <div className="rhythm-grid grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
-          {/* Health score card — spans 2 cols on lg+ to keep 5 top cards in one row */}
+          {/* Health score card — spans 2 cols on lg+ */}
           <Card className="rhythm-card lg:col-span-2">
             <CardContent className="p-5">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">
-                    {isArabic ? 'الصحة المالية' : 'Financial Health'}
-                  </p>
-                  <p className={`text-4xl font-bold ${healthColor(healthScore)}`}>
-                    {healthScore}
-                    <span className="text-lg text-muted-foreground">/100</span>
-                  </p>
-                  <p className={`text-sm font-medium mt-1 ${healthColor(healthScore)}`}>
-                    {healthLabel(healthScore, isArabic)}
-                  </p>
-                </div>
+              <div className="flex items-center gap-5">
+                {/* Circular gauge with score inside */}
                 <div className="relative h-20 w-20 shrink-0">
                   <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90">
                     <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--muted)" strokeWidth="3" />
                     <circle
                       cx="18" cy="18" r="15.9" fill="none"
-                      stroke={healthScore >= 80 ? '#10b981' : healthScore >= 60 ? '#0ea5e9' : healthScore >= 40 ? '#f59e0b' : '#ef4444'}
+                      stroke={healthScore >= 80 ? '#22c55e' : healthScore >= 60 ? '#0ea5e9' : healthScore >= 40 ? '#f59e0b' : '#ef4444'}
                       strokeWidth="3"
                       strokeDasharray={`${healthScore} ${100 - healthScore}`}
                       strokeLinecap="round"
                     />
                   </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className={`text-xl font-bold leading-none ${healthColor(healthScore)}`}>{healthScore}</span>
+                    <span className="text-[10px] text-muted-foreground leading-none mt-0.5">/100</span>
+                  </div>
+                </div>
+                {/* Animated score breakdown bars */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                    {isArabic ? 'تفصيل النتيجة' : 'Score Breakdown'}
+                  </p>
+                  <div className="space-y-2">
+                    {scoreBreakdown.map((bar, i) => (
+                      <div key={bar.label.en}>
+                        <div className="flex items-center justify-between text-xs mb-0.5">
+                          <span className="text-muted-foreground">{isArabic ? bar.label.ar : bar.label.en}</span>
+                          <span className="font-medium">{bar.value.toFixed(0)}%</span>
+                        </div>
+                        <div className="h-1.5 w-full rounded-full overflow-hidden bg-muted">
+                          <motion.div
+                            className="h-full rounded-full"
+                            style={{ background: bar.color }}
+                            initial={{ width: '0%' }}
+                            animate={{ width: `${bar.value}%` }}
+                            transition={{ duration: 0.7, delay: i * 0.12 + 0.15, ease: 'easeOut' }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-              <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                <span>💰 {isArabic ? 'ادخار' : 'Savings'}: {savingsRate.toFixed(0)}%</span>
-                <span>🛡 {isArabic ? 'طارئ' : 'Emergency'}: {(isDemoMode ? 4.2 : snapshot.emergencyFundMonths ?? 0).toFixed(1)}mo</span>
-              </div>
+              <p className={`text-xs font-medium mt-3 ${healthColor(healthScore)}`}>
+                {healthLabel(healthScore, isArabic)}
+              </p>
             </CardContent>
           </Card>
 
@@ -223,25 +268,29 @@ export default function DashboardPage() {
               label: { en: 'Net Worth', ar: 'صافي الثروة' },
               value: formatCurrency(netWorth, 'SAR', locale),
               icon: Wallet,
-              color: 'text-gold',
+              color: 'text-amber-500',
+              iconBg: 'bg-amber-500/10',
             },
             {
               label: { en: 'Monthly Income', ar: 'الدخل الشهري' },
               value: formatCurrency(monthlyIncome, 'SAR', locale),
               icon: TrendingUp,
               color: 'text-emerald-500',
+              iconBg: 'bg-emerald-500/10',
             },
             {
               label: { en: 'Monthly Expenses', ar: 'المصروفات' },
               value: formatCurrency(monthlyExpenses, 'SAR', locale),
               icon: TrendingDown,
               color: 'text-rose-500',
+              iconBg: 'bg-rose-500/10',
             },
             {
               label: { en: 'Monthly Surplus', ar: 'الفائض الشهري' },
               value: formatCurrency(monthlySurplus, 'SAR', locale),
               icon: ArrowUpRight,
               color: monthlySurplus >= 0 ? 'text-emerald-500' : 'text-rose-500',
+              iconBg: monthlySurplus >= 0 ? 'bg-emerald-500/10' : 'bg-rose-500/10',
             },
           ].map((kpi, i) => {
             const Icon = kpi.icon;
@@ -252,17 +301,17 @@ export default function DashboardPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 + 0.1 }}
               >
-                <Card className="rhythm-card h-full">
+                <Card className="rhythm-card h-full transition-all hover:-translate-y-px hover:border-primary/25 hover:shadow-sm">
                   <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">
-                          {isArabic ? kpi.label.ar : kpi.label.en}
-                        </p>
-                        <p className={`text-xl font-bold ${kpi.color}`}>{kpi.value}</p>
+                    <div className="flex items-start justify-between mb-2">
+                      <p className="text-xs text-muted-foreground">
+                        {isArabic ? kpi.label.ar : kpi.label.en}
+                      </p>
+                      <div className={`rounded-lg p-1.5 shrink-0 ${kpi.iconBg}`}>
+                        <Icon className={`h-3.5 w-3.5 ${kpi.color}`} />
                       </div>
-                      <Icon className={`h-5 w-5 mt-0.5 ${kpi.color}`} />
                     </div>
+                    <p className={`text-xl font-bold ${kpi.color}`}>{kpi.value}</p>
                   </CardContent>
                 </Card>
               </motion.div>

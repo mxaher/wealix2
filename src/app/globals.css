@@ -417,10 +417,12 @@ html[dir="rtl"] body,
     color: var(--foreground);
   }
 
-  /* Active: filled dark pill */
+  /* Active: left accent border + green tint */
   .sidebar-item.active {
-    color: var(--sidebar-primary-foreground);
-    background-color: var(--sidebar-primary);
+    color: var(--primary);
+    background-color: color-mix(in srgb, var(--primary) 8%, transparent);
+    border-inline-start: 2px solid var(--primary);
+    padding-inline-start: 12px;
   }
   .sidebar-item.active::before {
     content: none;
