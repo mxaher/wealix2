@@ -1,4 +1,4 @@
-import { getD1Database, type D1LikeDatabase } from '@/lib/d1';
+import { getD1Database } from '@/lib/d1';
 import { getE2EStorageDir, isE2EAuthEnabled } from '@/lib/e2e-auth';
 import type {
   AppMode,
@@ -101,17 +101,6 @@ async function writeE2EWorkspace(
   return nextRecord;
 }
 
-async function ensureWorkspaceTable(db: D1LikeDatabase) {
-  await db.prepare(`
-    CREATE TABLE IF NOT EXISTS user_app_profiles (
-      clerk_user_id TEXT PRIMARY KEY,
-      workspace_json TEXT NOT NULL,
-      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )
-  `).run();
-}
-
 export async function loadRemoteWorkspace(clerkUserId: string): Promise<RemoteWorkspaceRecord> {
   const db = getD1Database();
 
@@ -122,8 +111,6 @@ export async function loadRemoteWorkspace(clerkUserId: string): Promise<RemoteWo
 
     throw new Error('Cloudflare D1 binding WEALIX_DB is not configured.');
   }
-
-  await ensureWorkspaceTable(db);
 
   const row = await db
     .prepare('SELECT workspace_json, updated_at FROM user_app_profiles WHERE clerk_user_id = ? LIMIT 1')
@@ -165,8 +152,6 @@ export async function saveRemoteWorkspace(
 
     throw new Error('Cloudflare D1 binding WEALIX_DB is not configured.');
   }
-
-  await ensureWorkspaceTable(db);
 
   const existing = await db
     .prepare('SELECT workspace_json, updated_at FROM user_app_profiles WHERE clerk_user_id = ? LIMIT 1')

@@ -1,4 +1,4 @@
-import { getD1Database, type D1LikeDatabase } from '@/lib/d1';
+import { getD1Database } from '@/lib/d1';
 
 type RateLimitRow = {
   count: number;
@@ -12,16 +12,6 @@ type RateLimitResult = {
 };
 
 const inMemoryBuckets = new Map<string, { count: number; resetAt: number }>();
-
-async function ensureRateLimitTable(db: D1LikeDatabase) {
-  await db.prepare(`
-    CREATE TABLE IF NOT EXISTS rate_limit_buckets (
-      key TEXT PRIMARY KEY,
-      count INTEGER NOT NULL DEFAULT 0,
-      reset_at INTEGER NOT NULL
-    )
-  `).run();
-}
 
 function enforceInMemoryRateLimit(key: string, limit: number, windowMs: number): RateLimitResult {
   const now = Date.now();
@@ -63,8 +53,6 @@ export async function enforceRateLimit(
   if (!db) {
     return enforceInMemoryRateLimit(key, limit, windowMs);
   }
-
-  await ensureRateLimitTable(db);
 
   // Atomically insert a new bucket or increment/reset an existing one using SQLite UPSERT.
   // CASE logic ensures an expired window is reset to count=1 rather than incremented.

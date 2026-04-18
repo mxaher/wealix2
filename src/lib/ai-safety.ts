@@ -1,4 +1,4 @@
-import { getD1Database, type D1LikeDatabase } from '@/lib/d1';
+import { getD1Database } from '@/lib/d1';
 
 const MAX_MESSAGE_LENGTH = 4000;
 
@@ -19,20 +19,6 @@ const INJECTION_PATTERNS = [
   /ignore\s+.*?(التعليمات|instructions)/iu,
   /(system|prompt|instructions?)\s*[:：]\s*.*?(تجاهل|ignore)/iu,
 ];
-
-async function ensureAiAuditLogTable(db: D1LikeDatabase) {
-  await db.prepare(`
-    CREATE TABLE IF NOT EXISTS ai_audit_log (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      clerk_user_id TEXT NOT NULL,
-      route TEXT NOT NULL,
-      detected_prompt_injection INTEGER NOT NULL DEFAULT 0,
-      truncated INTEGER NOT NULL DEFAULT 0,
-      input_sample TEXT NOT NULL,
-      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )
-  `).run();
-}
 
 function toAuditSample(input: string) {
   return input.replace(/\s+/g, ' ').trim().slice(0, 500);
@@ -83,7 +69,6 @@ export async function logAiAuditEvent(params: {
   }
 
   try {
-    await ensureAiAuditLogTable(db);
     await db.prepare(`
       INSERT INTO ai_audit_log (
         clerk_user_id,

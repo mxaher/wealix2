@@ -25,12 +25,13 @@
 import Stripe from 'stripe';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { readRuntimeEnv } from '@/lib/runtime-env';
 
 let _stripe: Stripe | null = null;
 
 function getStripe(): Stripe {
   if (!_stripe) {
-    const secretKey = process.env.STRIPE_SECRET_KEY;
+    const secretKey = readRuntimeEnv('STRIPE_SECRET_KEY');
     if (!secretKey) {
       throw new Error('STRIPE_SECRET_KEY environment variable is not set.');
     }
@@ -57,7 +58,7 @@ type WebhookVerificationResult =
 export async function verifyStripeWebhookSignature(
   request: NextRequest
 ): Promise<WebhookVerificationResult> {
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  const webhookSecret = readRuntimeEnv('STRIPE_WEBHOOK_SECRET');
 
   if (!webhookSecret) {
     console.error('[stripe-webhook] STRIPE_WEBHOOK_SECRET is not configured.');

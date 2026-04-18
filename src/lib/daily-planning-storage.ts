@@ -1,4 +1,4 @@
-import { getD1Database, type D1LikeDatabase } from '@/lib/d1';
+import { getD1Database } from '@/lib/d1';
 import type { DailyPlanningSnapshot } from '@/lib/ai/daily-planning';
 import type { RemoteUserWorkspace } from '@/lib/remote-user-data';
 
@@ -17,27 +17,11 @@ type WorkspaceRow = {
   updated_at: string | null;
 };
 
-async function ensureDailyPlanningTable(db: D1LikeDatabase) {
-  await db.prepare(`
-    CREATE TABLE IF NOT EXISTS daily_planning_snapshots (
-      clerk_user_id TEXT NOT NULL,
-      snapshot_date TEXT NOT NULL,
-      run_id TEXT NOT NULL,
-      snapshot_json TEXT NOT NULL,
-      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      PRIMARY KEY (clerk_user_id, snapshot_date)
-    )
-  `).run();
-}
-
 export async function saveDailyPlanningSnapshot(userId: string, snapshot: DailyPlanningSnapshot) {
   const db = getD1Database();
   if (!db) {
     throw new Error('Cloudflare D1 binding WEALIX_DB is not configured.');
   }
-
-  await ensureDailyPlanningTable(db);
 
   await db.prepare(`
     INSERT INTO daily_planning_snapshots (
@@ -61,8 +45,6 @@ export async function loadLatestDailyPlanningSnapshot(userId: string) {
     throw new Error('Cloudflare D1 binding WEALIX_DB is not configured.');
   }
 
-  await ensureDailyPlanningTable(db);
-
   const row = await db.prepare(`
     SELECT clerk_user_id, snapshot_date, run_id, snapshot_json, created_at, updated_at
     FROM daily_planning_snapshots
@@ -81,8 +63,6 @@ export async function loadDailyPlanningSnapshotByDate(userId: string, snapshotDa
   if (!db) {
     throw new Error('Cloudflare D1 binding WEALIX_DB is not configured.');
   }
-
-  await ensureDailyPlanningTable(db);
 
   const row = await db.prepare(`
     SELECT snapshot_json

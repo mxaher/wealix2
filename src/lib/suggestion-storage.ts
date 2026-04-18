@@ -1,4 +1,4 @@
-import { getD1Database, type D1LikeDatabase } from '@/lib/d1';
+import { getD1Database } from '@/lib/d1';
 
 type SuggestionType = 'bank_name' | 'market' | 'savings_account_name';
 
@@ -72,38 +72,6 @@ function toSuggestionRecord(row: SuggestionRow): SuggestionRecord {
 
 const inMemorySuggestions: SuggestionRecord[] = [];
 
-async function ensureSuggestionTable(db: D1LikeDatabase) {
-  await db.prepare(`
-    CREATE TABLE IF NOT EXISTS suggestion_entries (
-      id TEXT PRIMARY KEY,
-      type TEXT NOT NULL,
-      value TEXT NOT NULL,
-      value_lower TEXT NOT NULL,
-      locale TEXT NOT NULL DEFAULT 'en',
-      meta_json TEXT,
-      status TEXT NOT NULL DEFAULT 'pending',
-      submitted_by_user_id TEXT NOT NULL,
-      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )
-  `).run();
-
-  await db.prepare(`
-    CREATE INDEX IF NOT EXISTS idx_suggestion_entries_type_status
-    ON suggestion_entries(type, status)
-  `).run();
-
-  await db.prepare(`
-    CREATE INDEX IF NOT EXISTS idx_suggestion_entries_type_value_lower
-    ON suggestion_entries(type, value_lower)
-  `).run();
-
-  await db.prepare(`
-    CREATE INDEX IF NOT EXISTS idx_suggestion_entries_user_type_created_at
-    ON suggestion_entries(submitted_by_user_id, type, created_at)
-  `).run();
-}
-
 export async function countSuggestionsSubmittedToday(params: {
   submittedByUserId: string;
   type: SuggestionType;
@@ -121,8 +89,6 @@ export async function countSuggestionsSubmittedToday(params: {
         entry.createdAt >= today
     ).length;
   }
-
-  await ensureSuggestionTable(db);
 
   const row = await db
     .prepare(`
@@ -150,8 +116,6 @@ export async function findDuplicateSuggestion(params: {
     );
     return found ?? null;
   }
-
-  await ensureSuggestionTable(db);
 
   const row = await db
     .prepare(`
@@ -196,8 +160,6 @@ export async function createSuggestion(input: CreateSuggestionInput) {
     inMemorySuggestions.push(record);
     return record;
   }
-
-  await ensureSuggestionTable(db);
 
   const id = crypto.randomUUID();
   await db

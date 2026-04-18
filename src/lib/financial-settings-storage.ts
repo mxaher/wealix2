@@ -1,4 +1,4 @@
-import { getD1Database, type D1LikeDatabase } from '@/lib/d1';
+import { getD1Database } from '@/lib/d1';
 import { getE2EStorageDir, isE2EAuthEnabled } from '@/lib/e2e-auth';
 import {
   DEFAULT_FINANCIAL_SETTINGS,
@@ -17,17 +17,6 @@ export type FinancialSettingsRecord = {
   settings: FinancialSettings | null;
   updatedAt: string | null;
 };
-
-async function ensureFinancialSettingsTable(db: D1LikeDatabase) {
-  await db.prepare(`
-    CREATE TABLE IF NOT EXISTS user_financial_settings (
-      clerk_user_id TEXT PRIMARY KEY,
-      settings_json TEXT NOT NULL,
-      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )
-  `).run();
-}
 
 function getE2EFilePath(clerkUserId: string) {
   return `${getE2EStorageDir()}/financial-settings-${clerkUserId}.json`;
@@ -87,8 +76,6 @@ export async function getStoredFinancialSettings(
     return { settings: null, updatedAt: null };
   }
 
-  await ensureFinancialSettingsTable(db);
-
   const row = await db
     .prepare('SELECT settings_json, updated_at FROM user_financial_settings WHERE clerk_user_id = ? LIMIT 1')
     .bind(clerkUserId)
@@ -126,8 +113,6 @@ export async function saveFinancialSettings(
       updatedAt: new Date().toISOString(),
     };
   }
-
-  await ensureFinancialSettingsTable(db);
 
   await db
     .prepare(`

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { readRuntimeEnv } from '@/lib/runtime-env';
 
 const publicAppEnvSchema = z.object({
   NEXT_PUBLIC_APP_URL: z.string().url().default('https://wealix.app'),
@@ -34,7 +35,7 @@ export function getPublicAppEnv() {
   }
 
   cachedPublicAppEnv = publicAppEnvSchema.parse({
-    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'https://wealix.app',
+    NEXT_PUBLIC_APP_URL: readRuntimeEnv('NEXT_PUBLIC_APP_URL') || 'https://wealix.app',
   });
 
   return cachedPublicAppEnv;
@@ -46,7 +47,7 @@ export function getPublicClerkEnv() {
   }
 
   cachedPublicClerkEnv = publicClerkEnvSchema.parse({
-    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: readRuntimeEnv('NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY'),
   });
 
   return cachedPublicClerkEnv;
@@ -58,10 +59,10 @@ export function getSentDmEnv() {
   }
 
   cachedSentDmEnv = sentDmEnvSchema.parse({
-    SENTDM_API_KEY: process.env.SENTDM_API_KEY,
-    SENTDM_SENDER_ID: process.env.SENTDM_SENDER_ID,
-    SENTDM_BASE_URL: process.env.SENTDM_BASE_URL || 'https://api.sent.dm',
-    SENTDM_WEBHOOK_SIGNING_SECRET: process.env.SENTDM_WEBHOOK_SIGNING_SECRET,
+    SENTDM_API_KEY: readRuntimeEnv('SENTDM_API_KEY'),
+    SENTDM_SENDER_ID: readRuntimeEnv('SENTDM_SENDER_ID'),
+    SENTDM_BASE_URL: readRuntimeEnv('SENTDM_BASE_URL') || 'https://api.sent.dm',
+    SENTDM_WEBHOOK_SIGNING_SECRET: readRuntimeEnv('SENTDM_WEBHOOK_SIGNING_SECRET'),
   });
 
   return cachedSentDmEnv;
@@ -73,9 +74,9 @@ export function getCloudflareEmailEnv() {
   }
 
   const hasAnyEmailConfig = Boolean(
-    process.env.CLOUDFLARE_EMAIL_ACCOUNT_ID ||
-      process.env.CLOUDFLARE_EMAIL_API_TOKEN ||
-      process.env.CLOUDFLARE_EMAIL_FROM
+    readRuntimeEnv('CLOUDFLARE_EMAIL_ACCOUNT_ID') ||
+      readRuntimeEnv('CLOUDFLARE_EMAIL_API_TOKEN') ||
+      readRuntimeEnv('CLOUDFLARE_EMAIL_FROM')
   );
 
   if (!hasAnyEmailConfig) {
@@ -84,18 +85,18 @@ export function getCloudflareEmailEnv() {
   }
 
   cachedCloudflareEmailEnv = cloudflareEmailEnvSchema.parse({
-    CLOUDFLARE_EMAIL_ACCOUNT_ID: process.env.CLOUDFLARE_EMAIL_ACCOUNT_ID,
-    CLOUDFLARE_EMAIL_API_TOKEN: process.env.CLOUDFLARE_EMAIL_API_TOKEN,
-    CLOUDFLARE_EMAIL_FROM: process.env.CLOUDFLARE_EMAIL_FROM,
-    CLOUDFLARE_EMAIL_FROM_NAME: process.env.CLOUDFLARE_EMAIL_FROM_NAME || 'Wealix',
-    CLOUDFLARE_EMAIL_REPLY_TO: process.env.CLOUDFLARE_EMAIL_REPLY_TO || undefined,
+    CLOUDFLARE_EMAIL_ACCOUNT_ID: readRuntimeEnv('CLOUDFLARE_EMAIL_ACCOUNT_ID'),
+    CLOUDFLARE_EMAIL_API_TOKEN: readRuntimeEnv('CLOUDFLARE_EMAIL_API_TOKEN'),
+    CLOUDFLARE_EMAIL_FROM: readRuntimeEnv('CLOUDFLARE_EMAIL_FROM'),
+    CLOUDFLARE_EMAIL_FROM_NAME: readRuntimeEnv('CLOUDFLARE_EMAIL_FROM_NAME') || 'Wealix',
+    CLOUDFLARE_EMAIL_REPLY_TO: readRuntimeEnv('CLOUDFLARE_EMAIL_REPLY_TO') || undefined,
   });
 
   return cachedCloudflareEmailEnv;
 }
 
 export function getRequiredEnv(name: string) {
-  const value = process.env[name];
+  const value = readRuntimeEnv(name);
   if (!value || !value.trim()) {
     throw new Error(`${name} is required but was not provided.`);
   }

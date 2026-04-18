@@ -3,6 +3,7 @@ import {
   type AIModelConfig,
   type AIModelProvider,
 } from '@/lib/ai-models';
+import { readRuntimeEnv } from '@/lib/runtime-env';
 
 export type AIServiceMessage = {
   role: 'system' | 'user' | 'assistant';
@@ -26,8 +27,7 @@ type ChatOptions = {
 const DEFAULT_TIMEOUT_MS = 25_000;
 
 function readEnv(name: string) {
-  const value = process.env[name];
-  return typeof value === 'string' ? value.trim() : '';
+  return readRuntimeEnv(name) ?? '';
 }
 
 function getProviderApiKey(provider: AIModelProvider) {

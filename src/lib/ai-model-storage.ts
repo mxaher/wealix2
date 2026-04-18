@@ -38,31 +38,6 @@ export type UserAIModelPreferenceRecord = {
   updatedAt: string | null;
 };
 
-async function ensureAIModelTables(db: D1LikeDatabase) {
-  await db.prepare(`
-    CREATE TABLE IF NOT EXISTS ai_model_configs (
-      id TEXT PRIMARY KEY,
-      model_id TEXT NOT NULL,
-      display_name TEXT NOT NULL,
-      provider TEXT NOT NULL,
-      is_active INTEGER NOT NULL DEFAULT 1,
-      is_default INTEGER NOT NULL DEFAULT 0,
-      tier TEXT NOT NULL DEFAULT 'standard',
-      description TEXT,
-      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )
-  `).run();
-
-  await db.prepare(`
-    CREATE TABLE IF NOT EXISTS user_ai_model_preferences (
-      clerk_user_id TEXT PRIMARY KEY,
-      preferred_ai_model TEXT,
-      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )
-  `).run();
-}
-
 function getE2EModelsPath() {
   return `${getE2EStorageDir()}/ai-model-configs.json`;
 }
@@ -97,7 +72,6 @@ async function writeJsonFile<T>(filePath: string, data: T) {
 }
 
 async function seedDefaultModels(db: D1LikeDatabase) {
-  await ensureAIModelTables(db);
   const existing = await db.prepare('SELECT id FROM ai_model_configs LIMIT 1').first<{ id: string }>();
   if (existing?.id) {
     return;
@@ -312,7 +286,6 @@ export async function getUserAIModelPreference(clerkUserId: string): Promise<Use
     return { preferredModelId: null, updatedAt: null };
   }
 
-  await ensureAIModelTables(db);
   const row = await db.prepare(`
     SELECT preferred_ai_model, updated_at
     FROM user_ai_model_preferences
@@ -345,7 +318,6 @@ export async function saveUserAIModelPreference(
     return record;
   }
 
-  await ensureAIModelTables(db);
   await db.prepare(`
     INSERT INTO user_ai_model_preferences (clerk_user_id, preferred_ai_model, created_at, updated_at)
     VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
