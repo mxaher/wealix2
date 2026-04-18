@@ -474,6 +474,27 @@ html[dir="rtl"] body,
     color: var(--muted-foreground);
     background-color: color-mix(in srgb, var(--muted-foreground) 10%, transparent);
   }
+
+  /* ─── Financial Page Rhythm ─── */
+  .rhythm-page .rhythm-grid {
+    align-items: stretch;
+  }
+
+  .rhythm-page .rhythm-grid > * {
+    height: 100%;
+  }
+
+  .rhythm-page .rhythm-grid > [data-slot="card"] {
+    height: 100%;
+  }
+
+  .rhythm-page .rhythm-card {
+    height: 100%;
+  }
+
+  .rhythm-page .rhythm-card [data-slot="card-header"] {
+    padding-bottom: 0.75rem;
+  }
 }
 
 /* ─── Shimmer skeleton ─── */

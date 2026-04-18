@@ -631,7 +631,7 @@ export default function ExpensesPage() {
 
   return (
     <DashboardShell>
-      <div className="w-full space-y-6">
+      <div className="rhythm-page w-full space-y-6">
         {!isSignedIn && (
           <Card className="border-dashed">
             <CardContent className="p-4 text-sm text-muted-foreground">
@@ -750,7 +750,7 @@ export default function ExpensesPage() {
 
                 {statementPreview && (
                   <div className="space-y-4">
-                    <div className="grid gap-3 md:grid-cols-5">
+                    <div className="rhythm-grid grid gap-3 md:grid-cols-5">
                       <Card>
                         <CardContent className="p-4">
                           <div className="text-xs text-muted-foreground">{isArabic ? 'الدخل المستخرج' : 'Extracted income'}</div>
@@ -1183,7 +1183,7 @@ export default function ExpensesPage() {
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="rhythm-grid grid gap-4 md:grid-cols-3">
           <StatCard
             title={isArabic ? 'مصروفات هذا الشهر' : 'This Month'}
             value={formatCurrency(summary.monthlyTotal, 'SAR', locale)}

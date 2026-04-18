@@ -345,7 +345,7 @@ export default function NetWorthPage() {
 
   return (
     <DashboardShell>
-      <div className="w-full space-y-6">
+      <div className="rhythm-page w-full space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold">{isArabic ? 'صافي الثروة' : 'Net Worth'}</h1>
@@ -463,8 +463,8 @@ export default function NetWorthPage() {
           </Card>
         )}
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          <Card className="border-border" data-testid="networth-liquid">
+        <div className="rhythm-grid grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <Card className="rhythm-card border-border" data-testid="networth-liquid">
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
                 <div className="rounded-full bg-emerald-500/20 p-3">
@@ -477,7 +477,7 @@ export default function NetWorthPage() {
               </div>
             </CardContent>
           </Card>
-          <Card className="border-border" data-testid="networth-locked">
+          <Card className="rhythm-card border-border" data-testid="networth-locked">
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
                 <div className="rounded-full bg-sky-500/20 p-3">
@@ -490,7 +490,7 @@ export default function NetWorthPage() {
               </div>
             </CardContent>
           </Card>
-          <Card className="border-border" data-testid="networth-investments">
+          <Card className="rhythm-card border-border" data-testid="networth-investments">
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
                 <div className="rounded-full bg-violet-500/20 p-3">
@@ -503,7 +503,7 @@ export default function NetWorthPage() {
               </div>
             </CardContent>
           </Card>
-          <Card className="border-border">
+          <Card className="rhythm-card border-border">
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
                 <div className="rounded-full bg-rose-500/20 p-3">
@@ -516,7 +516,7 @@ export default function NetWorthPage() {
               </div>
             </CardContent>
           </Card>
-          <Card className="border-border" data-testid="networth-net">
+          <Card className="rhythm-card border-border" data-testid="networth-net">
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
                 <div className="rounded-full bg-gold/20 p-3">
@@ -533,7 +533,7 @@ export default function NetWorthPage() {
               </div>
             </CardContent>
           </Card>
-          <Card className="border-border">
+          <Card className="rhythm-card border-border">
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
                 <div className="rounded-full bg-amber-500/20 p-3">
@@ -557,7 +557,7 @@ export default function NetWorthPage() {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <div className="rhythm-grid grid grid-cols-1 gap-6 lg:grid-cols-2">
               <Card>
                 <CardHeader>
                   <CardTitle>{isArabic ? 'اتجاه صافي الثروة' : 'Net Worth Trend'}</CardTitle>
@@ -634,7 +634,7 @@ export default function NetWorthPage() {
               </Card>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="rhythm-grid grid grid-cols-1 gap-4 md:grid-cols-3">
               <Card>
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between gap-4">
@@ -690,7 +690,7 @@ export default function NetWorthPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="rhythm-grid grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     <div className="rounded-lg bg-muted/50 p-4">
                       <p className="text-xs text-muted-foreground">
                         {isArabic ? 'الدخل الشهري' : 'Monthly Income'}

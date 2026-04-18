@@ -212,7 +212,7 @@ export default function FirePage() {
 
   return (
     <DashboardShell>
-      <div className="w-full space-y-6">
+      <div className="rhythm-page w-full space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -267,7 +267,7 @@ export default function FirePage() {
         </Card>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="rhythm-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             title={isArabic ? 'صافي الثروة الحالي' : 'Current Net Worth'}
             value={formatCurrency(currentNetWorth, 'SAR', locale)}
@@ -339,7 +339,7 @@ export default function FirePage() {
 
           {/* Calculator Tab */}
           <TabsContent value="calculator" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="rhythm-grid grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Inputs */}
               <Card>
                 <CardHeader>
@@ -465,8 +465,8 @@ export default function FirePage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <Card className="bg-muted/50">
+                <div className="rhythm-grid grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Card className="rhythm-card bg-muted/50">
                     <CardContent className="p-6">
                       <div className="flex items-center gap-4">
                         <div className="p-3 rounded-full bg-emerald-500/20">
@@ -480,7 +480,7 @@ export default function FirePage() {
                     </CardContent>
                   </Card>
 
-                  <Card className="bg-muted/50">
+                  <Card className="rhythm-card bg-muted/50">
                     <CardContent className="p-6">
                       <div className="flex items-center gap-4">
                         <div className="p-3 rounded-full bg-gold/20">
@@ -510,9 +510,9 @@ export default function FirePage() {
           {/* Scenarios Tab */}
           <TabsContent value="scenarios">
             <FeatureGate feature="fire.scenarios">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="rhythm-grid grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Conservative */}
-                <Card className="border-blue-500/30">
+                <Card className="rhythm-card border-blue-500/30">
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-blue-500">{isArabic ? 'محافظ' : 'Conservative'}</CardTitle>
@@ -529,7 +529,7 @@ export default function FirePage() {
                 </Card>
 
                 {/* Base Case */}
-                <Card className="border-gold/30 bg-gold/5">
+                <Card className="rhythm-card border-gold/30 bg-gold/5">
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-gold">{isArabic ? 'الحالة الأساسية' : 'Base Case'}</CardTitle>
@@ -546,7 +546,7 @@ export default function FirePage() {
                 </Card>
 
                 {/* Optimistic */}
-                <Card className="border-emerald-500/30">
+                <Card className="rhythm-card border-emerald-500/30">
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-emerald-500">{isArabic ? 'متفائل' : 'Optimistic'}</CardTitle>

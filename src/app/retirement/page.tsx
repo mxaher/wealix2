@@ -140,7 +140,7 @@ export default function RetirementPage() {
 
   return (
     <DashboardShell>
-      <div className="w-full space-y-6">
+      <div className="rhythm-page w-full space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -186,7 +186,7 @@ export default function RetirementPage() {
         </Card>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="rhythm-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             title={isArabic ? 'المدخرات الحالية' : 'Current Savings'}
             value={formatCurrency(currentSavings, 'SAR', locale)}
@@ -229,9 +229,9 @@ export default function RetirementPage() {
 
           {/* Projection Tab */}
           <TabsContent value="projection" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="rhythm-grid grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Chart */}
-              <Card className="lg:col-span-2">
+              <Card className="rhythm-card lg:col-span-2">
                 <CardHeader>
                   <CardTitle>{isArabic ? 'نمو المدخرات' : 'Savings Growth'}</CardTitle>
                   <CardDescription>
@@ -283,8 +283,8 @@ export default function RetirementPage() {
             </div>
 
             {/* Summary */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="bg-muted/50">
+            <div className="rhythm-grid grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card className="rhythm-card bg-muted/50">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
                     <DollarSign className="w-8 h-8 text-blue-500" />
@@ -295,7 +295,7 @@ export default function RetirementPage() {
                   </div>
                 </CardContent>
               </Card>
-              <Card className="bg-muted/50">
+              <Card className="rhythm-card bg-muted/50">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
                     <TrendingUp className="w-8 h-8 text-emerald-500" />
@@ -306,7 +306,7 @@ export default function RetirementPage() {
                   </div>
                 </CardContent>
               </Card>
-              <Card className="bg-muted/50">
+              <Card className="rhythm-card bg-muted/50">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
                     <Calendar className="w-8 h-8 text-gold" />
@@ -327,7 +327,7 @@ export default function RetirementPage() {
                 <CardTitle>{isArabic ? 'معلمات التقاعد' : 'Retirement Parameters'}</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="rhythm-grid grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <Label>{isArabic ? 'العمر الحالي' : 'Current Age'}</Label>
@@ -409,8 +409,8 @@ export default function RetirementPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <Card className="bg-muted/50">
+                <div className="rhythm-grid grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Card className="rhythm-card bg-muted/50">
                     <CardContent className="p-4">
                       <p className="text-sm text-muted-foreground">{isArabic ? 'الفجوة الشهرية' : 'Monthly Gap'}</p>
                       <p className={`text-2xl font-bold ${requiredMonthlyContribution > monthlyContribution ? 'text-amber-500' : 'text-emerald-500'}`}>
@@ -424,7 +424,7 @@ export default function RetirementPage() {
                       </p>
                     </CardContent>
                   </Card>
-                  <Card className="bg-muted/50">
+                  <Card className="rhythm-card bg-muted/50">
                     <CardContent className="p-4">
                       <p className="text-sm text-muted-foreground">{isArabic ? 'نسبة الهدف المحقق' : 'Goal Achievement'}</p>
                       <p className="text-2xl font-bold">

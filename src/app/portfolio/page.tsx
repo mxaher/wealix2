@@ -1293,7 +1293,7 @@ export default function PortfolioPage() {
 
   return (
     <DashboardShell>
-      <div className="w-full min-w-0 max-w-full space-y-6">
+      <div className="rhythm-page w-full min-w-0 max-w-full space-y-6">
         {!isSignedIn && (
           <Card className="border-dashed">
             <CardContent className="p-4 text-sm text-muted-foreground">
@@ -1721,7 +1721,7 @@ export default function PortfolioPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 auto-rows-fr">
+        <div className="rhythm-grid grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 auto-rows-fr">
           <StatCard
             title={isArabic ? 'القيمة الإجمالية' : 'Total Value'}
             value={formatCurrency(totalValue, 'SAR', locale)}
@@ -1741,7 +1741,7 @@ export default function PortfolioPage() {
             icon={totalGainLoss >= 0 ? TrendingUp : TrendingDown}
             iconColor={totalGainLoss >= 0 ? 'text-emerald-500 bg-emerald-500/10' : 'text-rose-500 bg-rose-500/10'}
           />
-          <Card className="h-full">
+          <Card className="rhythm-card h-full">
             <CardContent className="p-4 h-full">
               <div className="flex items-center justify-between">
                 <div>
@@ -2485,8 +2485,8 @@ export default function PortfolioPage() {
           </TabsContent>
 
           <TabsContent value="allocation" className="mt-0 space-y-6">
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 auto-rows-fr">
-              <Card className="h-full">
+            <div className="rhythm-grid grid grid-cols-1 gap-6 md:grid-cols-2 auto-rows-fr">
+              <Card className="rhythm-card h-full">
                 <CardHeader>
                   <CardTitle>{isArabic ? 'التوزيع حسب السوق' : 'By Exchange'}</CardTitle>
                 </CardHeader>
@@ -2506,7 +2506,7 @@ export default function PortfolioPage() {
                 </CardContent>
               </Card>
 
-              <Card className="h-full">
+              <Card className="rhythm-card h-full">
                 <CardHeader>
                   <CardTitle>{isArabic ? 'التوزيع حسب القطاع' : 'By Sector'}</CardTitle>
                 </CardHeader>

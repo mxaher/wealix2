@@ -170,7 +170,7 @@ export default function InsightsPage() {
 
   return (
     <DashboardShell>
-      <div className="w-full space-y-6">
+      <div className="rhythm-page w-full space-y-6">
         <div>
           <h1 className="text-2xl font-bold">{isArabic ? 'الرؤى المالية' : 'Financial Insights'}</h1>
           <p className="text-sm text-muted-foreground">
@@ -179,7 +179,7 @@ export default function InsightsPage() {
         </div>
 
         {/* Score cards */}
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="rhythm-grid grid grid-cols-2 gap-3 lg:grid-cols-4">
           {scoreCards.map((card, i) => {
             const Icon = card.icon;
             return (
@@ -189,7 +189,7 @@ export default function InsightsPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.07 }}
               >
-                <Card className="h-full">
+                <Card className="rhythm-card h-full">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-xs text-muted-foreground">

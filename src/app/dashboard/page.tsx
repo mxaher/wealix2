@@ -168,7 +168,7 @@ export default function DashboardPage() {
 
   return (
     <DashboardShell>
-      <div className="w-full space-y-6">
+      <div className="rhythm-page w-full space-y-6">
         {/* Page header */}
         <div>
           <h1 className="text-2xl font-bold">
@@ -180,9 +180,9 @@ export default function DashboardPage() {
         </div>
 
         {/* Health score + KPIs */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
+        <div className="rhythm-grid grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
           {/* Health score card — spans 2 cols on lg+ to keep 5 top cards in one row */}
-          <Card className="lg:col-span-2">
+          <Card className="rhythm-card lg:col-span-2">
             <CardContent className="p-5">
               <div className="flex items-center justify-between gap-4">
                 <div>
@@ -252,7 +252,7 @@ export default function DashboardPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 + 0.1 }}
               >
-                <Card className="h-full">
+                <Card className="rhythm-card h-full">
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between">
                       <div>
@@ -295,12 +295,12 @@ export default function DashboardPage() {
           <h2 className="text-sm font-medium text-muted-foreground mb-3">
             {isArabic ? 'إجراءات سريعة' : 'Quick Actions'}
           </h2>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="rhythm-grid grid grid-cols-2 gap-3 sm:grid-cols-4">
             {quickActions.map((action) => {
               const Icon = action.icon;
               return (
                 <Link key={action.href} href={action.href}>
-                  <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
+                  <Card className="rhythm-card hover:bg-muted/50 transition-colors cursor-pointer">
                     <CardContent className="flex items-center gap-3 p-4">
                       <div className={`rounded-lg p-2 ${action.color}`}>
                         <Icon className="h-4 w-4" />
@@ -317,9 +317,9 @@ export default function DashboardPage() {
         </div>
 
         {/* Middle row: Portfolio + Spending */}
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="rhythm-grid grid grid-cols-1 gap-4 lg:grid-cols-2">
           {/* Portfolio allocation */}
-          <Card>
+          <Card className="rhythm-card">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base">
@@ -370,7 +370,7 @@ export default function DashboardPage() {
           </Card>
 
           {/* Spending by category */}
-          <Card>
+          <Card className="rhythm-card">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base">
@@ -418,9 +418,9 @@ export default function DashboardPage() {
         </div>
 
         {/* Bottom row: Recent transactions + Upcoming bills */}
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="rhythm-grid grid grid-cols-1 gap-4 lg:grid-cols-2">
           {/* Recent transactions */}
-          <Card>
+          <Card className="rhythm-card">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base">
@@ -470,7 +470,7 @@ export default function DashboardPage() {
           </Card>
 
           {/* Upcoming obligations */}
-          <Card>
+          <Card className="rhythm-card">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base">

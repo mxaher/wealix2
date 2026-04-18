@@ -156,7 +156,7 @@ export default function IncomePage() {
 
   return (
     <DashboardShell>
-      <div className="w-full space-y-6">
+      <div className="rhythm-page w-full space-y-6">
         {!isSignedIn && (
           <Card className="border-dashed">
             <CardContent className="p-4 text-sm text-muted-foreground">
@@ -289,7 +289,7 @@ export default function IncomePage() {
           </Dialog>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="rhythm-grid grid gap-4 md:grid-cols-3">
           <StatCard
             title={isArabic ? 'دخل هذا الشهر' : 'This Month'}
             value={formatCurrency(summary.monthlyTotal, 'SAR', locale)}

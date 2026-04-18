@@ -231,7 +231,7 @@ export default function GoalsPage() {
 
   return (
     <DashboardShell>
-      <div className="w-full space-y-6">
+      <div className="rhythm-page w-full space-y-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold">{isArabic ? 'الأهداف المالية' : 'Financial Goals'}</h1>
@@ -273,7 +273,7 @@ export default function GoalsPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div className="rhythm-grid grid grid-cols-1 gap-4 lg:grid-cols-2">
             <AnimatePresence initial={false}>
               {allGoals.map((goal, i) => {
                 const Icon = GOAL_ICONS[goal.type] ?? Target;
@@ -288,7 +288,7 @@ export default function GoalsPage() {
                     exit={{ opacity: 0, scale: 0.95 }}
                     transition={{ delay: i * 0.06 }}
                   >
-                    <Card className="h-full">
+                    <Card className="rhythm-card h-full">
                       <CardContent className="p-5">
                         <div className="flex items-start justify-between gap-3 mb-4">
                           <div className="flex items-center gap-3">
@@ -405,7 +405,7 @@ export default function GoalsPage() {
                 placeholder={isArabic ? 'مثال: شراء منزل' : 'e.g. Buy a house'}
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="rhythm-grid grid grid-cols-2 gap-3">
               <div>
                 <Label className="mb-1.5 block">{isArabic ? 'المبلغ المستهدف' : 'Target amount'}</Label>
                 <Input

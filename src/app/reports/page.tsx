@@ -341,7 +341,7 @@ export default function ReportsPage() {
 
   return (
     <DashboardShell>
-      <div className="w-full space-y-6">
+      <div className="rhythm-page w-full space-y-6">
         {!isSignedIn && (
           <Card className="border-dashed">
             <CardContent className="p-4 text-sm text-muted-foreground">
@@ -421,14 +421,14 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="rhythm-grid grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {reportTypes.map((report) => {
             const isGenerating = generating === report.id;
             const feature = report.tier === 'pro' ? 'reports.full' : 'reports.basic';
 
             return (
               <motion.div key={report.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-                <Card className={`h-full ${report.tier === 'pro' ? 'border-primary/20' : ''}`}>
+                <Card className={`rhythm-card h-full ${report.tier === 'pro' ? 'border-primary/20' : ''}`}>
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <div className={`rounded-lg p-2 ${report.tier === 'pro' ? 'bg-gold/20 text-gold' : 'bg-muted text-muted-foreground'}`}>
@@ -611,7 +611,7 @@ export default function ReportsPage() {
             </DialogHeader>
             {selectedReport && (
               <div className="space-y-4 py-2">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="rhythm-grid grid grid-cols-1 gap-4 md:grid-cols-2">
                   {selectedReport.metrics.map((metric) => (
                     <div key={metric.label} className="rounded-xl border bg-muted/40 p-4">
                       <div className="text-sm text-muted-foreground">{metric.label}</div>
