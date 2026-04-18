@@ -86,27 +86,7 @@ function toRecord(row: OnboardingRow): OnboardingProfileRecord {
   };
 }
 
-async function ensureOnboardingTable(db: D1LikeDatabase) {
-  await db.prepare(`
-    CREATE TABLE IF NOT EXISTS user_onboarding_profiles (
-      clerk_user_id TEXT PRIMARY KEY,
-      email TEXT,
-      name TEXT,
-      phone TEXT,
-      notification_channel TEXT,
-      monthly_income REAL,
-      risk_tolerance TEXT,
-      preferred_markets_json TEXT,
-      retirement_age INTEGER,
-      current_age INTEGER,
-      retirement_goal TEXT,
-      onboarding_done INTEGER NOT NULL DEFAULT 0,
-      onboarding_skipped INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )
-  `).run();
-}
+// Table created via migration: cloudflare/d1-user-onboarding-profiles.sql
 
 function getE2EFilePath(clerkUserId: string) {
   return `${getE2EStorageDir()}/onboarding-${clerkUserId}.json`;
@@ -173,8 +153,6 @@ export async function getOnboardingProfile(clerkUserId: string): Promise<Onboard
     return null;
   }
 
-  await ensureOnboardingTable(db);
-
   const row = await db
     .prepare(`
       SELECT
@@ -216,10 +194,7 @@ export async function saveOnboardingProfile(
     return null;
   }
 
-  await ensureOnboardingTable(db);
-
-  await db
-    .prepare(`
+  await db.prepare(`
       INSERT INTO user_onboarding_profiles (
         clerk_user_id,
         email,
