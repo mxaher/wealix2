@@ -64,72 +64,72 @@
 
 /* ─── Light Theme ─── */
 :root {
-  /* Base radius: 10px cards, 8px inputs */
-  --radius: 0.625rem;
+  /* Base radius: 12px cards, 8px inputs */
+  --radius: 0.75rem;
 
   /* Fonts */
   --font-body: var(--font-inter), "Inter", var(--font-tajawal), "Tajawal", system-ui, -apple-system, sans-serif;
   --font-script-arabic: var(--font-tajawal), "Tajawal", var(--font-inter), "Inter", sans-serif;
 
   /* Surfaces */
-  --background: #F8F8F6;
-  --foreground: #0D0D0D;
+  --background: #F4F6F4;
+  --foreground: #0A0F0C;
   --card: #FFFFFF;
-  --card-foreground: #0D0D0D;
+  --card-foreground: #0A0F0C;
   --popover: #FFFFFF;
-  --popover-foreground: #0D0D0D;
+  --popover-foreground: #0A0F0C;
 
-  /* Brand accent — deep slate blue, used exclusively */
-  --primary: #1E3A5F;
+  /* Brand accent — forest green */
+  --primary: #0D6B3C;
   --primary-foreground: #FFFFFF;
 
   /* Secondary surface */
-  --secondary: #F3F4F6;
-  --secondary-foreground: #0D0D0D;
+  --secondary: #EDF3EF;
+  --secondary-foreground: #0A0F0C;
 
   /* Muted surface */
-  --muted: #F5F5F5;
-  --muted-foreground: #525252;
+  --muted: #F0F4F1;
+  --muted-foreground: #6B7280;
 
-  /* Accent — subtle hover tint */
-  --accent: #EEF2F7;
-  --accent-foreground: #1E3A5F;
+  /* Accent — subtle green hover tint */
+  --accent: #E6F2EA;
+  --accent-foreground: #0D6B3C;
 
   /* Semantic */
   --destructive: #DC2626;
 
   /* Structure */
-  --border: #EBEBEB;
-  --input: #EBEBEB;
-  --ring: #1E3A5F;
+  --border: #E2E8E3;
+  --input: #E2E8E3;
+  --ring: #0D6B3C;
 
-  /* Charts — accent family */
-  --chart-1: #1E3A5F;
-  --chart-2: #2563EB;
-  --chart-3: #16A34A;
-  --chart-4: #A3A3A3;
-  --chart-5: #D4D4D4;
+  /* Charts — green family */
+  --chart-1: #0D6B3C;
+  --chart-2: #16A34A;
+  --chart-3: #4ADE80;
+  --chart-4: #BBF7D0;
+  --chart-5: #E2E8E3;
 
-  /* Sidebar */
-  --sidebar: #FAFAFA;
-  --sidebar-foreground: #0D0D0D;
-  --sidebar-primary: #1E3A5F;
+  /* Sidebar — white with black active pill */
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #0A0F0C;
+  --sidebar-primary: #111111;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #EEF2F7;
-  --sidebar-accent-foreground: #1E3A5F;
-  --sidebar-border: #EBEBEB;
-  --sidebar-ring: #1E3A5F;
+  --sidebar-accent: #F0F4F1;
+  --sidebar-accent-foreground: #0A0F0C;
+  --sidebar-border: #E2E8E3;
+  --sidebar-ring: #0D6B3C;
 
   /* Brand tokens */
-  --weal: #1E3A5F;
-  --ix-gradient-start: #2563EB;
-  --ix-gradient-end: #1E3A5F;
-  --gold: #1E3A5F;
-  --gold-light: #4A7BB5;
-  --gold-dark: #162C47;
-  --navy: #1E3A5F;
-  --navy-light: #2A4D7A;
-  --navy-dark: #162C47;
+  --weal: #0D6B3C;
+  --ix-gradient-start: #16A34A;
+  --ix-gradient-end: #0D6B3C;
+  --gold: #0D6B3C;
+  --gold-light: #22C55E;
+  --gold-dark: #065F2C;
+  --navy: #0D6B3C;
+  --navy-light: #16A34A;
+  --navy-dark: #065F2C;
 
   /* Semantic status */
   --success: #16A34A;
@@ -137,78 +137,78 @@
   --profit: #16A34A;
   --loss: #DC2626;
   --warning: #D97706;
-  --info: #2563EB;
+  --info: #0D6B3C;
 }
 
 /* ─── Dark Theme ─── */
 .dark {
-  /* Surfaces */
-  --background: #0A0A0A;
-  --foreground: #F5F5F5;
-  --card: #111111;
-  --card-foreground: #F5F5F5;
-  --popover: #161616;
-  --popover-foreground: #F5F5F5;
+  /* Surfaces — deep green-tinted blacks */
+  --background: #090E0B;
+  --foreground: #EDF2EF;
+  --card: #0F1812;
+  --card-foreground: #EDF2EF;
+  --popover: #121E15;
+  --popover-foreground: #EDF2EF;
 
-  /* Brand accent — same in both themes */
-  --primary: #1E3A5F;
-  --primary-foreground: #FFFFFF;
+  /* Brand accent — brighter green on dark */
+  --primary: #22C55E;
+  --primary-foreground: #030A05;
 
   /* Secondary surface */
-  --secondary: #1A1A1A;
-  --secondary-foreground: #F5F5F5;
+  --secondary: #131D16;
+  --secondary-foreground: #EDF2EF;
 
   /* Muted surface */
-  --muted: #141414;
-  --muted-foreground: #A3A3A3;
+  --muted: #101810;
+  --muted-foreground: #8FA893;
 
-  /* Accent — subtle dark blue hover tint */
-  --accent: #1A2535;
-  --accent-foreground: #7BA7C7;
+  /* Accent — dark green hover tint */
+  --accent: #152519;
+  --accent-foreground: #4ADE80;
 
   /* Semantic */
-  --destructive: #DC2626;
+  --destructive: #F87171;
 
   /* Structure */
-  --border: #1F1F1F;
-  --input: #1F1F1F;
-  --ring: #1E3A5F;
+  --border: #1A2B1D;
+  --input: #1A2B1D;
+  --ring: #22C55E;
 
-  /* Charts */
-  --chart-1: #2563EB;
-  --chart-2: #1E3A5F;
-  --chart-3: #16A34A;
-  --chart-4: #525252;
-  --chart-5: #333333;
+  /* Charts — green family on dark */
+  --chart-1: #22C55E;
+  --chart-2: #4ADE80;
+  --chart-3: #0D6B3C;
+  --chart-4: #2D4A32;
+  --chart-5: #1A2B1D;
 
-  /* Sidebar */
-  --sidebar: #0D0D0D;
-  --sidebar-foreground: #F5F5F5;
-  --sidebar-primary: #1E3A5F;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #1A2535;
-  --sidebar-accent-foreground: #A3A3A3;
-  --sidebar-border: #1F1F1F;
-  --sidebar-ring: #1E3A5F;
+  /* Sidebar — dark green-tinted with white active pill */
+  --sidebar: #0C1610;
+  --sidebar-foreground: #EDF2EF;
+  --sidebar-primary: #EDF2EF;
+  --sidebar-primary-foreground: #090E0B;
+  --sidebar-accent: #152519;
+  --sidebar-accent-foreground: #8FA893;
+  --sidebar-border: #1A2B1D;
+  --sidebar-ring: #22C55E;
 
   /* Brand tokens */
-  --weal: #2563EB;
-  --ix-gradient-start: #2563EB;
-  --ix-gradient-end: #1E3A5F;
-  --gold: #1E3A5F;
-  --gold-light: #2A4D7A;
-  --gold-dark: #162C47;
-  --navy: #1E3A5F;
-  --navy-light: #2A4D7A;
-  --navy-dark: #162C47;
+  --weal: #22C55E;
+  --ix-gradient-start: #4ADE80;
+  --ix-gradient-end: #22C55E;
+  --gold: #22C55E;
+  --gold-light: #4ADE80;
+  --gold-dark: #16A34A;
+  --navy: #22C55E;
+  --navy-light: #4ADE80;
+  --navy-dark: #16A34A;
 
-  /* Semantic status — identical both themes */
-  --success: #16A34A;
-  --danger: #DC2626;
-  --profit: #16A34A;
-  --loss: #DC2626;
-  --warning: #D97706;
-  --info: #2563EB;
+  /* Semantic status */
+  --success: #4ADE80;
+  --danger: #F87171;
+  --profit: #4ADE80;
+  --loss: #F87171;
+  --warning: #FCD34D;
+  --info: #22C55E;
 }
 
 /* ─── Base Reset ─── */
@@ -330,7 +330,7 @@ html[dir="rtl"] body,
     transition: background-color 100ms ease;
   }
   .btn-primary:hover {
-    background-color: color-mix(in srgb, var(--primary) 88%, black);
+    background-color: color-mix(in srgb, var(--primary) 85%, black);
   }
 
   /* Card hover — border brightens to accent at 40% */
@@ -417,26 +417,13 @@ html[dir="rtl"] body,
     color: var(--foreground);
   }
 
-  /* Active: thin 2px inline-start border, no background fill */
+  /* Active: filled dark pill */
   .sidebar-item.active {
-    color: var(--foreground);
-    background-color: color-mix(in srgb, var(--primary) 6%, transparent);
+    color: var(--sidebar-primary-foreground);
+    background-color: var(--sidebar-primary);
   }
   .sidebar-item.active::before {
-    content: "";
-    position: absolute;
-    inset-block: 4px;
-    inset-inline-start: 0;
-    width: 2px;
-    border-radius: 0 2px 2px 0;
-    background-color: var(--primary);
-  }
-
-  /* RTL: active border on right */
-  [dir="rtl"] .sidebar-item.active::before {
-    inset-inline-start: auto;
-    inset-inline-end: 0;
-    border-radius: 2px 0 0 2px;
+    content: none;
   }
 
   /* ─── Landing page section label ─── */
